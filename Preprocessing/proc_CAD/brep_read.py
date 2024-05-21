@@ -26,6 +26,7 @@ def read_step_file(filename):
         shape = step_reader.Shape()  # Retrieves the translated shape
         return shape
     else:
+        print("status", status)
         raise Exception("Error reading STEP file.")
 
 

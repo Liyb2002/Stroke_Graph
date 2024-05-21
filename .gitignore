@@ -1,4 +1,5 @@
 *.stl
+*.step
 *.stp
 *.json
 *.pkl

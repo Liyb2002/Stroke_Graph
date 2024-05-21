@@ -7,7 +7,7 @@ home_dir = Path(__file__).parent.parent
 
 
 def build_sketch(count, Points_list, output):
-    brep_dir = os.path.join(home_dir, "canvas", f"brep_{count}.stp")
+    brep_dir = os.path.join(home_dir, "canvas", f"brep_{count}.step")
     stl_dir = os.path.join(home_dir, "canvas", f"vis_{count}.stl")
 
     with BuildSketch():
@@ -33,12 +33,12 @@ def build_sketch(count, Points_list, output):
 
     if output:
         perimeter.export_stl(stl_dir)
-        perimeter.export_brep(brep_dir)
+        perimeter.export_step(brep_dir)
 
     return perimeter
 
 def build_circle(count, radius, point, normal, output):
-    brep_dir = os.path.join(home_dir, "canvas", f"brep_{count}.stp")
+    brep_dir = os.path.join(home_dir, "canvas", f"brep_{count}.step")
     stl_dir = os.path.join(home_dir, "canvas", f"vis_{count}.stl")
 
     
@@ -47,14 +47,14 @@ def build_circle(count, radius, point, normal, output):
 
     if output:
         perimeter.sketch.export_stl(stl_dir)
-        perimeter.sketch.export_brep(brep_dir)
+        perimeter.sketch.export_step(brep_dir)
 
     return perimeter.sketch
 
 
 def build_extrude(count, canvas, target_face, extrude_amount, output):
     stl_dir = os.path.join(home_dir, "canvas", f"vis_{count}.stl")
-    step_dir = os.path.join(home_dir, "canvas", f"step_{count}.stp")
+    step_dir = os.path.join(home_dir, "canvas", f"step_{count}.step")
 
     if canvas != None:
         if extrude_amount <0:
@@ -79,9 +79,8 @@ def build_extrude(count, canvas, target_face, extrude_amount, output):
 
 
 def build_fillet(count, canvas, target_edge, radius, output):
-    print("build_fillet")
     stl_dir = os.path.join(home_dir, "canvas", f"vis_{count}.stl")
-    step_dir = os.path.join(home_dir, "canvas", f"step_{count}.stp")
+    step_dir = os.path.join(home_dir, "canvas", f"step_{count}.step")
 
     with canvas:
         fillet(target_edge, radius)

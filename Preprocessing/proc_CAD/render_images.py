@@ -7,6 +7,9 @@ import helper
 import random
 import numpy as np
 
+import glob
+import re
+
 def find_bounding_box(edges_features):
     min_x, min_y, min_z = float('inf'), float('inf'), float('inf')
     max_x, max_y, max_z = float('-inf'), float('-inf'), float('-inf')
@@ -229,6 +232,17 @@ def perturb_strokes(edges_features, noise_level=1.0):
         edge_info['projected_edge'] = perturbed_edge
     
 
+def get_last_file():
+    step_files = glob.glob('./canvas/step_*.step')
+
+    step_indices = [int(re.search(r'step_(\d+).step', file).group(1)) for file in step_files]
+    largest_index = max(step_indices)
+
+    largest_step_file = f'./canvas/step_{largest_index}.step'
+
+    return largest_step_file
+
+
 # Load styles
 stroke_dataset_designer_name = 'Professional1'
 
@@ -244,8 +258,8 @@ if os.path.exists(style_sheet_file_name):
 
 
 
-
-edges_features = brep_read.create_graph_from_step_file('./canvas/step_5.stp')
+file_path = get_last_file()
+edges_features = brep_read.create_graph_from_step_file(file_path)
 edges_features, obj_center= find_bounding_box(edges_features)
 optimize_opacities(edges_features, stylesheet)
 project_points(edges_features, obj_center)

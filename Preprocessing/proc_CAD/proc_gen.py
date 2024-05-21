@@ -1,8 +1,8 @@
 import random_gen
 import numpy as np
-import brep_class
+import generate_program
 
-canvas_class = brep_class.Brep()
+canvas_class = generate_program.Brep()
 
 # Example usage:
 
