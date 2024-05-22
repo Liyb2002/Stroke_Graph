@@ -49,10 +49,14 @@ def build_graph(stroke_dict):
     num_strokes = len(stroke_dict)
     num_operations = len(operations_dict)
 
+    # a map that maps stroke_id (e.g 'edge_0_0' to 0)
+    stroke_id_to_index = {}
+
 
 
     node_features = np.zeros((num_strokes, 6))
     operations_matrix = np.zeros((num_strokes, num_operations))
+    intersection_matrix = np.zeros((num_strokes, num_strokes))
 
 
     for i, (_, stroke) in enumerate(stroke_dict.items()):
@@ -70,10 +74,18 @@ def build_graph(stroke_dict):
             if op in operations_dict:
                 op_index = operations_dict[op]
                 operations_matrix[i, op_index] = 1
+        
+        stroke_id_to_index = {stroke_id: index for index, stroke_id in enumerate(stroke_dict)}
+
+        # build intersection_matrix
+        # intersection_matrix has shape num_strokes x num_strokes
+        for connected_id in stroke.connected_edges:
+            if connected_id in stroke_id_to_index:
+                j = stroke_id_to_index[connected_id]
+                intersection_matrix[i, j] = 1
+                intersection_matrix[j, i] = 1
 
     
-    print("operations_matrix", operations_matrix)
-    
-    
+    print("intersection_matrix,", intersection_matrix)
     return node_features
 
