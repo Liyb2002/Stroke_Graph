@@ -1,8 +1,9 @@
 import json
-import build123.protocol
-from basic_class import Face, Edge, Vertex
-import helper
+import proc_CAD.build123.protocol
+from proc_CAD.basic_class import Face, Edge, Vertex
+import proc_CAD.helper
 
+import os
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
@@ -199,10 +200,11 @@ class create_stroke_cloud():
 # Example usage:
 
 def run():
-    file_path = './canvas/Program.json'
-    parsed_program_class = create_stroke_cloud(file_path)
-    parsed_program_class.read_json_file()
-    # parsed_program_class.output()
-    parsed_program_class.vis_stroke_cloud('extrude_addition')
+    file_path = os.path.join(os.path.dirname(__file__), 'canvas', 'Program.json')
 
-run()
+    stroke_cloud_class = create_stroke_cloud(file_path)
+    stroke_cloud_class.read_json_file()
+    # parsed_program_class.output()
+    # stroke_cloud_class.vis_stroke_cloud('extrude_addition')
+
+    return stroke_cloud_class.edges
