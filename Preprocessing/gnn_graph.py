@@ -20,25 +20,45 @@ operations_dict = {
                     } 
 
 class SketchHeteroData(HeteroData):
-    def __init__(self, node_features, node_labels, additional_matrix, connectivity_matrix, temporal_edge_index):
+    def __init__(self, node_features, operations_matrix, intersection_matrix):
         super(SketchHeteroData, self).__init__()
 
-        self['stroke'].x = node_features
-        self['stroke'].y = node_labels
-        self['stroke'].z = additional_matrix
-
-        edge_indices = (connectivity_matrix == 1).nonzero(as_tuple=False).t()
+        # Node features and labels
+        self['stroke'].x = torch.tensor(node_features, dtype=torch.float)
+        self['stroke'].y = torch.tensor(operations_matrix, dtype=torch.float)
+        
+        # Order of nodes (sequential order of reading)
+        num_strokes = node_features.shape[0]
+        order = list(range(num_strokes))
+        self['stroke'].order = torch.tensor(order, dtype=torch.long)
+        
+        # Intersection matrix to edge indices
+        edge_indices = torch.nonzero(torch.tensor(intersection_matrix == 1)).t()
         self['stroke', 'intersects', 'stroke'].edge_index = edge_indices
 
-        temporal_edge_tensor = torch.tensor(temporal_edge_index, dtype=torch.long).t().contiguous()
+        # Temporal edge index (order of nodes)
+        temporal_edge_index = [order[:-1], order[1:]]
+        temporal_edge_tensor = torch.tensor(temporal_edge_index, dtype=torch.long).contiguous()
         self['stroke', 'temp_previous', 'stroke'].edge_index = temporal_edge_tensor
 
-        self.connectivity_matrix = connectivity_matrix
+        self.connectivity_matrix = intersection_matrix
 
     def to_device(self, device):
         for key, value in self.items():
             if torch.is_tensor(value):
                 self[key] = value.to(device)
+
+    def output_info(self):
+        print("Node Features (x):")
+        print(self['stroke'].x)
+        print("Operations Matrix (y):")
+        print(self['stroke'].y)
+        print("Order (z):")
+        print(self['stroke'].order)
+        print("Intersection Edge Index:")
+        print(self['stroke', 'intersects', 'stroke'].edge_index)
+        print("Temporal Edge Index:")
+        print(self['stroke', 'temp_previous', 'stroke'].edge_index)
 
 
 
@@ -85,7 +105,8 @@ def build_graph(stroke_dict):
                 intersection_matrix[i, j] = 1
                 intersection_matrix[j, i] = 1
 
-    
-    print("intersection_matrix,", intersection_matrix)
-    return node_features
+    graph = SketchHeteroData(node_features, operations_matrix, intersection_matrix)
+    graph.output_info()
+
+    return graph
 
