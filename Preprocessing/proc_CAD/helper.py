@@ -4,6 +4,7 @@ from shapely.geometry import Polygon, Point
 from shapely.geometry.polygon import orient
 from shapely import affinity
 import pyrr
+import json 
 
 import matplotlib.pyplot as plt
 
@@ -302,3 +303,15 @@ def project_points(feature_lines, obj_center, img_dims=[1000, 1000]):
 
     return feature_lines
 
+
+#----------------------------------------------------------------------------------#
+
+def program_to_string(file_path):
+
+    Op_string = []
+    with open(file_path, 'r') as file:
+        data = json.load(file)
+        for Op in data:
+            Op_string.append(Op)
+
+    return Op_string

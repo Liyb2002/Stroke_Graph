@@ -106,7 +106,7 @@ def build_graph(stroke_dict):
                 intersection_matrix[j, i] = 1
 
     graph = SketchHeteroData(node_features, operations_matrix, intersection_matrix)
-    graph.output_info()
+    # graph.output_info()
 
     return graph
 
