@@ -9,11 +9,25 @@ class single_data:
         self.stroke_cloud= proc_CAD.CAD_to_stroke_cloud.run()
         self.stroke_cloud_graph = gnn_graph.build_graph(self.stroke_cloud)
 
-        file_path = os.path.join(os.getcwd(), 'proc_CAD', 'canvas', 'program.json')
+        stroke_cloud_file_path = os.path.join(os.getcwd(), 'proc_CAD', 'canvas', 'program.json')
 
-        self.program = proc_CAD.helper.program_to_string(file_path)
+        self.program = proc_CAD.helper.program_to_string(stroke_cloud_file_path)
 
         self.SBGCN_encoder = SBGCN.run_SBGCN.load_pretrained_SBGCN_model()
+
+        self.brep_embedding(0)
+
+
+    def brep_embedding(self, idx):
+        brep_file_path = os.path.join(os.getcwd(), 'proc_CAD', 'canvas', f'brep_{idx}.step')
+        brep_graph = SBGCN.brep_read.create_graph_from_step_file(brep_file_path)
+        embedding = self.SBGCN_encoder.embed(brep_graph)
+
+        return embedding
+
+
+
+
 
 
 

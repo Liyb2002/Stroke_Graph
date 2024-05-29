@@ -72,6 +72,12 @@ class FaceEdgeVertexGCN(torch.nn.Module):
 
         return x_f, x_e, x_v
 
+    def embed(self, graph):
+        face_embeddings, edge_embeddings, vertex_embeddings = self.forward(graph)
+        concatenated_embeddings = torch.cat((face_embeddings, edge_embeddings, vertex_embeddings), dim=0)
+
+        return concatenated_embeddings
+
 
 class BipartiteResMRConv(torch.nn.Module):
     def __init__(self, width):

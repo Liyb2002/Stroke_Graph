@@ -54,7 +54,7 @@ def build_circle(count, radius, point, normal, output):
 
 def build_extrude(count, canvas, target_face, extrude_amount, output):
     stl_dir = os.path.join(home_dir, "canvas", f"vis_{count}.stl")
-    step_dir = os.path.join(home_dir, "canvas", f"step_{count}.step")
+    step_dir = os.path.join(home_dir, "canvas", f"brep_{count}.step")
 
     if canvas != None:
         if extrude_amount <0:
@@ -80,7 +80,7 @@ def build_extrude(count, canvas, target_face, extrude_amount, output):
 
 def build_fillet(count, canvas, target_edge, radius, output):
     stl_dir = os.path.join(home_dir, "canvas", f"vis_{count}.stl")
-    step_dir = os.path.join(home_dir, "canvas", f"step_{count}.step")
+    step_dir = os.path.join(home_dir, "canvas", f"brep_{count}.step")
 
     with canvas:
         fillet(target_edge, radius)
