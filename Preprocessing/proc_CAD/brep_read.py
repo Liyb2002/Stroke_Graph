@@ -18,6 +18,7 @@ import torch
 import os
 
 def read_step_file(filename):
+
     step_reader = STEPControl_Reader()
     status = step_reader.ReadFile(filename)
     
@@ -26,7 +27,6 @@ def read_step_file(filename):
         shape = step_reader.Shape()  # Retrieves the translated shape
         return shape
     else:
-        print("status", status)
         raise Exception("Error reading STEP file.")
 
 

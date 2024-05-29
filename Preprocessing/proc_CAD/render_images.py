@@ -1,9 +1,9 @@
-import brep_read
+import proc_CAD.brep_read
 import os
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import json
-import helper
+import proc_CAD.helper
 import random
 import numpy as np
 
@@ -166,7 +166,7 @@ def optimize_opacities(edges_features, stylesheet):
     return edges_features
 
 def project_points(edges_features, obj_center):
-    edges_features = helper.project_points(edges_features, obj_center)
+    edges_features = proc_CAD.helper.project_points(edges_features, obj_center)
     return edges_features
 
 def overshoot_stroke(edges_features, factor = 10):
@@ -233,37 +233,50 @@ def perturb_strokes(edges_features, noise_level=1.0):
     
 
 def get_last_file():
-    step_files = glob.glob('./canvas/step_*.step')
 
-    step_indices = [int(re.search(r'step_(\d+).step', file).group(1)) for file in step_files]
+
+
+    current_dir = os.path.dirname(__file__)
+    canvas_dir = os.path.join(current_dir, 'canvas')
+    
+    # Construct the search pattern
+    search_pattern = os.path.join(canvas_dir, 'brep_*.step')
+    
+    # Get the list of files matching the pattern
+    step_files = glob.glob(search_pattern)
+
+    step_indices = [int(re.search(r'brep_(\d+).step', file).group(1)) for file in step_files]
     largest_index = max(step_indices)
 
-    largest_step_file = f'./canvas/step_{largest_index}.step'
+    largest_step_file = os.path.join(os.getcwd(), 'proc_CAD', 'canvas', f'brep_{largest_index}.step')
 
     return largest_step_file
 
 
-# Load styles
-stroke_dataset_designer_name = 'Professional1'
-
-opacity_profiles_name = os.path.join("styles/opacity_profiles", stroke_dataset_designer_name+".json")
-if os.path.exists(opacity_profiles_name):
-    with open(opacity_profiles_name, "r") as fp:
-        opacity_profiles = json.load(fp)
-
-style_sheet_file_name = os.path.join("styles/stylesheets/"+stroke_dataset_designer_name+".json")
-if os.path.exists(style_sheet_file_name):
-    with open(style_sheet_file_name, "r") as fp:
-        stylesheet = json.load(fp)
 
 
 
-file_path = get_last_file()
-edges_features = brep_read.create_graph_from_step_file(file_path)
-edges_features, obj_center= find_bounding_box(edges_features)
-optimize_opacities(edges_features, stylesheet)
-project_points(edges_features, obj_center)
-overshoot_stroke(edges_features)
-perturb_strokes(edges_features)
+def run_render_images():
+    # Load styles
+    stroke_dataset_designer_name = 'Professional1'
 
-plot_2d(edges_features)
+    opacity_profiles_name = os.path.join(os.getcwd(), 'proc_CAD','styles', 'opacity_profiles', stroke_dataset_designer_name+".json")
+    if os.path.exists(opacity_profiles_name):
+        with open(opacity_profiles_name, "r") as fp:
+            opacity_profiles = json.load(fp)
+
+    style_sheet_file_name = os.path.join(os.getcwd(), 'proc_CAD', 'styles', 'stylesheets', stroke_dataset_designer_name+".json")
+    print("style_sheet_file_name", style_sheet_file_name)
+    if os.path.exists(style_sheet_file_name):
+        with open(style_sheet_file_name, "r") as fp:
+            stylesheet = json.load(fp)
+
+    file_path = get_last_file()
+    edges_features = proc_CAD.brep_read.create_graph_from_step_file(file_path)
+    edges_features, obj_center= find_bounding_box(edges_features)
+    optimize_opacities(edges_features, stylesheet)
+    project_points(edges_features, obj_center)
+    overshoot_stroke(edges_features)
+    perturb_strokes(edges_features)
+
+    plot_2d(edges_features)

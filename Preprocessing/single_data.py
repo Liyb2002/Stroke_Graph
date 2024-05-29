@@ -1,4 +1,6 @@
 import proc_CAD.CAD_to_stroke_cloud
+import proc_CAD.render_images
+
 import gnn_graph
 import proc_CAD.helper
 import os
@@ -16,6 +18,8 @@ class single_data:
         self.SBGCN_encoder = SBGCN.run_SBGCN.load_pretrained_SBGCN_model()
 
         self.brep_embedding(0)
+
+        proc_CAD.render_images.run_render_images()
 
 
     def brep_embedding(self, idx):

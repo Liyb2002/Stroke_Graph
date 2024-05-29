@@ -225,7 +225,7 @@ def random_circle(points, normal):
 def project_points(feature_lines, obj_center, img_dims=[1000, 1000]):
 
     obj_center = np.array(obj_center)
-    cam_pos = obj_center + np.array([5,5,5])
+    cam_pos = obj_center + np.array([5,0,5])
     up_vec = np.array([0,1,0])
     view_mat = pyrr.matrix44.create_look_at(cam_pos,
                                             np.array([0, 0, 0]),
