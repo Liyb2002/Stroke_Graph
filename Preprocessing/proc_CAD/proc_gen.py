@@ -3,14 +3,6 @@ import proc_CAD.generate_program
 import random
 
 
-# Example usage:
-
-# canvas_class = proc_CAD.generate_program.Brep()
-# canvas_class.init_sketch_op()
-# canvas_class.add_extrude_add_op()
-# canvas_class.random_fillet()
-# canvas_class.write_to_json()
-
 
 def random_program(steps = 3):
     canvas_class = proc_CAD.generate_program.Brep()
@@ -25,5 +17,13 @@ def random_program(steps = 3):
         fillet_times = random.randint(0, 2)
         for _ in range(fillet_times):
             canvas_class.random_fillet()
+
+    canvas_class.write_to_json()
+
+def simple_gen():
+    canvas_class = proc_CAD.generate_program.Brep()
+    canvas_class.init_sketch_op()
+    canvas_class.add_extrude_add_op()
+    canvas_class.random_fillet()
 
     canvas_class.write_to_json()
