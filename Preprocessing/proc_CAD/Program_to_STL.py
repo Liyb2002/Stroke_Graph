@@ -1,7 +1,9 @@
 import json
-import build123.protocol
-from basic_class import Face, Edge, Vertex
-import helper
+import os
+
+import proc_CAD.build123.protocol
+from proc_CAD.basic_class import Face, Edge, Vertex
+import proc_CAD.helper
 
 
 class parsed_program():
@@ -47,7 +49,7 @@ class parsed_program():
         # Add the first point again at the end to close the loop
         new_point_list.append(point_list[0])
 
-        self.prev_sketch = build123.protocol.build_sketch(self.Op_idx, new_point_list, self.output)
+        self.prev_sketch = proc_CAD.build123.protocol.build_sketch(self.Op_idx, new_point_list, self.output)
         self.Op_idx += 1
 
     def parse_circle(self, Op):
@@ -55,30 +57,28 @@ class parsed_program():
         center = Op['faces'][0]['center']
         normal = Op['faces'][0]['normal']
 
-        self.prev_sketch = build123.protocol.build_circle(self.Op_idx, radius, center, normal, self.output)
+        self.prev_sketch = proc_CAD.build123.protocol.build_circle(self.Op_idx, radius, center, normal, self.output)
         self.Op_idx += 1
         
     def parse_extrude(self, Op):
         extrude_amount = Op['operation'][2]
-        self.canvas = build123.protocol.build_extrude(self.Op_idx, self.canvas, self.prev_sketch, extrude_amount, self.output)
+        self.canvas = proc_CAD.build123.protocol.build_extrude(self.Op_idx, self.canvas, self.prev_sketch, extrude_amount, self.output)
         self.Op_idx += 1
         
     def parse_fillet(self, Op):
         fillet_amount = Op['operation'][2]['amount']
         verts = Op['operation'][3]['old_verts_pos']
 
-        target_edge = helper.find_target_verts(verts, self.canvas.edges())
+        target_edge = proc_CAD.helper.find_target_verts(verts, self.canvas.edges())
 
         if target_edge != None:
-            self.canvas = build123.protocol.build_fillet(self.Op_idx, self.canvas, target_edge, fillet_amount, self.output)
+            self.canvas = proc_CAD.build123.protocol.build_fillet(self.Op_idx, self.canvas, target_edge, fillet_amount, self.output)
         
 
 
 # Example usage:
 
 def run():
-    file_path = './canvas/Program.json'
+    file_path = os.path.join(os.path.dirname(__file__), 'canvas', 'Program.json')
     parsed_program_class = parsed_program(file_path)
     parsed_program_class.read_json_file()
-
-run()

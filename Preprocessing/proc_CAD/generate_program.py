@@ -2,11 +2,12 @@
 
 import json
 import numpy as np
-import helper
+import proc_CAD.helper
 import random
-import random_gen
+import proc_CAD.random_gen
 
-from basic_class import Face, Edge, Vertex
+import os
+from proc_CAD.basic_class import Face, Edge, Vertex
 
 class Brep:
     def __init__(self):
@@ -21,7 +22,7 @@ class Brep:
     def init_sketch_op(self):
 
         axis = np.random.choice(['x', 'y', 'z'])
-        points, normal = random_gen.generate_random_rectangle(axis)
+        points, normal = proc_CAD.random_gen.generate_random_rectangle(axis)
         
         self._sketch_op(points, normal)
 
@@ -63,19 +64,19 @@ class Brep:
         cases = ['find_rectangle', 'find_triangle', 'triangle_to_cut']
         selected_case = random.choice(cases)
         if selected_case == 'create_circle':
-            radius = random_gen.generate_random_cylinder_radius()
-            center = helper.random_circle(boundary_points, normal)
+            radius = proc_CAD.random_gen.generate_random_cylinder_radius()
+            center = proc_CAD.helper.random_circle(boundary_points, normal)
             self.regular_sketch_circle(normal, radius, center)
             return 
 
         if selected_case == 'find_rectangle':
-            random_polygon_points = helper.find_rectangle_on_plane(boundary_points, normal)
+            random_polygon_points = proc_CAD.helper.find_rectangle_on_plane(boundary_points, normal)
 
         if selected_case == 'find_triangle':
-            random_polygon_points = helper.find_triangle_on_plane(boundary_points, normal)
+            random_polygon_points = proc_CAD.helper.find_triangle_on_plane(boundary_points, normal)
 
         if selected_case == 'triangle_to_cut':
-            random_polygon_points = helper.find_triangle_to_cut(boundary_points, normal)
+            random_polygon_points = proc_CAD.helper.find_triangle_to_cut(boundary_points, normal)
 
         self._sketch_op(random_polygon_points, normal)
 
@@ -91,7 +92,7 @@ class Brep:
 
 
     def add_extrude_add_op(self):
-        amount = random_gen.generate_random_extrude_add()
+        amount = proc_CAD.random_gen.generate_random_extrude_add()
 
         if self.idx > 1:
             amount = abs(amount)
@@ -137,7 +138,7 @@ class Brep:
                 target_face.vertices[i], new_vertices[i],
                 new_vertices[(i + 1) % num_vertices], target_face.vertices[(i + 1) % num_vertices]
             ]
-            normal = helper.compute_normal(side_face_vertices, new_vertices[(i + 2) % num_vertices])
+            normal = proc_CAD.helper.compute_normal(side_face_vertices, new_vertices[(i + 2) % num_vertices])
             side_face = Face(side_face_id, side_face_vertices, normal)
             self.Faces.append(side_face)
 
@@ -154,17 +155,19 @@ class Brep:
             return False
         target_edge = random.choice(edge_with_round)
 
-        amount = random_gen.generate_random_fillet()
+        amount = proc_CAD.random_gen.generate_random_fillet()
         target_edge.fillet_edge()
 
         verts_pos = []
         verts_id = []
         new_vert_pos = []
+        print("target_edge.vertices", len(target_edge.vertices))
+
         for vert in target_edge.vertices:
             verts_pos.append(vert.position)
             verts_id.append(vert.id)
-            neighbor_verts = helper.get_neighbor_verts(vert,target_edge,  self.Edges)
-            new_vert_pos.append(helper.compute_fillet_new_vert(vert, neighbor_verts, amount))
+            neighbor_verts = proc_CAD.helper.get_neighbor_verts(vert,target_edge,  self.Edges)
+            new_vert_pos.append(proc_CAD.helper.compute_fillet_new_vert(vert, neighbor_verts, amount))
         
         new_A = new_vert_pos[0][0]
         new_B = new_vert_pos[0][1]
@@ -190,9 +193,9 @@ class Brep:
         #need to change the edge connecting neighbor_verts[0] - old_vert to neighbor_verts[0] - new_vert_B
         edge_vertex_pair = []
         for vert in target_edge.vertices:
-            neighbor_verts = helper.get_neighbor_verts(vert,target_edge, self.Edges)
+            neighbor_verts = proc_CAD.helper.get_neighbor_verts(vert,target_edge, self.Edges)
 
-            need_to_change_edge = helper.find_edge_from_verts(vert, neighbor_verts[1], self.Edges)
+            need_to_change_edge = proc_CAD.helper.find_edge_from_verts(vert, neighbor_verts[1], self.Edges)
 
             if vert == target_edge.vertices[0]:
                 edge_vertex_pair.append([need_to_change_edge.id, neighbor_verts[1].id, new_vert_B.id])
@@ -217,7 +220,23 @@ class Brep:
                         {'need_to_change_edge': edge_vertex_pair},
                         ])
 
-    def write_to_json(self, filename='./canvas/Program.json'):
+    def write_to_json(self):
+        
+        #clean everything in the folder
+        folder = os.path.join(os.path.dirname(__file__), 'canvas')
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        
+        for file in os.listdir(folder):
+            file_path = os.path.join(folder, file)
+            try:
+                if os.path.isfile(file_path):
+                    os.unlink(file_path)
+            except Exception as e:
+                print(f'Failed to delete {file_path}. Reason: {e}')
+
+        #start writing program
+        filename = os.path.join(os.path.dirname(__file__), 'canvas', 'Program.json')
         data = []
         for count in range(0, self.idx):
             op = self.op[count][0]

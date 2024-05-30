@@ -1,5 +1,7 @@
+import proc_CAD.proc_gen
 import proc_CAD.CAD_to_stroke_cloud
 import proc_CAD.render_images
+import proc_CAD.Program_to_STL
 
 import gnn_graph
 import proc_CAD.helper
@@ -8,7 +10,15 @@ import SBGCN.run_SBGCN
 
 class single_data:
     def __init__(self, stroke_cloud_graph=None, brep_embedding=None, operations=None):
-        self.stroke_cloud= proc_CAD.CAD_to_stroke_cloud.run()
+
+        #generate a new program
+        # proc_CAD.proc_gen.random_program()
+
+        #create brep for the new program
+        proc_CAD.Program_to_STL.run()
+
+
+        self.stroke_cloud= proc_CAD.CAD_to_stroke_cloud.run(vis = True)
         self.stroke_cloud_graph = gnn_graph.build_graph(self.stroke_cloud)
 
         stroke_cloud_file_path = os.path.join(os.getcwd(), 'proc_CAD', 'canvas', 'program.json')

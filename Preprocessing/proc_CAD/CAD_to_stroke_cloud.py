@@ -199,12 +199,14 @@ class create_stroke_cloud():
 
 # Example usage:
 
-def run():
+def run(vis = False):
     file_path = os.path.join(os.path.dirname(__file__), 'canvas', 'Program.json')
 
     stroke_cloud_class = create_stroke_cloud(file_path)
     stroke_cloud_class.read_json_file()
     # parsed_program_class.output()
-    # stroke_cloud_class.vis_stroke_cloud('extrude_addition')
+
+    if vis:
+        stroke_cloud_class.vis_stroke_cloud('sketch')
 
     return stroke_cloud_class.edges
