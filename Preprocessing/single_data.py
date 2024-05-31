@@ -13,7 +13,7 @@ class single_data:
 
         #generate a new program
         # proc_CAD.proc_gen.random_program()
-        # proc_CAD.proc_gen.simple_gen()
+        proc_CAD.proc_gen.simple_gen()
 
         #create brep for the new program
         proc_CAD.Program_to_STL.run()

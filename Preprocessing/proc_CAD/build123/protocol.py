@@ -57,17 +57,10 @@ def build_extrude(count, canvas, target_face, extrude_amount, output):
     step_dir = os.path.join(home_dir, "canvas", f"brep_{count}.step")
 
     if canvas != None:
-        if extrude_amount <0:
-            with canvas: 
-                extrude_amount = -extrude_amount
-                extrude( target_face, amount=extrude_amount, mode=Mode.SUBTRACT)
-        else: 
-            with canvas: 
-                extrude( target_face, amount=extrude_amount)
+        with canvas: 
+            extrude( target_face, amount=extrude_amount)
 
     else:
-        if extrude_amount <0:
-            extrude_amount = -extrude_amount
         with BuildPart() as canvas:
             extrude( target_face, amount=extrude_amount)
 
