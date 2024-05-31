@@ -52,6 +52,12 @@ def build_circle(count, radius, point, normal, output):
     return perimeter.sketch
 
 
+def test_extrude(target_face, extrude_amount):
+    with BuildPart() as test_canvas:
+        extrude( target_face, amount=extrude_amount)
+
+    return test_canvas
+
 def build_extrude(count, canvas, target_face, extrude_amount, output):
     stl_dir = os.path.join(home_dir, "canvas", f"vis_{count}.stl")
     step_dir = os.path.join(home_dir, "canvas", f"brep_{count}.step")

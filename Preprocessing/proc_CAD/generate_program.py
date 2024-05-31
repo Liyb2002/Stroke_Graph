@@ -97,16 +97,16 @@ class Brep:
         if self.idx > 1:
             amount = abs(amount)
 
-        target_face = self.Faces[-1]
-        new_face_normal = [-x for x in target_face.normal]
+        sketch_face = self.Faces[-1]
+        sketch_face_opposite_normal = [-x for x in sketch_face.normal]
 
         new_vertices = []
         new_edges = []
         new_faces = []
 
-        for i, vertex in enumerate(target_face.vertices):
+        for i, vertex in enumerate(sketch_face.vertices):
 
-            new_pos = [vertex.position[j] - new_face_normal[j] * amount for j in range(3)]
+            new_pos = [vertex.position[j] + sketch_face_opposite_normal[j] * amount for j in range(3)]
             vertex_id = f"vertex_{self.idx}_{i}"
             new_vertex = Vertex(vertex_id, new_pos)
             self.Vertices.append(new_vertex)
@@ -120,7 +120,7 @@ class Brep:
             new_edges.append(edge)
 
         face_id = f"face_{self.idx}_{0}"
-        new_face = Face(face_id, new_vertices, new_face_normal)
+        new_face = Face(face_id, new_vertices, sketch_face_opposite_normal)
         self.Faces.append(new_face)
         new_faces.append(new_face)
         
@@ -129,14 +129,14 @@ class Brep:
         for i in range(num_vertices):
             # Vertical edges from old vertices to new vertices
             vertical_edge_id = f"edge_{self.idx}_{i+num_vertices}"
-            vertical_edge = Edge(vertical_edge_id, [target_face.vertices[i], new_vertices[i]])
+            vertical_edge = Edge(vertical_edge_id, [sketch_face.vertices[i], new_vertices[i]])
             self.Edges.append(vertical_edge)
 
             # Side faces formed between pairs of old and new vertices
             side_face_id = f"face_{self.idx}_{i}"
             side_face_vertices = [
-                target_face.vertices[i], new_vertices[i],
-                new_vertices[(i + 1) % num_vertices], target_face.vertices[(i + 1) % num_vertices]
+                sketch_face.vertices[i], new_vertices[i],
+                new_vertices[(i + 1) % num_vertices], sketch_face.vertices[(i + 1) % num_vertices]
             ]
             normal = proc_CAD.helper.compute_normal(side_face_vertices, new_vertices[(i + 2) % num_vertices])
             side_face = Face(side_face_id, side_face_vertices, normal)
@@ -144,9 +144,9 @@ class Brep:
 
         self.idx += 1
         if amount < 0:
-            self.op.append(['extrude_substraction', target_face.id, amount])
+            self.op.append(['extrude_substraction', sketch_face.id, amount])
         else:
-            self.op.append(['extrude_addition', target_face.id, amount])
+            self.op.append(['extrude_addition', sketch_face.id, amount])
 
     def random_fillet(self):
         

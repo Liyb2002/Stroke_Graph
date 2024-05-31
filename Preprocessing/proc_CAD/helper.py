@@ -56,7 +56,6 @@ def find_target_verts(target_vertices, edges) :
     target_pos_2 = round_position(target_vertices[1])
     target_positions = {target_pos_1, target_pos_2}
     
-    print("target_positions", target_positions)
     for edge in edges:
         verts = edge.vertices()
         if len(verts) ==2 :
@@ -65,7 +64,6 @@ def find_target_verts(target_vertices, edges) :
                 round_position([verts[1].X, verts[1].Y, verts[1].Z])
                 }
         
-            print("edge_positions", edge_positions)
             if edge_positions == target_positions:
                 return edge
         
@@ -318,11 +316,12 @@ def program_to_string(file_path):
 
     return Op_string
 
+
 #----------------------------------------------------------------------------------#
 
-def expected_extrude_point(point, normal, extrude_amount):
+def expected_extrude_point(point, sketch_face_normal, extrude_amount):
     x, y, z = point
-    a, b, c = normal
+    a, b, c = sketch_face_normal
     x_extruded = x - a * extrude_amount
     y_extruded = y - b * extrude_amount
     z_extruded = z - c * extrude_amount
@@ -344,3 +343,15 @@ def canvas_has_point(canvas, point):
                 return True
         
     return False
+
+def print_canvas_points(canvas):
+    edges = canvas.edges()    
+    
+    for edge in edges:
+        verts = edge.vertices()
+        if len(verts) ==2 :
+            edge_positions = [
+                round_position([verts[0].X, verts[0].Y, verts[0].Z]), 
+                round_position([verts[1].X, verts[1].Y, verts[1].Z])
+                ]
+        print("edge_positions", edge_positions)

@@ -1,5 +1,6 @@
 import json
 import os
+from copy import deepcopy
 
 import proc_CAD.build123.protocol
 from proc_CAD.basic_class import Face, Edge, Vertex
@@ -63,18 +64,22 @@ class parsed_program():
         
     def parse_extrude(self, Op, sketch_Op):
         sketch_point_list = [vert['coordinates'] for vert in sketch_Op['vertices']]
-        sketch_normal = sketch_Op['faces'][0]['normal']
+        sketch_face_normal = sketch_Op['faces'][0]['normal']
         extrude_amount = Op['operation'][2]
-        expected_point = proc_CAD.helper.expected_extrude_point(sketch_point_list[0], sketch_normal, extrude_amount)
-
-        canvas_1 = proc_CAD.build123.protocol.build_extrude(self.Op_idx, self.canvas, self.prev_sketch, -extrude_amount, self.output)
-        canvas_2 = proc_CAD.build123.protocol.build_extrude(self.Op_idx, self.canvas, self.prev_sketch, extrude_amount, self.output)
+        expected_point = proc_CAD.helper.expected_extrude_point(sketch_point_list[0], sketch_face_normal, extrude_amount)
+        
+        canvas_1 = proc_CAD.build123.protocol.test_extrude(self.prev_sketch, extrude_amount)
+        canvas_2 = proc_CAD.build123.protocol.test_extrude(self.prev_sketch, -extrude_amount)
 
         if proc_CAD.helper.canvas_has_point(canvas_1, expected_point) :
-            self.canvas = canvas_1
+            print("canvas_1")
+            self.canvas = proc_CAD.build123.protocol.build_extrude(self.Op_idx, self.canvas, self.prev_sketch, extrude_amount, self.output)
         if proc_CAD.helper.canvas_has_point(canvas_2, expected_point):
-            self.canvas = canvas_2
+            print("canvas_2")
+            self.canvas = proc_CAD.build123.protocol.build_extrude(self.Op_idx, self.canvas, self.prev_sketch, -extrude_amount, self.output)
         
+        # proc_CAD.helper.print_canvas_points(self.canvas)
+
         self.Op_idx += 1
         
     def parse_fillet(self, Op):
