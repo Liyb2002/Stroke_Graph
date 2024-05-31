@@ -26,7 +26,7 @@ class parsed_program():
                 if operation[0] == 'sketch':
                     self.parse_sketch(Op)
                 
-                if operation[0] == 'extrude_addition' or operation[0] == 'extrude_substraction':
+                if operation[0] == 'extrude_addition' or operation[0] == 'extrude_subtraction':
                     self.parse_extrude(Op, data[i-1])
                 
                 if operation[0] == 'fillet':
@@ -63,20 +63,23 @@ class parsed_program():
         self.Op_idx += 1
         
     def parse_extrude(self, Op, sketch_Op):
+
+        isSubtract = (Op['operation'][0] == 'extrude_subtraction')
         sketch_point_list = [vert['coordinates'] for vert in sketch_Op['vertices']]
         sketch_face_normal = sketch_Op['faces'][0]['normal']
         extrude_amount = Op['operation'][2]
+
         expected_point = proc_CAD.helper.expected_extrude_point(sketch_point_list[0], sketch_face_normal, extrude_amount)
         
-        canvas_1 = proc_CAD.build123.protocol.test_extrude(self.prev_sketch, extrude_amount)
-        canvas_2 = proc_CAD.build123.protocol.test_extrude(self.prev_sketch, -extrude_amount)
+        canvas_1 = proc_CAD.build123.protocol.test_extrude(self.prev_sketch, extrude_amount, isSubtract)
+        canvas_2 = proc_CAD.build123.protocol.test_extrude(self.prev_sketch, -extrude_amount, isSubtract)
 
         if proc_CAD.helper.canvas_has_point(canvas_1, expected_point) :
             print("canvas_1")
-            self.canvas = proc_CAD.build123.protocol.build_extrude(self.Op_idx, self.canvas, self.prev_sketch, extrude_amount, self.output)
+            self.canvas = proc_CAD.build123.protocol.build_extrude(self.Op_idx, self.canvas, self.prev_sketch, extrude_amount, self.output, isSubtract)
         if proc_CAD.helper.canvas_has_point(canvas_2, expected_point):
             print("canvas_2")
-            self.canvas = proc_CAD.build123.protocol.build_extrude(self.Op_idx, self.canvas, self.prev_sketch, -extrude_amount, self.output)
+            self.canvas = proc_CAD.build123.protocol.build_extrude(self.Op_idx, self.canvas, self.prev_sketch, -extrude_amount, self.output, isSubtract)
         
         # proc_CAD.helper.print_canvas_points(self.canvas)
 

@@ -26,6 +26,6 @@ def simple_gen():
     canvas_class.add_extrude_add_op()
 
     canvas_class.regular_sketch_op()
-    canvas_class.add_extrude_add_op()
+    canvas_class.add_extrude_subtract_op()
 
     canvas_class.write_to_json()
