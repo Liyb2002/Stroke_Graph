@@ -36,7 +36,7 @@ def generate_single_data(successful_generations):
         print(f"An error occurred: {e}")
         return False
 
-    stroke_cloud= proc_CAD.CAD_to_stroke_cloud.run(vis = False)
+    stroke_cloud= proc_CAD.CAD_to_stroke_cloud.run(data_directory)
     stroke_cloud_graph = gnn_graph.build_graph(stroke_cloud)
     stroke_cloud_save_path = os.path.join(data_directory, 'stroke_cloud_graph.pkl')
 

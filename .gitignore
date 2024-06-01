@@ -1,4 +1,5 @@
 *.stl
+*.png
 *.step
 *.stp
 *.json

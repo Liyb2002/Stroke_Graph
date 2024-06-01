@@ -59,7 +59,7 @@ class create_stroke_cloud():
             print(f"Edge ID: {edge_id}, Vertices: {vertex_ids},  Operations: {ops}, Order Count: {order_count}, Connected Edges: {connected_edge_ids}")
 
 
-    def vis_stroke_cloud(self, target_Op = None):
+    def vis_stroke_cloud(self, directory, show = False, target_Op = None):
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
 
@@ -79,7 +79,13 @@ class create_stroke_cloud():
                 z_values = [points[0][2], points[1][2]]
                 ax.plot(x_values, y_values, z_values, marker='o', color=line_color)  # Line plot connecting the vertices
 
-        plt.show()
+        if show:
+            plt.show()
+
+        filepath = os.path.join(directory, '3d_visualization.png')
+        print('filepath', filepath)
+        plt.savefig(filepath)
+        plt.close(fig)
 
         
     def parse_op(self, Op):
@@ -199,14 +205,14 @@ class create_stroke_cloud():
 
 # Example usage:
 
-def run(vis = False):
-    file_path = os.path.join(os.path.dirname(__file__), 'canvas', 'Program.json')
+def run(directory, vis = True):
+    file_path = os.path.join(directory, 'Program.json')
 
     stroke_cloud_class = create_stroke_cloud(file_path)
     stroke_cloud_class.read_json_file()
     # parsed_program_class.output()
 
     if vis:
-        stroke_cloud_class.vis_stroke_cloud('sketch')
+        stroke_cloud_class.vis_stroke_cloud(directory, show = False, target_Op = 'sketch')
 
     return stroke_cloud_class.edges
