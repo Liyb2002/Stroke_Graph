@@ -2,29 +2,40 @@ import proc_CAD.proc_gen
 import proc_CAD.CAD_to_stroke_cloud
 import proc_CAD.render_images
 import proc_CAD.Program_to_STL
+import proc_CAD.helper
 
 import gnn_graph
-import proc_CAD.helper
-import os
 import SBGCN.run_SBGCN
+
+import os
+import pickle
 
 class single_data:
     def __init__(self, stroke_cloud_graph=None, brep_embedding=None, operations=None):
 
         #generate a new program
         # proc_CAD.proc_gen.random_program()
-        proc_CAD.proc_gen.simple_gen()
+
+        try:
+            proc_CAD.proc_gen.simple_gen()
 
         #create brep for the new program
-        proc_CAD.Program_to_STL.run()
+            proc_CAD.Program_to_STL.run()
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            return
 
 
         self.stroke_cloud= proc_CAD.CAD_to_stroke_cloud.run(vis = True)
         self.stroke_cloud_graph = gnn_graph.build_graph(self.stroke_cloud)
+        stroke_cloud_save_path = os.path.join(os.getcwd(), 'proc_CAD', 'canvas', 'sketch_hetero_data.pkl')
+        with open(stroke_cloud_save_path, 'wb') as f:
+            pickle.dump(self.stroke_cloud_graph, f)
 
-        stroke_cloud_file_path = os.path.join(os.getcwd(), 'proc_CAD', 'canvas', 'program.json')
 
-        self.program = proc_CAD.helper.program_to_string(stroke_cloud_file_path)
+        program_file_path = os.path.join(os.getcwd(), 'proc_CAD', 'canvas', 'program.json')
+
+        self.program = proc_CAD.helper.program_to_string(program_file_path)
 
         self.SBGCN_encoder = SBGCN.run_SBGCN.load_pretrained_SBGCN_model()
 

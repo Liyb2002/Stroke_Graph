@@ -8,8 +8,12 @@ import proc_CAD.helper
 
 
 class parsed_program():
-    def __init__(self, file_path, output = True):
+    def __init__(self, file_path, data_directory, output = True):
         self.file_path = file_path
+        self.data_directory = data_directory
+
+        canvas_directory = os.path.join(data_directory, 'canvas')
+        os.makedirs(canvas_directory, exist_ok=True)
 
         self.canvas = None
         self.prev_sketch = None
@@ -51,7 +55,7 @@ class parsed_program():
         # Add the first point again at the end to close the loop
         new_point_list.append(point_list[0])
 
-        self.prev_sketch = proc_CAD.build123.protocol.build_sketch(self.Op_idx, new_point_list, self.output)
+        self.prev_sketch = proc_CAD.build123.protocol.build_sketch(self.Op_idx, new_point_list, self.output, self.data_directory)
         self.Op_idx += 1
 
     def parse_circle(self, Op):
@@ -59,7 +63,7 @@ class parsed_program():
         center = Op['faces'][0]['center']
         normal = Op['faces'][0]['normal']
 
-        self.prev_sketch = proc_CAD.build123.protocol.build_circle(self.Op_idx, radius, center, normal, self.output)
+        self.prev_sketch = proc_CAD.build123.protocol.build_circle(self.Op_idx, radius, center, normal, self.output, self.data_directory)
         self.Op_idx += 1
         
     def parse_extrude(self, Op, sketch_Op):
@@ -76,13 +80,11 @@ class parsed_program():
             canvas_2 = proc_CAD.build123.protocol.test_extrude(self.prev_sketch, -extrude_amount)
 
             if (canvas_1 is not None) and proc_CAD.helper.canvas_has_point(canvas_1, expected_point) :
-                print("canvas_1")
-                self.canvas = proc_CAD.build123.protocol.build_extrude(self.Op_idx, self.canvas, self.prev_sketch, extrude_amount, self.output)
+                self.canvas = proc_CAD.build123.protocol.build_extrude(self.Op_idx, self.canvas, self.prev_sketch, extrude_amount, self.output, self.data_directory)
             if (canvas_2 is not None) and proc_CAD.helper.canvas_has_point(canvas_2, expected_point):
-                print("canvas_2")
-                self.canvas = proc_CAD.build123.protocol.build_extrude(self.Op_idx, self.canvas, self.prev_sketch, -extrude_amount, self.output)
+                self.canvas = proc_CAD.build123.protocol.build_extrude(self.Op_idx, self.canvas, self.prev_sketch, -extrude_amount, self.output, self.data_directory)
         else:
-            self.canvas = proc_CAD.build123.protocol.build_subtract(self.Op_idx, self.canvas, self.prev_sketch, extrude_amount, self.output)
+            self.canvas = proc_CAD.build123.protocol.build_subtract(self.Op_idx, self.canvas, self.prev_sketch, extrude_amount, self.output, self.data_directory)
 
         # proc_CAD.helper.print_canvas_points(self.canvas)
 
@@ -95,13 +97,16 @@ class parsed_program():
         target_edge = proc_CAD.helper.find_target_verts(verts, self.canvas.edges())
 
         if target_edge != None:
-            self.canvas = proc_CAD.build123.protocol.build_fillet(self.Op_idx, self.canvas, target_edge, fillet_amount, self.output)
-        
+            self.canvas = proc_CAD.build123.protocol.build_fillet(self.Op_idx, self.canvas, target_edge, fillet_amount, self.output, self.data_directory)
+
 
 
 # Example usage:
 
-def run():
+def run(data_directory):
     file_path = os.path.join(os.path.dirname(__file__), 'canvas', 'Program.json')
-    parsed_program_class = parsed_program(file_path)
+    if data_directory:
+        file_path = os.path.join(data_directory, 'Program.json')
+
+    parsed_program_class = parsed_program(file_path, data_directory)
     parsed_program_class.read_json_file()

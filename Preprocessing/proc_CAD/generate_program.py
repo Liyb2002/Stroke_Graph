@@ -206,7 +206,6 @@ class Brep:
         verts_pos = []
         verts_id = []
         new_vert_pos = []
-        print("target_edge.vertices", len(target_edge.vertices))
 
         for vert in target_edge.vertices:
             verts_pos.append(vert.position)
@@ -265,12 +264,16 @@ class Brep:
                         {'need_to_change_edge': edge_vertex_pair},
                         ])
 
-    def write_to_json(self):
+    def write_to_json(self, data_directory = None):
         
         #clean everything in the folder
         folder = os.path.join(os.path.dirname(__file__), 'canvas')
         if not os.path.exists(folder):
             os.makedirs(folder)
+        
+        if data_directory:
+            folder = data_directory
+
         
         for file in os.listdir(folder):
             file_path = os.path.join(folder, file)
@@ -281,7 +284,7 @@ class Brep:
                 print(f'Failed to delete {file_path}. Reason: {e}')
 
         #start writing program
-        filename = os.path.join(os.path.dirname(__file__), 'canvas', 'Program.json')
+        filename = os.path.join(folder, 'Program.json')
         data = []
         for count in range(0, self.idx):
             op = self.op[count][0]

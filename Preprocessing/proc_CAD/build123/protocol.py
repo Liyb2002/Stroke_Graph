@@ -3,12 +3,10 @@ from build123d import *
 import os
 import numpy as np
 
-home_dir = Path(__file__).parent.parent
 
-
-def build_sketch(count, Points_list, output):
-    brep_dir = os.path.join(home_dir, "canvas", f"brep_{count}.step")
-    stl_dir = os.path.join(home_dir, "canvas", f"vis_{count}.stl")
+def build_sketch(count, Points_list, output, data_dir):
+    brep_dir = os.path.join(data_dir, "canvas", f"brep_{count}.step")
+    stl_dir = os.path.join(data_dir, "canvas", f"vis_{count}.stl")
 
     with BuildSketch():
         with BuildLine():
@@ -37,9 +35,9 @@ def build_sketch(count, Points_list, output):
 
     return perimeter
 
-def build_circle(count, radius, point, normal, output):
-    brep_dir = os.path.join(home_dir, "canvas", f"brep_{count}.step")
-    stl_dir = os.path.join(home_dir, "canvas", f"vis_{count}.stl")
+def build_circle(count, radius, point, normal, output, data_dir):
+    brep_dir = os.path.join(data_dir, "canvas", f"brep_{count}.step")
+    stl_dir = os.path.join(data_dir, "canvas", f"vis_{count}.stl")
 
     
     with BuildSketch(Plane(origin=(point[0], point[1], point[2]), z_dir=(normal[0], normal[1], normal[2])) )as perimeter:
@@ -59,9 +57,9 @@ def test_extrude(target_face, extrude_amount):
 
     return test_canvas
 
-def build_extrude(count, canvas, target_face, extrude_amount, output):
-    stl_dir = os.path.join(home_dir, "canvas", f"vis_{count}.stl")
-    step_dir = os.path.join(home_dir, "canvas", f"brep_{count}.step")
+def build_extrude(count, canvas, target_face, extrude_amount, output, data_dir):
+    stl_dir = os.path.join(data_dir, "canvas", f"vis_{count}.stl")
+    step_dir = os.path.join(data_dir, "canvas", f"brep_{count}.step")
 
     if canvas != None:
         with canvas: 
@@ -77,9 +75,9 @@ def build_extrude(count, canvas, target_face, extrude_amount, output):
 
     return canvas
 
-def build_subtract(count, canvas, target_face, extrude_amount, output):
-    stl_dir = os.path.join(home_dir, "canvas", f"vis_{count}.stl")
-    step_dir = os.path.join(home_dir, "canvas", f"brep_{count}.step")
+def build_subtract(count, canvas, target_face, extrude_amount, output, data_dir):
+    stl_dir = os.path.join(data_dir, "canvas", f"vis_{count}.stl")
+    step_dir = os.path.join(data_dir, "canvas", f"brep_{count}.step")
 
     with canvas:
         extrude( target_face, amount= extrude_amount, mode=Mode.SUBTRACT)
@@ -92,9 +90,9 @@ def build_subtract(count, canvas, target_face, extrude_amount, output):
     return canvas
 
 
-def build_fillet(count, canvas, target_edge, radius, output):
-    stl_dir = os.path.join(home_dir, "canvas", f"vis_{count}.stl")
-    step_dir = os.path.join(home_dir, "canvas", f"brep_{count}.step")
+def build_fillet(count, canvas, target_edge, radius, output, data_dir):
+    stl_dir = os.path.join(data_dir, "canvas", f"vis_{count}.stl")
+    step_dir = os.path.join(data_dir, "canvas", f"brep_{count}.step")
 
     with canvas:
         fillet(target_edge, radius)
