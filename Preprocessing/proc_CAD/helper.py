@@ -123,55 +123,76 @@ def compute_fillet_new_vert(old_vert, neighbor_verts, amount):
 #----------------------------------------------------------------------------------#
 
 def find_rectangle_on_plane(points, normal):
-    """Find a new rectangle on the same plane as the given larger rectangle, with a translation.
+    """
+    Find a new rectangle on the same plane as the given larger rectangle, with a translation.
     
     Args:
         points: List of 4 numpy arrays representing the vertices of the larger rectangle.
-        normal: A numpy array representing the normal vector of the rectangle's plane.
     
     Returns:
-        np.ndarray: An array of 4 vertices representing a new rectangle on the same plane.
+        list: A list of 4 numpy arrays representing the vertices of the new rectangle.
     """
-    assert len(points) == 4, "The input rectangle should have exactly 4 points."
-    normal = np.array(normal) / np.linalg.norm(normal)
+    # Convert points to numpy array for easy manipulation
     points = np.array(points)
     
-    # Calculate the center of the larger rectangle
-    center = np.mean(points, axis=0)
-
-    # Compute the local axes of the plane:
-    # Assume the two diagonals define the axes directions for the rectangle
-    diagonal1 = points[1] - points[0]
-    diagonal2 = points[2] - points[1]
-
-    # Normalize the diagonals to use them as local axes
-    axis1 = diagonal1 / np.linalg.norm(diagonal1)
-    axis2 = diagonal2 / np.linalg.norm(diagonal2)
-
-    # Random scale factor between 0.2 and 0.7
-    scale_factor = np.random.uniform(0.2, 0.7)
+    # Extract the coordinates
+    x_vals = points[:, 0]
+    y_vals = points[:, 1]
+    z_vals = points[:, 2]
     
-    # Compute new rectangle vertices based on the local axes
-    half_length1 = np.linalg.norm(diagonal1) / 2 * scale_factor
-    half_length2 = np.linalg.norm(diagonal2) / 2 * scale_factor
-
-    smaller_vertices = [
-        center + half_length1 * axis1 + half_length2 * axis2,
-        center - half_length1 * axis1 + half_length2 * axis2,
-        center - half_length1 * axis1 - half_length2 * axis2,
-        center + half_length1 * axis1 - half_length2 * axis2,
-    ]
-    smaller_vertices = np.array(smaller_vertices)
-
-    # Random translation factor between 0.2 and 0.7
-    translation_factor1 = np.random.uniform(0.2, 0.7)
-    translation_factor2 = np.random.uniform(0.2, 0.7)
+    # Check which coordinate is the same for all points (defining the plane)
+    if np.all(x_vals == x_vals[0]):
+        fixed_coord = 'x'
+        fixed_value = x_vals[0]
+    elif np.all(y_vals == y_vals[0]):
+        fixed_coord = 'y'
+        fixed_value = y_vals[0]
+    elif np.all(z_vals == z_vals[0]):
+        fixed_coord = 'z'
+        fixed_value = z_vals[0]
     
-    # Translate the new rectangle on the plane using the local axes
-    translation_vector = translation_factor1 * axis1 + translation_factor2 * axis2
-    translated_vertices = smaller_vertices + translation_vector
-
-    return translated_vertices
+    # Determine the min and max for the other two coordinates
+    if fixed_coord == 'x':
+        min_y, max_y = np.min(y_vals), np.max(y_vals)
+        min_z, max_z = np.min(z_vals), np.max(z_vals)
+        new_min_y = min_y + (max_y - min_y) * 0.1
+        new_max_y = max_y - (max_y - min_y) * 0.1
+        new_min_z = min_z + (max_z - min_z) * 0.1
+        new_max_z = max_z - (max_z - min_z) * 0.1
+        new_points = [
+            np.array([fixed_value, new_min_y, new_min_z]),
+            np.array([fixed_value, new_max_y, new_min_z]),
+            np.array([fixed_value, new_max_y, new_max_z]),
+            np.array([fixed_value, new_min_y, new_max_z])
+        ]
+    elif fixed_coord == 'y':
+        min_x, max_x = np.min(x_vals), np.max(x_vals)
+        min_z, max_z = np.min(z_vals), np.max(z_vals)
+        new_min_x = min_x + (max_x - min_x) * 0.1
+        new_max_x = max_x - (max_x - min_x) * 0.1
+        new_min_z = min_z + (max_z - min_z) * 0.1
+        new_max_z = max_z - (max_z - min_z) * 0.1
+        new_points = [
+            np.array([new_min_x, fixed_value, new_min_z]),
+            np.array([new_max_x, fixed_value, new_min_z]),
+            np.array([new_max_x, fixed_value, new_max_z]),
+            np.array([new_min_x, fixed_value, new_max_z])
+        ]
+    elif fixed_coord == 'z':
+        min_x, max_x = np.min(x_vals), np.max(x_vals)
+        min_y, max_y = np.min(y_vals), np.max(y_vals)
+        new_min_x = min_x + (max_x - min_x) * 0.1
+        new_max_x = max_x - (max_x - min_x) * 0.1
+        new_min_y = min_y + (max_y - min_y) * 0.1
+        new_max_y = max_y - (max_y - min_y) * 0.1
+        new_points = [
+            np.array([new_min_x, new_min_y, fixed_value]),
+            np.array([new_max_x, new_min_y, fixed_value]),
+            np.array([new_max_x, new_max_y, fixed_value]),
+            np.array([new_min_x, new_max_y, fixed_value])
+        ]
+    
+    return new_points
 
 
 def find_triangle_on_plane(points, normal):

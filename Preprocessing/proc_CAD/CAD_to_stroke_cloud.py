@@ -207,6 +207,6 @@ def run(vis = False):
     # parsed_program_class.output()
 
     if vis:
-        stroke_cloud_class.vis_stroke_cloud('extrude_addition')
+        stroke_cloud_class.vis_stroke_cloud('sketch')
 
     return stroke_cloud_class.edges
