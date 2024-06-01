@@ -52,33 +52,38 @@ def build_circle(count, radius, point, normal, output):
     return perimeter.sketch
 
 
-def test_extrude(target_face, extrude_amount, isSubtract):
-
-    if isSubtract:
-        with BuildPart() as test_canvas:
-            extrude( target_face, amount=extrude_amount, mode=Mode.SUBTRACT )
+def test_extrude(target_face, extrude_amount):
 
     with BuildPart() as test_canvas:
         extrude( target_face, amount=extrude_amount)
 
     return test_canvas
 
-def build_extrude(count, canvas, target_face, extrude_amount, output, isSubtract):
+def build_extrude(count, canvas, target_face, extrude_amount, output):
     stl_dir = os.path.join(home_dir, "canvas", f"vis_{count}.stl")
     step_dir = os.path.join(home_dir, "canvas", f"brep_{count}.step")
 
-    if isSubtract:
-        with BuildPart() as canvas:
-            extrude( target_face, amount=extrude_amount, mode=Mode.SUBTRACT)
+    if canvas != None:
+        with canvas: 
+            extrude( target_face, amount=extrude_amount)
 
     else:
-        if canvas != None:
-            with canvas: 
-                extrude( target_face, amount=extrude_amount)
+        with BuildPart() as canvas:
+            extrude( target_face, amount=extrude_amount)
 
-        else:
-            with BuildPart() as canvas:
-                extrude( target_face, amount=extrude_amount)
+    if output:
+        canvas.part.export_stl(stl_dir)
+        canvas.part.export_step(step_dir)
+
+    return canvas
+
+def build_subtract(count, canvas, target_face, extrude_amount, output):
+    stl_dir = os.path.join(home_dir, "canvas", f"vis_{count}.stl")
+    step_dir = os.path.join(home_dir, "canvas", f"brep_{count}.step")
+
+    with canvas:
+        extrude( target_face, amount= extrude_amount, mode=Mode.SUBTRACT)
+        extrude( target_face, amount= -extrude_amount, mode=Mode.SUBTRACT)
 
     if output:
         canvas.part.export_stl(stl_dir)

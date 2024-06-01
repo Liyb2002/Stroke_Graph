@@ -154,7 +154,7 @@ class Brep:
 
         for i, vertex in enumerate(sketch_face.vertices):
 
-            new_pos = [vertex.position[j] + sketch_face_opposite_normal[j] * abs(amount) for j in range(3)]
+            new_pos = [vertex.position[j] - sketch_face_opposite_normal[j] * abs(amount) for j in range(3)]
             vertex_id = f"vertex_{self.idx}_{i}"
             new_vertex = Vertex(vertex_id, new_pos)
             self.Vertices.append(new_vertex)

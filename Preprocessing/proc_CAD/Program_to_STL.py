@@ -71,16 +71,19 @@ class parsed_program():
 
         expected_point = proc_CAD.helper.expected_extrude_point(sketch_point_list[0], sketch_face_normal, extrude_amount)
         
-        canvas_1 = proc_CAD.build123.protocol.test_extrude(self.prev_sketch, extrude_amount, isSubtract)
-        canvas_2 = proc_CAD.build123.protocol.test_extrude(self.prev_sketch, -extrude_amount, isSubtract)
+        if not isSubtract: 
+            canvas_1 = proc_CAD.build123.protocol.test_extrude(self.prev_sketch, extrude_amount)
+            canvas_2 = proc_CAD.build123.protocol.test_extrude(self.prev_sketch, -extrude_amount)
 
-        if proc_CAD.helper.canvas_has_point(canvas_1, expected_point) :
-            print("canvas_1")
-            self.canvas = proc_CAD.build123.protocol.build_extrude(self.Op_idx, self.canvas, self.prev_sketch, extrude_amount, self.output, isSubtract)
-        if proc_CAD.helper.canvas_has_point(canvas_2, expected_point):
-            print("canvas_2")
-            self.canvas = proc_CAD.build123.protocol.build_extrude(self.Op_idx, self.canvas, self.prev_sketch, -extrude_amount, self.output, isSubtract)
-        
+            if (canvas_1 is not None) and proc_CAD.helper.canvas_has_point(canvas_1, expected_point) :
+                print("canvas_1")
+                self.canvas = proc_CAD.build123.protocol.build_extrude(self.Op_idx, self.canvas, self.prev_sketch, extrude_amount, self.output)
+            if (canvas_2 is not None) and proc_CAD.helper.canvas_has_point(canvas_2, expected_point):
+                print("canvas_2")
+                self.canvas = proc_CAD.build123.protocol.build_extrude(self.Op_idx, self.canvas, self.prev_sketch, -extrude_amount, self.output)
+        else:
+            self.canvas = proc_CAD.build123.protocol.build_subtract(self.Op_idx, self.canvas, self.prev_sketch, extrude_amount, self.output)
+
         # proc_CAD.helper.print_canvas_points(self.canvas)
 
         self.Op_idx += 1
