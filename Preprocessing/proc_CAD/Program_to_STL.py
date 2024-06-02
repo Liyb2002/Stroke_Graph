@@ -23,6 +23,7 @@ class parsed_program():
     def read_json_file(self):
         with open(self.file_path, 'r') as file:
             data = json.load(file)
+            self.len_program = len(data)
             for i in range(len(data)):
                 Op = data[i]
                 operation = Op['operation']
@@ -99,6 +100,8 @@ class parsed_program():
         if target_edge != None:
             self.canvas = proc_CAD.build123.protocol.build_fillet(self.Op_idx, self.canvas, target_edge, fillet_amount, self.output, self.data_directory)
 
+    def is_valid_parse(self):
+        return self.Op_idx == self.len_program
 
 
 # Example usage:
@@ -110,3 +113,5 @@ def run(data_directory):
 
     parsed_program_class = parsed_program(file_path, data_directory)
     parsed_program_class.read_json_file()
+    
+    return parsed_program_class.is_valid_parse()

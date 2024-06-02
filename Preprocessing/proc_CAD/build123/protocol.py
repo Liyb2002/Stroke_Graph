@@ -30,8 +30,8 @@ def build_sketch(count, Points_list, output, data_dir):
         perimeter = make_face()
 
     if output:
-        perimeter.export_stl(stl_dir)
-        perimeter.export_step(brep_dir)
+        _ = perimeter.export_stl(stl_dir)
+        _ = perimeter.export_step(brep_dir)
 
     return perimeter
 
@@ -44,8 +44,8 @@ def build_circle(count, radius, point, normal, output, data_dir):
         Circle(radius = 0.2)
 
     if output:
-        perimeter.sketch.export_stl(stl_dir)
-        perimeter.sketch.export_step(brep_dir)
+        _ = perimeter.sketch.export_stl(stl_dir)
+        _ = perimeter.sketch.export_step(brep_dir)
 
     return perimeter.sketch
 
@@ -70,8 +70,8 @@ def build_extrude(count, canvas, target_face, extrude_amount, output, data_dir):
             extrude( target_face, amount=extrude_amount)
 
     if output:
-        canvas.part.export_stl(stl_dir)
-        canvas.part.export_step(step_dir)
+        _ = canvas.part.export_stl(stl_dir)
+        _ = canvas.part.export_step(step_dir)
 
     return canvas
 
@@ -84,8 +84,8 @@ def build_subtract(count, canvas, target_face, extrude_amount, output, data_dir)
         extrude( target_face, amount= -extrude_amount, mode=Mode.SUBTRACT)
 
     if output:
-        canvas.part.export_stl(stl_dir)
-        canvas.part.export_step(step_dir)
+        _ = canvas.part.export_stl(stl_dir)
+        _ = canvas.part.export_step(step_dir)
 
     return canvas
 
@@ -98,7 +98,7 @@ def build_fillet(count, canvas, target_edge, radius, output, data_dir):
         fillet(target_edge, radius)
     
     if output:
-        canvas.part.export_stl(stl_dir)
-        canvas.part.export_step(step_dir)
+        _ = canvas.part.export_stl(stl_dir)
+        _ = canvas.part.export_step(step_dir)
 
     return canvas
