@@ -51,11 +51,19 @@ class Program_Graph_Dataset(Dataset):
         # 2) Load Program
         program_file_path = os.path.join(data_path, 'Program.json')
         program = proc_CAD.helper.program_to_string(program_file_path)
-        print("num program", len(program))
 
 
-        # 3) Load Brep
-        print("brep_file", brep_file_path)
+        # 3) Load Brep embedding
+        index = brep_file_path.split('_')[1].split('.')[0]
+        embedding_path = os.path.join(self.data_path, data_dir, 'embedding', f'embedding_{index}.pkl')
+        with open(embedding_path, 'rb') as f:
+            embedding_data = pickle.load(f)
+
+        # Three embedding matrices, each has shape [x, 32]
+        face_embeddings = embedding_data['face_embeddings']
+        edge_embeddings = embedding_data['edge_embeddings']
+        vertex_embeddings = embedding_data['vertex_embeddings']
+
         return idx
     
 
