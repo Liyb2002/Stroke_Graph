@@ -44,9 +44,12 @@ class SketchHeteroData(HeteroData):
         self.connectivity_matrix = intersection_matrix
 
     def to_device(self, device):
-        for key, value in self.items():
-            if torch.is_tensor(value):
-                self[key] = value.to(device)
+        self['stroke'].x = self['stroke'].x.to(device)
+        self['stroke'].y = self['stroke'].y.to(device)
+        self['stroke'].order = self['stroke'].order.to(device)
+        self['stroke', 'intersects', 'stroke'].edge_index = self['stroke', 'intersects', 'stroke'].edge_index.to(device)
+        self['stroke', 'temp_previous', 'stroke'].edge_index = self['stroke', 'temp_previous', 'stroke'].edge_index.to(device)
+        self.connectivity_matrix = torch.tensor(self.connectivity_matrix).to(device)
 
     def output_info(self):
         print("Node Features (x):")
