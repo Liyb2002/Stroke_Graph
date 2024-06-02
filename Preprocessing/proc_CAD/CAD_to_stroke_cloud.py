@@ -83,7 +83,6 @@ class create_stroke_cloud():
             plt.show()
 
         filepath = os.path.join(directory, '3d_visualization.png')
-        print('filepath', filepath)
         plt.savefig(filepath)
         plt.close(fig)
 

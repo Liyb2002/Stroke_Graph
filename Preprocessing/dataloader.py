@@ -7,6 +7,7 @@ import pickle
 
 import gnn_graph
 import proc_CAD.helper
+import SBGCN.run_SBGCN
 
 class Program_Graph_Dataset(Dataset):
     def __init__(self):
@@ -14,6 +15,7 @@ class Program_Graph_Dataset(Dataset):
         self.data_dirs = [d for d in os.listdir(self.data_path) if os.path.isdir(os.path.join(self.data_path, d))]
         self.index_mapping = self._create_index_mapping()
 
+        self.SBGCN_encoder = SBGCN.run_SBGCN.load_pretrained_SBGCN_model()
         print(f"Number of data directories: {len(self.data_dirs)}")
         print(f"Total number of brep_i.step files: {len(self.index_mapping)}")
 
@@ -23,8 +25,8 @@ class Program_Graph_Dataset(Dataset):
             canvas_dir_path = os.path.join(self.data_path, data_dir, 'canvas')
             if os.path.exists(canvas_dir_path):
                 brep_files = sorted([f for f in os.listdir(canvas_dir_path) if f.startswith('brep_') and f.endswith('.step')])
-                for brep_file in brep_files:
-                    index_mapping.append((data_dir, brep_file))
+                for brep_file_path in brep_files:
+                    index_mapping.append((data_dir, brep_file_path))
         return index_mapping
 
     def __len__(self):
@@ -32,7 +34,7 @@ class Program_Graph_Dataset(Dataset):
 
 
     def __getitem__(self, idx):
-        data_dir, brep_file = self.index_mapping[idx]
+        data_dir, brep_file_path = self.index_mapping[idx]
         data_path = os.path.join(self.data_path, data_dir)
 
         # 1) Load graph
@@ -53,6 +55,7 @@ class Program_Graph_Dataset(Dataset):
 
 
         # 3) Load Brep
+        print("brep_file", brep_file_path)
         return idx
     
 
