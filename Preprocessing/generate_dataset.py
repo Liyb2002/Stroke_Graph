@@ -80,7 +80,8 @@ class dataset_generator():
 
                 # extract index i
                 index = file_name.split('_')[1].split('.')[0]
-                embeddings_file_path = os.path.join(brep_directory, f'embedding_{index}.pkl')
+                os.makedirs(os.path.join(data_directory, 'embedding'), exist_ok=True)
+                embeddings_file_path = os.path.join(data_directory, 'embedding', f'embedding_{index}.pkl')
                 with open(embeddings_file_path, 'wb') as f:
                     pickle.dump({
                         'face_embeddings': face_embeddings,
