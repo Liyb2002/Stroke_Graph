@@ -8,11 +8,14 @@ import proc_CAD.helper
 
 
 class parsed_program():
-    def __init__(self, file_path, data_directory, output = True):
+    def __init__(self, file_path, data_directory = None, output = True):
         self.file_path = file_path
         self.data_directory = data_directory
 
-        canvas_directory = os.path.join(data_directory, 'canvas')
+        if not data_directory:
+            self.data_directory = os.path.dirname(__file__)
+
+        canvas_directory = os.path.join(self.data_directory, 'canvas')
         os.makedirs(canvas_directory, exist_ok=True)
 
         self.canvas = None
@@ -99,14 +102,15 @@ class parsed_program():
 
         if target_edge != None:
             self.canvas = proc_CAD.build123.protocol.build_fillet(self.Op_idx, self.canvas, target_edge, fillet_amount, self.output, self.data_directory)
-
+            self.Op_idx += 1
+            
     def is_valid_parse(self):
         return self.Op_idx == self.len_program
 
 
 # Example usage:
 
-def run(data_directory):
+def run(data_directory = None):
     file_path = os.path.join(os.path.dirname(__file__), 'canvas', 'Program.json')
     if data_directory:
         file_path = os.path.join(data_directory, 'Program.json')

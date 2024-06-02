@@ -10,13 +10,9 @@ def random_program(data_directory = None):
     #init a program
     canvas_class.init_sketch_op()
     canvas_class.add_extrude_add_op()
-    fillet_times = random.randint(2, 5)
-    for _ in range(fillet_times):
-        canvas_class.random_fillet()
-
 
     #random gen for n steps
-    steps = random.randint(1, 3)
+    steps = random.randint(2, 4)
     for _ in range(steps - 1):
         canvas_class.regular_sketch_op()
 
@@ -26,7 +22,7 @@ def random_program(data_directory = None):
             canvas_class.add_extrude_subtract_op()
 
 
-        fillet_times = random.randint(0, 2)
+        fillet_times = random.randint(1, 2)
         for _ in range(fillet_times):
             canvas_class.random_fillet()
 
@@ -36,7 +32,6 @@ def simple_gen(data_directory = None):
     canvas_class = proc_CAD.generate_program.Brep()
     canvas_class.init_sketch_op()
     canvas_class.add_extrude_add_op()
-    canvas_class.random_fillet()
     canvas_class.random_fillet()
 
     canvas_class.write_to_json(data_directory)

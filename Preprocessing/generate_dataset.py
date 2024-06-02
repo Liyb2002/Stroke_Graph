@@ -31,8 +31,8 @@ def generate_single_data(successful_generations):
     
     try:
         # Pass in the directory to the simple_gen function
-        # proc_CAD.proc_gen.random_program(data_directory)
-        proc_CAD.proc_gen.simple_gen(data_directory)
+        proc_CAD.proc_gen.random_program(data_directory)
+        # proc_CAD.proc_gen.simple_gen(data_directory)
 
         # Create brep for the new program and pass in the directory
         valid_parse = proc_CAD.Program_to_STL.run(data_directory)

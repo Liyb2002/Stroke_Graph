@@ -15,33 +15,28 @@ class single_data:
 
         #generate a new program
         # proc_CAD.proc_gen.random_program()
-
-        try:
-            proc_CAD.proc_gen.simple_gen()
+        proc_CAD.proc_gen.simple_gen()
 
         #create brep for the new program
-            proc_CAD.Program_to_STL.run()
-        except Exception as e:
-            print(f"An error occurred: {e}")
-            return
+        proc_CAD.Program_to_STL.run()
 
 
-        self.stroke_cloud= proc_CAD.CAD_to_stroke_cloud.run(vis = True)
-        self.stroke_cloud_graph = gnn_graph.build_graph(self.stroke_cloud)
-        stroke_cloud_save_path = os.path.join(os.getcwd(), 'proc_CAD', 'canvas', 'sketch_hetero_data.pkl')
-        with open(stroke_cloud_save_path, 'wb') as f:
-            pickle.dump(self.stroke_cloud_graph, f)
+        # self.stroke_cloud= proc_CAD.CAD_to_stroke_cloud.run(vis = True)
+        # self.stroke_cloud_graph = gnn_graph.build_graph(self.stroke_cloud)
+        # stroke_cloud_save_path = os.path.join(os.getcwd(), 'proc_CAD', 'canvas', 'sketch_hetero_data.pkl')
+        # with open(stroke_cloud_save_path, 'wb') as f:
+        #     pickle.dump(self.stroke_cloud_graph, f)
 
 
-        program_file_path = os.path.join(os.getcwd(), 'proc_CAD', 'canvas', 'program.json')
+        # program_file_path = os.path.join(os.getcwd(), 'proc_CAD', 'canvas', 'program.json')
 
-        self.program = proc_CAD.helper.program_to_string(program_file_path)
+        # self.program = proc_CAD.helper.program_to_string(program_file_path)
 
-        self.SBGCN_encoder = SBGCN.run_SBGCN.load_pretrained_SBGCN_model()
+        # self.SBGCN_encoder = SBGCN.run_SBGCN.load_pretrained_SBGCN_model()
 
-        self.brep_embedding(0)
+        # self.brep_embedding(0)
 
-        proc_CAD.render_images.run_render_images()
+        # proc_CAD.render_images.run_render_images()
 
 
     def brep_embedding(self, idx):
