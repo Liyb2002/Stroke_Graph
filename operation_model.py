@@ -1,4 +1,5 @@
 import Preprocessing.dataloader
+import Preprocessing.gnn_graph
 
 from torch.utils.data import DataLoader
 from tqdm import tqdm 
@@ -21,3 +22,5 @@ for batch in tqdm(data_loader):
     edge_embeddings = edge_embeddings.to(torch.float32).to(device)
     vertex_embeddings = vertex_embeddings.to(torch.float32).to(device)
 
+    graph = Preprocessing.gnn_graph.SketchHeteroData(node_features, operations_matrix, intersection_matrix)
+    graph.to_device(device)

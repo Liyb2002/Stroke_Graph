@@ -24,8 +24,8 @@ class SketchHeteroData(HeteroData):
         super(SketchHeteroData, self).__init__()
 
         # Node features and labels
-        self['stroke'].x = torch.tensor(node_features, dtype=torch.float)
-        self['stroke'].y = torch.tensor(operations_matrix, dtype=torch.float)
+        self['stroke'].x = node_features
+        self['stroke'].y = operations_matrix
         
         # Order of nodes (sequential order of reading)
         num_strokes = node_features.shape[0]
@@ -33,7 +33,7 @@ class SketchHeteroData(HeteroData):
         self['stroke'].order = torch.tensor(order, dtype=torch.long)
         
         # Intersection matrix to edge indices
-        edge_indices = torch.nonzero(torch.tensor(intersection_matrix == 1)).t()
+        edge_indices = torch.nonzero(intersection_matrix == 1).t()
         self['stroke', 'intersects', 'stroke'].edge_index = edge_indices
 
         # Temporal edge index (order of nodes)
@@ -41,7 +41,7 @@ class SketchHeteroData(HeteroData):
         temporal_edge_tensor = torch.tensor(temporal_edge_index, dtype=torch.long).contiguous()
         self['stroke', 'temp_previous', 'stroke'].edge_index = temporal_edge_tensor
 
-        self.connectivity_matrix = intersection_matrix
+        self.intersection_matrix = intersection_matrix
 
     def to_device(self, device):
         self['stroke'].x = self['stroke'].x.to(device)
@@ -49,7 +49,7 @@ class SketchHeteroData(HeteroData):
         self['stroke'].order = self['stroke'].order.to(device)
         self['stroke', 'intersects', 'stroke'].edge_index = self['stroke', 'intersects', 'stroke'].edge_index.to(device)
         self['stroke', 'temp_previous', 'stroke'].edge_index = self['stroke', 'temp_previous', 'stroke'].edge_index.to(device)
-        self.connectivity_matrix = torch.tensor(self.connectivity_matrix).to(device)
+        # self.intersection_matrix = torch.tensor(self.intersection_matrix).to(device)
 
     def output_info(self):
         print("Node Features (x):")
