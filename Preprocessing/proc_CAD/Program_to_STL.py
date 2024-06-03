@@ -2,9 +2,9 @@ import json
 import os
 from copy import deepcopy
 
-import proc_CAD.build123.protocol
-from proc_CAD.basic_class import Face, Edge, Vertex
-import proc_CAD.helper
+import Preprocessing.proc_CAD.build123.protocol
+from Preprocessing.proc_CAD.basic_class import Face, Edge, Vertex
+import Preprocessing.proc_CAD.helper
 
 
 class parsed_program():
@@ -59,7 +59,7 @@ class parsed_program():
         # Add the first point again at the end to close the loop
         new_point_list.append(point_list[0])
 
-        self.prev_sketch = proc_CAD.build123.protocol.build_sketch(self.Op_idx, new_point_list, self.output, self.data_directory)
+        self.prev_sketch = Preprocessing.proc_CAD.build123.protocol.build_sketch(self.Op_idx, new_point_list, self.output, self.data_directory)
         self.Op_idx += 1
 
     def parse_circle(self, Op):
@@ -67,7 +67,7 @@ class parsed_program():
         center = Op['faces'][0]['center']
         normal = Op['faces'][0]['normal']
 
-        self.prev_sketch = proc_CAD.build123.protocol.build_circle(self.Op_idx, radius, center, normal, self.output, self.data_directory)
+        self.prev_sketch = Preprocessing.proc_CAD.build123.protocol.build_circle(self.Op_idx, radius, center, normal, self.output, self.data_directory)
         self.Op_idx += 1
         
     def parse_extrude(self, Op, sketch_Op):
@@ -77,20 +77,20 @@ class parsed_program():
         sketch_face_normal = sketch_Op['faces'][0]['normal']
         extrude_amount = Op['operation'][2]
 
-        expected_point = proc_CAD.helper.expected_extrude_point(sketch_point_list[0], sketch_face_normal, extrude_amount)
+        expected_point = Preprocessing.proc_CAD.helper.expected_extrude_point(sketch_point_list[0], sketch_face_normal, extrude_amount)
         
         if not isSubtract: 
-            canvas_1 = proc_CAD.build123.protocol.test_extrude(self.prev_sketch, extrude_amount)
-            canvas_2 = proc_CAD.build123.protocol.test_extrude(self.prev_sketch, -extrude_amount)
+            canvas_1 = Preprocessing.proc_CAD.build123.protocol.test_extrude(self.prev_sketch, extrude_amount)
+            canvas_2 = Preprocessing.proc_CAD.build123.protocol.test_extrude(self.prev_sketch, -extrude_amount)
 
-            if (canvas_1 is not None) and proc_CAD.helper.canvas_has_point(canvas_1, expected_point) :
-                self.canvas = proc_CAD.build123.protocol.build_extrude(self.Op_idx, self.canvas, self.prev_sketch, extrude_amount, self.output, self.data_directory)
-            if (canvas_2 is not None) and proc_CAD.helper.canvas_has_point(canvas_2, expected_point):
-                self.canvas = proc_CAD.build123.protocol.build_extrude(self.Op_idx, self.canvas, self.prev_sketch, -extrude_amount, self.output, self.data_directory)
+            if (canvas_1 is not None) and Preprocessing.proc_CAD.helper.canvas_has_point(canvas_1, expected_point) :
+                self.canvas = Preprocessing.proc_CAD.build123.protocol.build_extrude(self.Op_idx, self.canvas, self.prev_sketch, extrude_amount, self.output, self.data_directory)
+            if (canvas_2 is not None) and Preprocessing.proc_CAD.helper.canvas_has_point(canvas_2, expected_point):
+                self.canvas = Preprocessing.proc_CAD.build123.protocol.build_extrude(self.Op_idx, self.canvas, self.prev_sketch, -extrude_amount, self.output, self.data_directory)
         else:
-            self.canvas = proc_CAD.build123.protocol.build_subtract(self.Op_idx, self.canvas, self.prev_sketch, extrude_amount, self.output, self.data_directory)
+            self.canvas = Preprocessing.proc_CAD.build123.protocol.build_subtract(self.Op_idx, self.canvas, self.prev_sketch, extrude_amount, self.output, self.data_directory)
 
-        # proc_CAD.helper.print_canvas_points(self.canvas)
+        # Preprocessing.proc_CAD.helper.print_canvas_points(self.canvas)
 
         self.Op_idx += 1
         
@@ -98,10 +98,10 @@ class parsed_program():
         fillet_amount = Op['operation'][2]['amount']
         verts = Op['operation'][3]['old_verts_pos']
 
-        target_edge = proc_CAD.helper.find_target_verts(verts, self.canvas.edges())
+        target_edge = Preprocessing.proc_CAD.helper.find_target_verts(verts, self.canvas.edges())
 
         if target_edge != None:
-            self.canvas = proc_CAD.build123.protocol.build_fillet(self.Op_idx, self.canvas, target_edge, fillet_amount, self.output, self.data_directory)
+            self.canvas = Preprocessing.proc_CAD.build123.protocol.build_fillet(self.Op_idx, self.canvas, target_edge, fillet_amount, self.output, self.data_directory)
             self.Op_idx += 1
             
     def is_valid_parse(self):

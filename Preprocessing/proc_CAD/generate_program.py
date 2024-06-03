@@ -2,12 +2,12 @@
 
 import json
 import numpy as np
-import proc_CAD.helper
+import Preprocessing.proc_CAD.helper
 import random
-import proc_CAD.random_gen
+import Preprocessing.proc_CAD.random_gen
 
 import os
-from proc_CAD.basic_class import Face, Edge, Vertex
+from Preprocessing.proc_CAD.basic_class import Face, Edge, Vertex
 
 class Brep:
     def __init__(self):
@@ -22,7 +22,7 @@ class Brep:
     def init_sketch_op(self):
 
         axis = np.random.choice(['x', 'y', 'z'])
-        points, normal = proc_CAD.random_gen.generate_random_rectangle(axis)
+        points, normal = Preprocessing.proc_CAD.random_gen.generate_random_rectangle(axis)
         
         self._sketch_op(points, normal)
 
@@ -64,19 +64,19 @@ class Brep:
         cases = ['find_rectangle', 'find_triangle', 'triangle_to_cut']
         selected_case = random.choice(cases)
         if selected_case == 'create_circle':
-            radius = proc_CAD.random_gen.generate_random_cylinder_radius()
-            center = proc_CAD.helper.random_circle(boundary_points, normal)
+            radius = Preprocessing.proc_CAD.random_gen.generate_random_cylinder_radius()
+            center = Preprocessing.proc_CAD.helper.random_circle(boundary_points, normal)
             self.regular_sketch_circle(normal, radius, center)
             return 
 
         if selected_case == 'find_rectangle':
-            random_polygon_points = proc_CAD.helper.find_rectangle_on_plane(boundary_points, normal)
+            random_polygon_points = Preprocessing.proc_CAD.helper.find_rectangle_on_plane(boundary_points, normal)
 
         if selected_case == 'find_triangle':
-            random_polygon_points = proc_CAD.helper.find_triangle_on_plane(boundary_points, normal)
+            random_polygon_points = Preprocessing.proc_CAD.helper.find_triangle_on_plane(boundary_points, normal)
 
         if selected_case == 'triangle_to_cut':
-            random_polygon_points = proc_CAD.helper.find_triangle_to_cut(boundary_points, normal)
+            random_polygon_points = Preprocessing.proc_CAD.helper.find_triangle_to_cut(boundary_points, normal)
 
         self._sketch_op(random_polygon_points, normal)
 
@@ -92,7 +92,7 @@ class Brep:
 
 
     def add_extrude_add_op(self):
-        amount = proc_CAD.random_gen.generate_random_extrude_add()
+        amount = Preprocessing.proc_CAD.random_gen.generate_random_extrude_add()
 
         sketch_face = self.Faces[-1]
         sketch_face_opposite_normal = [-x for x in sketch_face.normal]
@@ -135,7 +135,7 @@ class Brep:
                 sketch_face.vertices[i], new_vertices[i],
                 new_vertices[(i + 1) % num_vertices], sketch_face.vertices[(i + 1) % num_vertices]
             ]
-            normal = proc_CAD.helper.compute_normal(side_face_vertices, new_vertices[(i + 2) % num_vertices])
+            normal = Preprocessing.proc_CAD.helper.compute_normal(side_face_vertices, new_vertices[(i + 2) % num_vertices])
             side_face = Face(side_face_id, side_face_vertices, normal)
             self.Faces.append(side_face)
 
@@ -143,7 +143,7 @@ class Brep:
         self.op.append(['extrude_addition', sketch_face.id, amount])
 
     def add_extrude_subtract_op(self):
-        amount = proc_CAD.random_gen.generate_random_extrude_subtract()
+        amount = Preprocessing.proc_CAD.random_gen.generate_random_extrude_subtract()
 
         sketch_face = self.Faces[-1]
         sketch_face_opposite_normal = [-x for x in sketch_face.normal]
@@ -186,7 +186,7 @@ class Brep:
                 sketch_face.vertices[i], new_vertices[i],
                 new_vertices[(i + 1) % num_vertices], sketch_face.vertices[(i + 1) % num_vertices]
             ]
-            normal = proc_CAD.helper.compute_normal(side_face_vertices, new_vertices[(i + 2) % num_vertices])
+            normal = Preprocessing.proc_CAD.helper.compute_normal(side_face_vertices, new_vertices[(i + 2) % num_vertices])
             side_face = Face(side_face_id, side_face_vertices, normal)
             self.Faces.append(side_face)
 
@@ -200,7 +200,7 @@ class Brep:
             return False
         target_edge = random.choice(edge_with_round)
 
-        amount = proc_CAD.random_gen.generate_random_fillet()
+        amount = Preprocessing.proc_CAD.random_gen.generate_random_fillet()
         target_edge.fillet_edge()
 
         verts_pos = []
@@ -210,8 +210,8 @@ class Brep:
         for vert in target_edge.vertices:
             verts_pos.append(vert.position)
             verts_id.append(vert.id)
-            neighbor_verts = proc_CAD.helper.get_neighbor_verts(vert,target_edge,  self.Edges)
-            new_vert_pos.append(proc_CAD.helper.compute_fillet_new_vert(vert, neighbor_verts, amount))
+            neighbor_verts = Preprocessing.proc_CAD.helper.get_neighbor_verts(vert,target_edge,  self.Edges)
+            new_vert_pos.append(Preprocessing.proc_CAD.helper.compute_fillet_new_vert(vert, neighbor_verts, amount))
         
         new_A = new_vert_pos[0][0]
         new_B = new_vert_pos[0][1]
@@ -237,9 +237,9 @@ class Brep:
         #need to change the edge connecting neighbor_verts[0] - old_vert to neighbor_verts[0] - new_vert_B
         edge_vertex_pair = []
         for vert in target_edge.vertices:
-            neighbor_verts = proc_CAD.helper.get_neighbor_verts(vert,target_edge, self.Edges)
+            neighbor_verts = Preprocessing.proc_CAD.helper.get_neighbor_verts(vert,target_edge, self.Edges)
 
-            need_to_change_edge = proc_CAD.helper.find_edge_from_verts(vert, neighbor_verts[1], self.Edges)
+            need_to_change_edge = Preprocessing.proc_CAD.helper.find_edge_from_verts(vert, neighbor_verts[1], self.Edges)
 
             if vert == target_edge.vertices[0]:
                 edge_vertex_pair.append([need_to_change_edge.id, neighbor_verts[1].id, new_vert_B.id])

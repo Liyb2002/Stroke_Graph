@@ -1,11 +1,11 @@
 import numpy as np
-import proc_CAD.generate_program
+import Preprocessing.proc_CAD.generate_program
 import random
 
 
 
 def random_program(data_directory = None):
-    canvas_class = proc_CAD.generate_program.Brep()
+    canvas_class = Preprocessing.proc_CAD.generate_program.Brep()
 
     #init a program
     canvas_class.init_sketch_op()
@@ -29,7 +29,7 @@ def random_program(data_directory = None):
     canvas_class.write_to_json(data_directory)
 
 def simple_gen(data_directory = None):
-    canvas_class = proc_CAD.generate_program.Brep()
+    canvas_class = Preprocessing.proc_CAD.generate_program.Brep()
     canvas_class.init_sketch_op()
     canvas_class.add_extrude_add_op()
     canvas_class.random_fillet()

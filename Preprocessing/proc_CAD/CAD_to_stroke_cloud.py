@@ -1,7 +1,7 @@
 import json
-import proc_CAD.build123.protocol
-from proc_CAD.basic_class import Face, Edge, Vertex
-import proc_CAD.helper
+import Preprocessing.proc_CAD.build123.protocol
+from Preprocessing.proc_CAD.basic_class import Face, Edge, Vertex
+import Preprocessing.proc_CAD.helper
 
 import os
 import matplotlib.pyplot as plt

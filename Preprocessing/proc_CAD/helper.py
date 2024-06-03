@@ -333,7 +333,7 @@ def program_to_string(file_path):
     with open(file_path, 'r') as file:
         data = json.load(file)
         for Op in data:
-            Op_string.append(Op)
+            Op_string.append(Op['operation'][0])
 
     return Op_string
 

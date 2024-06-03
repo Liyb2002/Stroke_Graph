@@ -13,7 +13,7 @@ from itertools import combinations
 import torch
 import os
 from tqdm import tqdm
-import SBGCN.SBGCN_graph
+import Preprocessing.SBGCN.SBGCN_graph
 
 def read_step_file(filename):
     step_reader = STEPControl_Reader()
@@ -156,7 +156,7 @@ def create_graph_from_step_file(step_path):
 
     index_id = count_type(index_to_type)
     edge_index_face_face_list = build_face_to_face(edge_index_face_edge_list)
-    graph_data = SBGCN.SBGCN_graph.GraphHeteroData(face_features_list, edge_features_list, vertex_features_list,
+    graph_data = Preprocessing.SBGCN.SBGCN_graph.GraphHeteroData(face_features_list, edge_features_list, vertex_features_list,
                                   edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list,
                                   index_id, index_counter)
     

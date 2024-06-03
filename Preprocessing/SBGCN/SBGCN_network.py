@@ -2,7 +2,7 @@ import torch
 import torch_scatter
 from torch.nn import Linear, Sequential, ModuleList, BatchNorm1d, Dropout, LeakyReLU, ReLU
 import torch_geometric as tg
-from SBGCN.uvnet_encoders import UVNetCurveEncoder, UVNetSurfaceEncoder
+from Preprocessing.SBGCN.uvnet_encoders import UVNetCurveEncoder, UVNetSurfaceEncoder
 
 class FaceEdgeVertexGCN(torch.nn.Module):
     def __init__(self,

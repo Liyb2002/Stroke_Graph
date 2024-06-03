@@ -5,17 +5,16 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm 
 import pickle
 
-import gnn_graph
-import proc_CAD.helper
-import SBGCN.run_SBGCN
+import Preprocessing.proc_CAD.helper
+import Preprocessing.SBGCN.run_SBGCN
 
 class Program_Graph_Dataset(Dataset):
     def __init__(self):
-        self.data_path = os.path.join(os.getcwd(), 'dataset')
+        self.data_path = os.path.join(os.getcwd(), 'Preprocessing', 'dataset')
         self.data_dirs = [d for d in os.listdir(self.data_path) if os.path.isdir(os.path.join(self.data_path, d))]
         self.index_mapping = self._create_index_mapping()
 
-        self.SBGCN_encoder = SBGCN.run_SBGCN.load_pretrained_SBGCN_model()
+        self.SBGCN_encoder = Preprocessing.SBGCN.run_SBGCN.load_pretrained_SBGCN_model()
         print(f"Number of data directories: {len(self.data_dirs)}")
         print(f"Total number of brep_i.step files: {len(self.index_mapping)}")
 
@@ -36,6 +35,7 @@ class Program_Graph_Dataset(Dataset):
     def __getitem__(self, idx):
         data_dir, brep_file_path = self.index_mapping[idx]
         data_path = os.path.join(self.data_path, data_dir)
+        index = brep_file_path.split('_')[1].split('.')[0]
 
         # 1) Load graph
         graph_path = os.path.join(data_path, 'stroke_cloud_graph.pkl')
@@ -50,11 +50,11 @@ class Program_Graph_Dataset(Dataset):
 
         # 2) Load Program
         program_file_path = os.path.join(data_path, 'Program.json')
-        program = proc_CAD.helper.program_to_string(program_file_path)
+        program = Preprocessing.proc_CAD.helper.program_to_string(program_file_path)
+        program = program[:int(index)+1]
 
 
         # 3) Load Brep embedding
-        index = brep_file_path.split('_')[1].split('.')[0]
         embedding_path = os.path.join(self.data_path, data_dir, 'embedding', f'embedding_{index}.pkl')
         with open(embedding_path, 'rb') as f:
             embedding_data = pickle.load(f)
@@ -64,15 +64,18 @@ class Program_Graph_Dataset(Dataset):
         edge_embeddings = embedding_data['edge_embeddings']
         vertex_embeddings = embedding_data['vertex_embeddings']
 
-        return idx
+        return node_features, operations_matrix, intersection_matrix, program, face_embeddings, edge_embeddings, vertex_embeddings
+
     
 
 
 
 
-dataset = Program_Graph_Dataset()
+def Create_DataLoader_example():
+    dataset = Program_Graph_Dataset()
 
-# Create a DataLoader
-data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
-for batch in tqdm(data_loader):
-    idx = batch
+    # Create a DataLoader
+    data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
+    for batch in tqdm(data_loader):
+        node_features, operations_matrix, intersection_matrix, program, face_embeddings, edge_embeddings, vertex_embeddings = batch
+        
