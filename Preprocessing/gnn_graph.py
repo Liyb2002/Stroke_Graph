@@ -37,7 +37,6 @@ class SketchHeteroData(HeteroData):
         edge_indices = torch.nonzero(intersection_matrix == 1).t()
         self['stroke', 'intersects', 'stroke'].edge_index = edge_indices.long()
 
-
         # Temporal edge index (order of nodes)
         temporal_edge_index = [order[:-1], order[1:]]
         temporal_edge_tensor = torch.tensor(temporal_edge_index, dtype=torch.long).contiguous()

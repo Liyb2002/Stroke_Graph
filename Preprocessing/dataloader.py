@@ -52,6 +52,7 @@ class Program_Graph_Dataset(Dataset):
         program_file_path = os.path.join(data_path, 'Program.json')
         program = Preprocessing.proc_CAD.helper.program_to_string(program_file_path)
         program = program[:int(index)+1]
+        program = Preprocessing.proc_CAD.helper.program_to_tensor(program)
 
 
         # 3) Load Brep embedding

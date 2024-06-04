@@ -57,7 +57,7 @@ class dataset_generator():
             return False
         
         
-        # Save matrices for stroke_cloud_graph
+        # 1) Save matrices for stroke_cloud_graph
         stroke_cloud= proc_CAD.CAD_to_stroke_cloud.run(data_directory)
         node_features, operations_matrix, intersection_matrix = gnn_graph.build_graph(stroke_cloud)
         stroke_cloud_save_path = os.path.join(data_directory, 'stroke_cloud_graph.pkl')
@@ -70,7 +70,7 @@ class dataset_generator():
             }, f)
 
 
-        # Save matrices for Brep Embedding
+        # 3) Save matrices for Brep Embedding
         brep_directory = os.path.join(data_directory, 'canvas')
         for file_name in os.listdir(brep_directory):
             if file_name.startswith('brep_') and file_name.endswith('.step'):

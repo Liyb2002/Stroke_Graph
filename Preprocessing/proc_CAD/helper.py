@@ -5,6 +5,7 @@ from shapely.geometry.polygon import orient
 from shapely import affinity
 import pyrr
 import json 
+import torch
 
 import matplotlib.pyplot as plt
 
@@ -336,6 +337,15 @@ def program_to_string(file_path):
             Op_string.append(Op['operation'][0])
 
     return Op_string
+
+def program_to_tensor(program):
+    operation_to_index = {'sketch': 0, 'extrude_addition': 1, 'extrude_subtraction': 2, 'fillet': 3}
+    Op_indices = []
+
+    for Op in program:
+        Op_indices.append(operation_to_index[Op])
+
+    return torch.tensor(Op_indices, dtype=torch.long)
 
 
 #----------------------------------------------------------------------------------#
