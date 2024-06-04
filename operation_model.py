@@ -37,6 +37,6 @@ for batch in tqdm(data_loader):
     graph_embedding = graph_embedding_model(gnn_graph.x_dict, gnn_graph.edge_index_dict)
 
     #program embedding
-    print("program", program)
-    program_encoding = program_embedding_model(program)
+    # print("program", program.shape)
+    # program_encoding = program_embedding_model(program)
 

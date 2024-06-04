@@ -64,7 +64,7 @@ class Program_Graph_Dataset(Dataset):
         face_embeddings = embedding_data['face_embeddings']
         edge_embeddings = embedding_data['edge_embeddings']
         vertex_embeddings = embedding_data['vertex_embeddings']
-
+        
         return node_features, operations_matrix, intersection_matrix, program, face_embeddings, edge_embeddings, vertex_embeddings
 
     
