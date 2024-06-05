@@ -5,13 +5,18 @@ from torch_geometric.data import Data, HeteroData
 class GraphHeteroData(HeteroData):
     def __init__(self, face_features, edge_features, vertex_features, 
                  edge_index_face_edge, edge_index_edge_vertex, edge_index_face_face_list,
-                 index_id, index_counter):
+                 index_id, index_counter = 0):
         super(GraphHeteroData, self).__init__()
 
+        # index_counter are outdated
 
-        self['face'].x = self.preprocess_features(face_features)
-        self['edge'].x = self.preprocess_features(edge_features)
-        self['vertex'].x = self.preprocess_features(vertex_features)
+        self['face'].x = face_features
+        self['edge'].x = edge_features
+        self['vertex'].x = vertex_features
+
+        # self['face'].x = self.preprocess_features(face_features)
+        # self['edge'].x = self.preprocess_features(edge_features)
+        # self['vertex'].x = self.preprocess_features(vertex_features)
         self['face'].y = index_id
 
         self['face'].num_nodes = len(face_features)
@@ -24,9 +29,9 @@ class GraphHeteroData(HeteroData):
         self['vertex', 'connects', 'edge'].edge_index = self.reverse_edge(edge_index_edge_vertex)
         self['face', 'connects', 'face'].edge_index = edge_index_face_face_list
 
-        self['face'].z = self.build_adjacency_matrix(
-            edge_index_face_edge, edge_index_edge_vertex, edge_index_face_face_list,
-            index_counter)
+        # self['face'].z = self.build_adjacency_matrix(
+        #     edge_index_face_edge, edge_index_edge_vertex, edge_index_face_face_list,
+        #     index_counter)
 
     def to_device(self, device):
         for key, value in self.items():
@@ -46,6 +51,7 @@ class GraphHeteroData(HeteroData):
         processed_features = [] 
         for _, f in features:
             processed_features.append(f)
+
         
         return torch.tensor(processed_features)
 

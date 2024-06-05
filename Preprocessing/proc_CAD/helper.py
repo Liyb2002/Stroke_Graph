@@ -386,3 +386,18 @@ def print_canvas_points(canvas):
                 round_position([verts[1].X, verts[1].Y, verts[1].Z])
                 ]
         print("edge_positions", edge_positions)
+
+
+
+
+#----------------------------------------------------------------------------------#
+
+
+
+def preprocess_features(features):
+    processed_features = [] 
+    for _, f in features:
+        processed_features.append(f)
+    
+    return torch.tensor(processed_features)
+

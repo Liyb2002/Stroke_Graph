@@ -154,13 +154,15 @@ def create_graph_from_step_file(step_path):
         
         face_explorer.Next()
 
-    index_id = count_type(index_to_type)
     edge_index_face_face_list = build_face_to_face(edge_index_face_edge_list)
-    graph_data = Preprocessing.SBGCN.SBGCN_graph.GraphHeteroData(face_features_list, edge_features_list, vertex_features_list,
-                                  edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list,
-                                  index_id, index_counter)
+
+    # index_id defines the index of the node to the index of the face/edge/vertex
+    # For instance index_id [0, 0, 0, 1, 1, 2, 2, 3, 3]
+    # means that the 4th element in the 2nd face
+    index_id = count_type(index_to_type)
     
-    return graph_data
+    print("index_id", index_id)
+    return face_features_list, edge_features_list, vertex_features_list, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id
 
 
 class BRep_Dataset(Dataset):

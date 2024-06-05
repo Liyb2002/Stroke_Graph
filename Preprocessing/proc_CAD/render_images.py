@@ -1,9 +1,9 @@
-import proc_CAD.brep_read
+import Preprocessing.proc_CAD.brep_read
 import os
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import json
-import proc_CAD.helper
+import Preprocessing.proc_CAD.helper
 import random
 import numpy as np
 
@@ -166,7 +166,7 @@ def optimize_opacities(edges_features, stylesheet):
     return edges_features
 
 def project_points(edges_features, obj_center):
-    edges_features = proc_CAD.helper.project_points(edges_features, obj_center)
+    edges_features = Preprocessing.proc_CAD.helper.project_points(edges_features, obj_center)
     return edges_features
 
 def overshoot_stroke(edges_features, factor = 10):
@@ -272,7 +272,7 @@ def run_render_images():
             stylesheet = json.load(fp)
 
     file_path = get_last_file()
-    edges_features = proc_CAD.brep_read.create_graph_from_step_file(file_path)
+    edges_features = Preprocessing.proc_CAD.brep_read.create_graph_from_step_file(file_path)
     edges_features, obj_center= find_bounding_box(edges_features)
     optimize_opacities(edges_features, stylesheet)
     project_points(edges_features, obj_center)

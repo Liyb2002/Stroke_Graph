@@ -10,7 +10,7 @@ import Preprocessing.SBGCN.run_SBGCN
 
 class Program_Graph_Dataset(Dataset):
     def __init__(self):
-        self.data_path = os.path.join(os.getcwd(), 'Preprocessing', 'dataset')
+        self.data_path = os.path.join(os.getcwd(), 'dataset')
         self.data_dirs = [d for d in os.listdir(self.data_path) if os.path.isdir(os.path.join(self.data_path, d))]
         self.index_mapping = self._create_index_mapping()
 
@@ -56,16 +56,19 @@ class Program_Graph_Dataset(Dataset):
 
 
         # 3) Load Brep embedding
-        embedding_path = os.path.join(self.data_path, data_dir, 'embedding', f'embedding_{index}.pkl')
+        embedding_path = os.path.join(self.data_path, data_dir, 'brep_embedding', f'brep_info_{index}.pkl')
         with open(embedding_path, 'rb') as f:
             embedding_data = pickle.load(f)
-
-        # Three embedding matrices, each has shape [x, 32]
-        face_embeddings = embedding_data['face_embeddings']
-        edge_embeddings = embedding_data['edge_embeddings']
-        vertex_embeddings = embedding_data['vertex_embeddings']
         
-        return node_features, operations_matrix, intersection_matrix, program, face_embeddings, edge_embeddings, vertex_embeddings
+        face_features = embedding_data['face_features']
+        edge_features = embedding_data['edge_features']
+        vertex_features = embedding_data['vertex_features']
+        edge_index_face_edge_list = embedding_data['edge_index_face_edge_list']
+        edge_index_edge_vertex_list = embedding_data['edge_index_edge_vertex_list']
+        edge_index_face_face_list = embedding_data['edge_index_face_face_list']
+        index_id = embedding_data['index_id']
+
+        return node_features, operations_matrix, intersection_matrix, program, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id
 
     
 

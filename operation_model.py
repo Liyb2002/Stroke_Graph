@@ -1,8 +1,12 @@
 import Preprocessing.dataloader
 import Preprocessing.gnn_graph
 
+import Preprocessing.SBGCN.SBGCN_graph
+import Preprocessing.SBGCN.SBGCN_network
+
 import Encoders.gnn.gnn
 import Encoders.program_encoder.program_encoder
+
 
 from torch.utils.data import DataLoader
 from tqdm import tqdm 
@@ -14,22 +18,22 @@ dataset = Preprocessing.dataloader.Program_Graph_Dataset()
 
 graph_embedding_model = Encoders.gnn.gnn.SemanticModule()
 program_embedding_model = Encoders.program_encoder.program_encoder.ProgramEncoder()
+SBGCN_model = Preprocessing.SBGCN.SBGCN_network.FaceEdgeVertexGCN()
+
 graph_embedding_model.to(device)
 program_embedding_model.to(device)
+SBGCN_model.to(device)
 
 # Create a DataLoader
 data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
 for batch in tqdm(data_loader):
     graph_embedding_model.train()
-    node_features, operations_matrix, intersection_matrix, program, face_embeddings, edge_embeddings, vertex_embeddings = batch
+    node_features, operations_matrix, intersection_matrix, program, face_features_list, edge_features_list, vertex_features_list, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id= batch
 
     # to device 
     node_features = node_features.to(torch.float32).to(device)
     operations_matrix = operations_matrix.to(torch.float32).to(device)
     intersection_matrix = intersection_matrix.to(torch.float32).to(device)
-    face_embeddings = face_embeddings.to(torch.float32).to(device)
-    edge_embeddings = edge_embeddings.to(torch.float32).to(device)
-    vertex_embeddings = vertex_embeddings.to(torch.float32).to(device)
 
     # graph embedding
     gnn_graph = Preprocessing.gnn_graph.SketchHeteroData(node_features, operations_matrix, intersection_matrix)
@@ -42,5 +46,11 @@ for batch in tqdm(data_loader):
     print("program_encoding", program_encoding.shape)
 
     # brep embedding
-    brep_embeddings = torch.cat((face_embeddings, edge_embeddings, vertex_embeddings), dim=1)
-    print("brep_embeddings shape:", brep_embeddings.shape)
+    brep_graph = Preprocessing.SBGCN.SBGCN_graph.GraphHeteroData(face_features_list, edge_features_list, vertex_features_list, 
+                 edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id)
+    face_embedding, edge_embedding, vertex_embedding = SBGCN_model(brep_graph)
+    brep_embeddings = torch.cat((face_embedding, edge_embedding, vertex_embedding), dim=1)
+
+    print("Combined embeddings shape:", brep_embeddings.shape)
+
+    print("--------------------")

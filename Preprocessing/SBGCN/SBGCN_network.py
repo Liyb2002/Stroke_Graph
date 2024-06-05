@@ -58,17 +58,16 @@ class FaceEdgeVertexGCN(torch.nn.Module):
         x_v_embedding = self.embed_v_in(x_v_raw)
 
         # Upward pass (Face to Edge and Edge to Vertex)
-        x_e = self.F2E(x_f_embedding, x_e_embedding, torch.tensor(data['face', 'connects', 'edge'].edge_index, dtype=torch.long))
-        x_v = self.E2V(x_e_embedding, x_v_embedding, torch.tensor(data['edge', 'connects', 'vertex'].edge_index, dtype=torch.long))
+        x_e = self.F2E(x_f_embedding, x_e_embedding, torch.tensor(data['face', 'connects', 'edge'].edge_index, dtype=torch.long), index_id)
+        x_v = self.E2V(x_e_embedding, x_v_embedding, torch.tensor(data['edge', 'connects', 'vertex'].edge_index, dtype=torch.long), index_id)
 
         # Meta-Edge Spine
         for conv in self.ffLayers:
             x_f = conv(x_f_embedding, x_f_embedding, torch.tensor(data['face', 'connects', 'face'].edge_index, dtype=torch.long), index_id)
 
-        # # Downward pass (Edge to Face and Vertex to Edge)
-        x_f = self.F2E(x_e, x_f, torch.tensor(data['edge', 'connects', 'face'].edge_index, dtype=torch.long), index_id)
-        x_e = self.F2E(x_v, x_e, torch.tensor(data['vertex', 'connects', 'edge'].edge_index, dtype=torch.long), index_id)
-
+        # Downward pass (Edge to Face and Vertex to Edge)
+        x_f = self.E2F(x_e, x_f, torch.tensor(data['edge', 'connects', 'face'].edge_index, dtype=torch.long), index_id)
+        x_e = self.V2E(x_v, x_e, torch.tensor(data['vertex', 'connects', 'edge'].edge_index, dtype=torch.long), index_id)
 
         return x_f, x_e, x_v
 
@@ -84,26 +83,26 @@ class BipartiteResMRConv(torch.nn.Module):
         super().__init__()
         self.mlp = LinearBlock(2*width, width)
     
-    def forward(self, x_src, x_dst, e, index_id = []):
+    def forward(self, x_src, x_dst, e, index_id):
         
-        index_id = [0] * 100
-
         maxes = torch.zeros_like(x_dst)  
         for edge_tuple in e:
-            src_idx = torch.tensor(index_id[edge_tuple[0]])
-            dst_idx = torch.tensor(index_id[edge_tuple[1]])
-            diffs = torch.index_select(x_dst, 0, dst_idx) - torch.index_select(x_src, 0, src_idx)
+
+            src_idx = index_id[edge_tuple[0]].clone().detach()
+            dst_idx = index_id[edge_tuple[1]].clone().detach()
+
+            diffs = torch.index_select(x_dst, 1, dst_idx) - torch.index_select(x_src, 1, src_idx)
 
             max_val, _ = torch_scatter.scatter_max(
                 diffs, 
                 dst_idx, 
-                dim=0, 
-                dim_size=x_dst.shape[0]
+                dim=1, 
+                dim_size=x_dst.shape[1]
             )
-
+            
             maxes += max_val
 
-        return x_dst + self.mlp(torch.cat([x_dst, maxes], dim=1))
+        return x_dst + self.mlp(torch.cat([x_dst, maxes], dim=2))
 
 
 class LinearBlock(torch.nn.Module):
