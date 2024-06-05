@@ -18,7 +18,7 @@ graph_embedding_model.to(device)
 program_embedding_model.to(device)
 
 # Create a DataLoader
-data_loader = DataLoader(dataset, batch_size=2, shuffle=True)
+data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
 for batch in tqdm(data_loader):
     graph_embedding_model.train()
     node_features, operations_matrix, intersection_matrix, program, face_embeddings, edge_embeddings, vertex_embeddings = batch
@@ -35,8 +35,12 @@ for batch in tqdm(data_loader):
     gnn_graph = Preprocessing.gnn_graph.SketchHeteroData(node_features, operations_matrix, intersection_matrix)
     gnn_graph.to_device(device)
     graph_embedding = graph_embedding_model(gnn_graph.x_dict, gnn_graph.edge_index_dict)
+    print("graph_embedding", graph_embedding.shape)
 
-    #program embedding
-    # print("program", program.shape)
-    # program_encoding = program_embedding_model(program)
+    # program embedding
+    program_encoding = program_embedding_model(program)
+    print("program_encoding", program_encoding.shape)
 
+    # brep embedding
+    brep_embeddings = torch.cat((face_embeddings, edge_embeddings, vertex_embeddings), dim=1)
+    print("brep_embeddings shape:", brep_embeddings.shape)

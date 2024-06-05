@@ -79,4 +79,3 @@ def Create_DataLoader_example():
     data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
     for batch in tqdm(data_loader):
         node_features, operations_matrix, intersection_matrix, program, face_embeddings, edge_embeddings, vertex_embeddings = batch
-        
