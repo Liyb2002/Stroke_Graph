@@ -88,8 +88,8 @@ class BipartiteResMRConv(torch.nn.Module):
         maxes = torch.zeros_like(x_dst)  
         for edge_tuple in e:
 
-            src_idx = index_id[edge_tuple[0]].clone().detach()
-            dst_idx = index_id[edge_tuple[1]].clone().detach()
+            src_idx = index_id[0][edge_tuple[0]].clone().detach()
+            dst_idx = index_id[0][edge_tuple[1]].clone().detach()
 
             diffs = torch.index_select(x_dst, 1, dst_idx) - torch.index_select(x_src, 1, src_idx)
 

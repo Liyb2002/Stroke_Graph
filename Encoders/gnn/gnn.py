@@ -7,7 +7,7 @@ from torch_geometric.data import HeteroData
 import Encoders.gnn.basic
 
 class SemanticModule(nn.Module):
-    def __init__(self, in_channels=6, hidden_channels=32, mlp_channels=[64, 32], num_classes = 10):
+    def __init__(self, in_channels=6, hidden_channels=32, mlp_channels=32, num_classes = 10):
         super(SemanticModule, self).__init__()
         self.local_head = Encoders.gnn.basic.GeneralHeteroConv(['temp_previous_add', 'intersects_mean'], in_channels, hidden_channels)
 
@@ -16,7 +16,7 @@ class SemanticModule(nn.Module):
             Encoders.gnn.basic.ResidualGeneralHeteroConvBlock(['temp_previous_add', 'intersects_mean'], hidden_channels, hidden_channels),
             Encoders.gnn.basic.ResidualGeneralHeteroConvBlock(['temp_previous_add', 'intersects_mean'], hidden_channels, hidden_channels),
             Encoders.gnn.basic.ResidualGeneralHeteroConvBlock(['temp_previous_add', 'intersects_mean'], hidden_channels, hidden_channels),
-            Encoders.gnn.basic.ResidualGeneralHeteroConvBlock(['temp_previous_add', 'intersects_mean'], hidden_channels, mlp_channels[0])
+            Encoders.gnn.basic.ResidualGeneralHeteroConvBlock(['temp_previous_add', 'intersects_mean'], hidden_channels, mlp_channels)
         ])
 
     def forward(self, x_dict, edge_index_dict):

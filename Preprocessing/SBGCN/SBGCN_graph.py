@@ -20,11 +20,11 @@ class GraphHeteroData(HeteroData):
         self['edge'].num_nodes = len(edge_features)
         self['vertex'].num_nodes = len(vertex_features)
 
-        self['face', 'connects', 'edge'].edge_index = edge_index_face_edge
-        self['edge', 'connects', 'vertex'].edge_index = edge_index_edge_vertex
-        self['edge', 'connects', 'face'].edge_index = self.reverse_edge(edge_index_face_edge)
-        self['vertex', 'connects', 'edge'].edge_index = self.reverse_edge(edge_index_edge_vertex)
-        self['face', 'connects', 'face'].edge_index = edge_index_face_face_list
+        self['face', 'connects', 'edge'].edge_index = torch.tensor(edge_index_face_edge, dtype=torch.int64).contiguous()
+        self['edge', 'connects', 'vertex'].edge_index = torch.tensor(edge_index_edge_vertex, dtype=torch.int64).contiguous()
+        self['edge', 'connects', 'face'].edge_index = self.reverse_edge(self['face', 'connects', 'edge'].edge_index)
+        self['vertex', 'connects', 'edge'].edge_index = self.reverse_edge(self['edge', 'connects', 'vertex'].edge_index)
+        self['face', 'connects', 'face'].edge_index = torch.tensor(edge_index_face_face_list, dtype=torch.int64).contiguous()
 
         # self['face'].z = self.build_adjacency_matrix(
         #     edge_index_face_edge, edge_index_edge_vertex, edge_index_face_face_list,
@@ -61,10 +61,8 @@ class GraphHeteroData(HeteroData):
         return torch.tensor(processed_features)
 
     def reverse_edge(self, edge_list):
-        reversed_lst = []
-        for sublist in edge_list:
-            reversed_lst.append([sublist[1], sublist[0]])
-        return reversed_lst
+        reversed_lst = [[sublist[1], sublist[0]] for sublist in edge_list]
+        return torch.tensor(reversed_lst, dtype=torch.int64).contiguous()
 
 
     def build_adjacency_matrix(self, edge_index_face_edge, edge_index_edge_vertex, edge_index_face_face_list, num_nodes):

@@ -16,7 +16,7 @@ import torch
 
 class dataset_generator():
 
-    def __init__(self, number_data = 1):
+    def __init__(self, number_data = 20):
         self.number_data = number_data
         self.SBGCN_encoder = Preprocessing.SBGCN.run_SBGCN.load_pretrained_SBGCN_model()
         self.generate_dataset()
