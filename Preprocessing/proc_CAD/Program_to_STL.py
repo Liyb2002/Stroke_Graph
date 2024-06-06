@@ -59,7 +59,7 @@ class parsed_program():
         # Add the first point again at the end to close the loop
         new_point_list.append(point_list[0])
 
-        self.prev_sketch = Preprocessing.proc_CAD.build123.protocol.build_sketch(self.Op_idx, new_point_list, self.output, self.data_directory)
+        self.prev_sketch = Preprocessing.proc_CAD.build123.protocol.build_sketch(self.Op_idx, self.canvas, new_point_list, self.output, self.data_directory)
         self.Op_idx += 1
 
     def parse_circle(self, Op):

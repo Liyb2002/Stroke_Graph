@@ -4,36 +4,67 @@ import os
 import numpy as np
 
 
-def build_sketch(count, Points_list, output, data_dir):
+def build_sketch(count, canvas, Points_list, output, data_dir):
     brep_dir = os.path.join(data_dir, "canvas", f"brep_{count}.step")
     stl_dir = os.path.join(data_dir, "canvas", f"vis_{count}.stl")
 
-    with BuildSketch():
-        with BuildLine():
-            lines = []
-            for i in range(0, len(Points_list), 2):
-                start_point_sublist = Points_list[i]
-                end_point_sublist = Points_list[i+1]
-                start_point = (start_point_sublist[0],
-                               start_point_sublist[1], 
-                               start_point_sublist[2])
-                
-                
-                end_point = (end_point_sublist[0],
-                            end_point_sublist[1], 
-                            end_point_sublist[2])
+    if count == 0:
+        with BuildSketch():
+            with BuildLine():
+                lines = []
+                for i in range(0, len(Points_list), 2):
+                    start_point_sublist = Points_list[i]
+                    end_point_sublist = Points_list[i+1]
+                    start_point = (start_point_sublist[0],
+                                start_point_sublist[1], 
+                                start_point_sublist[2])
+                    
+                    
+                    end_point = (end_point_sublist[0],
+                                end_point_sublist[1], 
+                                end_point_sublist[2])
 
 
-                line = Line(start_point, end_point)
-                lines.append(line)
+                    line = Line(start_point, end_point)
+                    lines.append(line)
 
-        perimeter = make_face()
+            perimeter = make_face()
 
-    if output:
-        _ = perimeter.export_stl(stl_dir)
-        _ = perimeter.export_step(brep_dir)
+        if output:
+            _ = perimeter.export_stl(stl_dir)
+            _ = perimeter.export_step(brep_dir)
+
+        return perimeter
+    
+    else:
+        with canvas: 
+            with BuildSketch():
+                with BuildLine():
+                    lines = []
+                    for i in range(0, len(Points_list), 2):
+                        start_point_sublist = Points_list[i]
+                        end_point_sublist = Points_list[i+1]
+                        start_point = (start_point_sublist[0],
+                                    start_point_sublist[1], 
+                                    start_point_sublist[2])
+                        
+                        
+                        end_point = (end_point_sublist[0],
+                                    end_point_sublist[1], 
+                                    end_point_sublist[2])
+
+
+                        line = Line(start_point, end_point)
+                        lines.append(line)
+
+                perimeter = make_face()
+
+            if output:
+                _ = canvas.part.export_stl(stl_dir)
+                _ = canvas.part.export_step(brep_dir)
 
     return perimeter
+
 
 def build_circle(count, radius, point, normal, output, data_dir):
     brep_dir = os.path.join(data_dir, "canvas", f"brep_{count}.step")

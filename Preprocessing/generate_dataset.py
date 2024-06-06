@@ -3,6 +3,7 @@ import Preprocessing.proc_CAD.CAD_to_stroke_cloud
 import Preprocessing.proc_CAD.render_images
 import Preprocessing.proc_CAD.Program_to_STL
 import Preprocessing.proc_CAD.helper
+import Preprocessing.proc_CAD.render_images
 
 import Preprocessing.gnn_graph
 import Preprocessing.SBGCN.run_SBGCN
@@ -82,7 +83,6 @@ class dataset_generator():
                 edge_features = Preprocessing.proc_CAD.helper.preprocess_features(edge_features_list)
                 vertex_features = Preprocessing.proc_CAD.helper.preprocess_features(vertex_features_list)
 
-
                 # extract index i
                 index = file_name.split('_')[1].split('.')[0]
                 os.makedirs(os.path.join(data_directory, 'brep_embedding'), exist_ok=True)
@@ -97,9 +97,12 @@ class dataset_generator():
                         'edge_index_edge_vertex_list': edge_index_edge_vertex_list,
                         'edge_index_face_face_list': edge_index_face_face_list,
 
-                        'index_id': index_id
+                        'index_id': torch.tensor(index_id, dtype=torch.int64)
 
                     }, f)
+
+        # 4) Save rendered 2D image
+        Preprocessing.proc_CAD.render_images.run_render_images(data_directory)
 
 
         return True

@@ -28,7 +28,7 @@ SBGCN_model.to(device)
 data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
 for batch in tqdm(data_loader):
     graph_embedding_model.train()
-    node_features, operations_matrix, intersection_matrix, program, face_features_list, edge_features_list, vertex_features_list, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id= batch
+    node_features, operations_matrix, intersection_matrix, program, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id= batch
 
     # to device 
     node_features = node_features.to(torch.float32).to(device)
@@ -46,8 +46,9 @@ for batch in tqdm(data_loader):
     print("program_encoding", program_encoding.shape)
 
     # brep embedding
-    brep_graph = Preprocessing.SBGCN.SBGCN_graph.GraphHeteroData(face_features_list, edge_features_list, vertex_features_list, 
+    brep_graph = Preprocessing.SBGCN.SBGCN_graph.GraphHeteroData(face_features, edge_features, vertex_features, 
                  edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id)
+    brep_graph.to_device(device)
     face_embedding, edge_embedding, vertex_embedding = SBGCN_model(brep_graph)
     brep_embeddings = torch.cat((face_embedding, edge_embedding, vertex_embedding), dim=1)
 

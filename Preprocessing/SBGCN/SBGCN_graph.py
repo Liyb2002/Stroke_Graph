@@ -14,9 +14,6 @@ class GraphHeteroData(HeteroData):
         self['edge'].x = edge_features
         self['vertex'].x = vertex_features
 
-        # self['face'].x = self.preprocess_features(face_features)
-        # self['edge'].x = self.preprocess_features(edge_features)
-        # self['vertex'].x = self.preprocess_features(vertex_features)
         self['face'].y = index_id
 
         self['face'].num_nodes = len(face_features)
@@ -34,9 +31,17 @@ class GraphHeteroData(HeteroData):
         #     index_counter)
 
     def to_device(self, device):
-        for key, value in self.items():
-            if torch.is_tensor(value):
-                self[key] = value.to(device)
+        self['face'].x = self['face'].x.to(device)
+        self['edge'].x = self['edge'].x.to(device)
+        self['vertex'].x = self['vertex'].x.to(device)
+
+        self['face'].y = self['face'].y.to(device)
+
+        self['face', 'connects', 'edge'].edge_index = self['face', 'connects', 'edge'].edge_index.to(device)
+        self['edge', 'connects', 'vertex'].edge_index = self['edge', 'connects', 'vertex'].edge_index.to(device)
+        self['edge', 'connects', 'face'].edge_index = self['edge', 'connects', 'face'].edge_index.to(device)
+        self['vertex', 'connects', 'edge'].edge_index = self['vertex', 'connects', 'edge'].edge_index.to(device)
+        self['face', 'connects', 'face'].edge_index = self['face', 'connects', 'face'].edge_index.to(device)
 
     def count_nodes(self):
         num_faces = len(self['face'].x)
