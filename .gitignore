@@ -5,3 +5,4 @@
 *.json
 *.pkl
 *.pyc
+*.DS_Store

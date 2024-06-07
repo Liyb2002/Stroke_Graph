@@ -58,16 +58,16 @@ class FaceEdgeVertexGCN(torch.nn.Module):
         x_v_embedding = self.embed_v_in(x_v_raw)
 
         # Upward pass (Face to Edge and Edge to Vertex)
-        x_e = self.F2E(x_f_embedding, x_e_embedding, torch.tensor(data['face', 'connects', 'edge'].edge_index, dtype=torch.long), index_id)
-        x_v = self.E2V(x_e_embedding, x_v_embedding, torch.tensor(data['edge', 'connects', 'vertex'].edge_index, dtype=torch.long), index_id)
+        x_e = self.F2E(x_f_embedding, x_e_embedding, data['face', 'connects', 'edge'].edge_index.clone().detach(), index_id)
+        x_v = self.E2V(x_e_embedding, x_v_embedding, data['edge', 'connects', 'vertex'].edge_index.clone().detach(), index_id)
 
         # Meta-Edge Spine
         for conv in self.ffLayers:
-            x_f = conv(x_f_embedding, x_f_embedding, torch.tensor(data['face', 'connects', 'face'].edge_index, dtype=torch.long), index_id)
+            x_f = conv(x_f_embedding, x_f_embedding, data['face', 'connects', 'face'].edge_index.clone().detach(), index_id)
 
         # Downward pass (Edge to Face and Vertex to Edge)
-        x_f = self.E2F(x_e, x_f, torch.tensor(data['edge', 'connects', 'face'].edge_index, dtype=torch.long), index_id)
-        x_e = self.V2E(x_v, x_e, torch.tensor(data['vertex', 'connects', 'edge'].edge_index, dtype=torch.long), index_id)
+        x_f = self.E2F(x_e, x_f, data['edge', 'connects', 'face'].edge_index.clone().detach(), index_id)
+        x_e = self.V2E(x_v, x_e, data['vertex', 'connects', 'edge'].edge_index.clone().detach(), index_id)
 
         return x_f, x_e, x_v
 
