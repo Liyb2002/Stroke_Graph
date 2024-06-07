@@ -90,6 +90,9 @@ class create_stroke_cloud():
     def parse_op(self, Op):
         op = Op['operation'][0]
 
+        if op == 'terminate':
+            return
+
         if len(Op['faces']) > 0 and 'radius' in Op['faces'][0]:
             print("parse circle")
             return

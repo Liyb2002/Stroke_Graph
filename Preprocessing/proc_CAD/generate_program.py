@@ -289,7 +289,8 @@ class Brep:
         for count in range(0, self.idx):
             op = self.op[count][0]
             self.write_Op(self.op[count], count, data)
-                
+
+        self.write_terminate(data)        
         with open(filename, 'w') as f:
             json.dump(data, f, indent=4)
         
@@ -350,3 +351,9 @@ class Brep:
         return data
                 
 
+    def write_terminate(self, data):
+        operation = {
+            'operation': ['terminate']
+        }
+        data.append(operation)
+        return data

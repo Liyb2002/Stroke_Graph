@@ -39,8 +39,13 @@ class parsed_program():
                 
                 if operation[0] == 'fillet':
                     self.parse_fillet(Op)
+                
+                if operation[0] == 'terminate':
+                    self.Op_idx += 1
+                    break
 
         return
+            
 
     def parse_sketch(self, Op):
         if 'radius' in Op['faces'][0]:
@@ -105,7 +110,7 @@ class parsed_program():
             self.Op_idx += 1
             
     def is_valid_parse(self):
-        return self.Op_idx == self.len_program
+        return self.Op_idx == self.len_program 
 
 
 # Example usage:

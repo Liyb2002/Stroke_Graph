@@ -49,6 +49,7 @@ class Program_Graph_Dataset(Dataset):
 
 
         # 2) Load Program
+        # index = 0 -> brep: empty file; program[0]
         program_file_path = os.path.join(data_path, 'Program.json')
         program = Preprocessing.proc_CAD.helper.program_to_string(program_file_path)
         program = program[:int(index)+1]
