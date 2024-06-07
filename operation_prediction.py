@@ -54,8 +54,18 @@ for batch in tqdm(data_loader):
     print("graph_embedding", graph_embedding.shape)
 
     # program embedding
-    program_encoding = program_embedding_model(program)
+
+    #is empty program
+    gt_next_token = program[0][-1]
+    current_program= program[0][:-1]
+    if len(current_program) == 0:
+        print("--------------------")
+        continue  
+
+    program_encoding = program_embedding_model(current_program)
+    program_encoding = program_encoding.unsqueeze(0)
     print("program_encoding", program_encoding.shape)
+    
 
     # brep embedding
     brep_graph = Preprocessing.SBGCN.SBGCN_graph.GraphHeteroData(face_features, edge_features, vertex_features, 
@@ -68,4 +78,5 @@ for batch in tqdm(data_loader):
     output = cross_attention_model(graph_embedding, program_encoding, brep_embeddings)
     print("Model output:", output)
 
+    print("gt_next_token", gt_next_token)
     print("--------------------")

@@ -11,5 +11,4 @@ class ProgramEncoder(nn.Module):
     def forward(self, x):
         embedded = self.embedding(x)
         lstm_out, _ = self.lstm(embedded)
-        encoded = lstm_out[:, -1, :]
-        return encoded
+        return lstm_out

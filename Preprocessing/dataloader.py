@@ -26,6 +26,7 @@ class Program_Graph_Dataset(Dataset):
                 brep_files = sorted([f for f in os.listdir(canvas_dir_path) if f.startswith('brep_') and f.endswith('.step')])
                 for brep_file_path in brep_files:
                     index_mapping.append((data_dir, brep_file_path))
+                index_mapping.append((data_dir, '-1'))
         return index_mapping
 
     def __len__(self):
@@ -35,7 +36,11 @@ class Program_Graph_Dataset(Dataset):
     def __getitem__(self, idx):
         data_dir, brep_file_path = self.index_mapping[idx]
         data_path = os.path.join(self.data_path, data_dir)
-        index = brep_file_path.split('_')[1].split('.')[0]
+
+        if brep_file_path == '-1':
+            index = brep_file_path
+        else:
+            index = brep_file_path.split('_')[1].split('.')[0]
 
         # 1) Load graph
         graph_path = os.path.join(data_path, 'stroke_cloud_graph.pkl')
@@ -49,25 +54,41 @@ class Program_Graph_Dataset(Dataset):
 
 
         # 2) Load Program
-        # index = 0 -> brep: empty file; program[0]
+        # Program Len = brep Len + 1
+        # index = -1 -> brep: empty file; program[0]
+        # index = 0 -> brep: brep_0.step; program[0, 1]
+        # index = 1 -> brep: brep_1.step; program[0, 1, 2]
+        # final case: index = 5 -> brep : brep_{5}.step; program[0,1,2,3,4,5,6]
+
+        # program[0] makes brep_0.step, given brep_0.step, we want to predict program[1]
         program_file_path = os.path.join(data_path, 'Program.json')
         program = Preprocessing.proc_CAD.helper.program_to_string(program_file_path)
-        program = program[:int(index)+1]
+        program = program[:int(index)+2]
         program = Preprocessing.proc_CAD.helper.program_to_tensor(program)
 
 
         # 3) Load Brep embedding
-        embedding_path = os.path.join(self.data_path, data_dir, 'brep_embedding', f'brep_info_{index}.pkl')
-        with open(embedding_path, 'rb') as f:
-            embedding_data = pickle.load(f)
-        
-        face_features = embedding_data['face_features']
-        edge_features = embedding_data['edge_features']
-        vertex_features = embedding_data['vertex_features']
-        edge_index_face_edge_list = embedding_data['edge_index_face_edge_list']
-        edge_index_edge_vertex_list = embedding_data['edge_index_edge_vertex_list']
-        edge_index_face_face_list = embedding_data['edge_index_face_face_list']
-        index_id = embedding_data['index_id']
+        if int(index) == -1:
+            face_features = torch.empty(0, dtype=torch.float32)
+            edge_features = torch.empty(0, dtype=torch.float32)
+            vertex_features = torch.empty(0, dtype=torch.float32)
+            edge_index_face_edge_list = torch.empty((2, 0), dtype=torch.long)
+            edge_index_edge_vertex_list = torch.empty((2, 0), dtype=torch.long)
+            edge_index_face_face_list = torch.empty((2, 0), dtype=torch.long)
+            index_id = torch.empty(0, dtype=torch.long)
+
+        else:
+            embedding_path = os.path.join(self.data_path, data_dir, 'brep_embedding', f'brep_info_{index}.pkl')
+            with open(embedding_path, 'rb') as f:
+                embedding_data = pickle.load(f)
+            
+            face_features = embedding_data['face_features']
+            edge_features = embedding_data['edge_features']
+            vertex_features = embedding_data['vertex_features']
+            edge_index_face_edge_list = embedding_data['edge_index_face_edge_list']
+            edge_index_edge_vertex_list = embedding_data['edge_index_edge_vertex_list']
+            edge_index_face_face_list = embedding_data['edge_index_face_face_list']
+            index_id = embedding_data['index_id']
 
         return node_features, operations_matrix, intersection_matrix, program, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id
 
