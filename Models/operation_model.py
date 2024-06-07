@@ -22,20 +22,22 @@ class CrossAttentionTransformer(nn.Module):
         program_encoding = program_encoding.transpose(0, 1)
         brep_embedding = brep_embedding.transpose(0, 1)
         
-        attn_output1, _ = self.cross_attn1(graph_embedding, brep_embedding, brep_embedding)
+        attn_output1, _ = self.cross_attn1(brep_embedding, graph_embedding, graph_embedding)        
         attn_output1 = self.dropout(attn_output1)
-        out1 = self.norm1(graph_embedding + attn_output1)
+        out1 = self.norm1(brep_embedding + attn_output1)
         
-        attn_output2, _ = self.cross_attn2(out1, program_encoding, program_encoding)
+        attn_output2, _ = self.cross_attn2(program_encoding, out1, out1)
         attn_output2 = self.dropout(attn_output2)
-        out2 = self.norm2(out1 + attn_output2)
+        out2 = self.norm2(program_encoding + attn_output2)
         
-        ff_output = self.ff(out2)
-        ff_output = self.dropout(ff_output)
-        out3 = self.norm3(out2 + ff_output)
-        
-        out3_mean = out3.mean(dim=0)
+        ff_output = self.ff(out2)        
+        out3_mean = ff_output.mean(dim=0)
         
         logits = self.classifier(out3_mean)
         
         return logits
+
+    def predict_label(self, graph_embedding, program_encoding, brep_embedding):
+        logits = self.forward(graph_embedding, program_encoding, brep_embedding)
+        predicted_label = torch.argmax(logits)
+        return predicted_label

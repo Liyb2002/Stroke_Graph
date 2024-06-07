@@ -20,11 +20,6 @@ def train_graph_embedding(dataset, num_epochs=1, batch_size=1, learning_rate=0.0
     model = Preprocessing.SBGCN.SBGCN_network.FaceEdgeVertexGCN()
     decoder_model = Preprocessing.SBGCN.decoder.SBGCN_Decoder()
 
-    checkpoint_path = os.path.join(Preprocessing.SBGCN.io_utils.home_dir, "model_checkpoints", "sbgcn_model" , "sbgcn_model" + ".ckpt")
-    loaded_model = Preprocessing.SBGCN.io_utils.load_model(model, checkpoint_path)
-    if loaded_model is not None:
-        return loaded_model
-
     optimizer = optim.Adam(list(model.parameters()) + list(decoder_model.parameters()), lr=learning_rate)
 
     # Create DataLoader for batching
