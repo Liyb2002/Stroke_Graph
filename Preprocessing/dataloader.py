@@ -9,8 +9,8 @@ import Preprocessing.proc_CAD.helper
 import Preprocessing.SBGCN.run_SBGCN
 
 class Program_Graph_Dataset(Dataset):
-    def __init__(self):
-        self.data_path = os.path.join(os.getcwd(), 'dataset')
+    def __init__(self, dataset = 'dataset'):
+        self.data_path = os.path.join(os.getcwd(), dataset)
         self.data_dirs = [d for d in os.listdir(self.data_path) if os.path.isdir(os.path.join(self.data_path, d))]
         self.index_mapping = self._create_index_mapping()
 

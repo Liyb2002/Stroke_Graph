@@ -2,9 +2,12 @@ import Preprocessing.dataloader
 import Preprocessing.gnn_graph
 import Preprocessing.SBGCN.SBGCN_graph
 import Preprocessing.SBGCN.SBGCN_network
+
 import Encoders.gnn.gnn
 import Encoders.program_encoder.program_encoder
+
 import Models.operation_model
+
 from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
 from config import device
@@ -12,6 +15,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import os
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
 
 # Define the neural networks
 graph_embedding_model = Encoders.gnn.gnn.SemanticModule()
@@ -197,7 +201,7 @@ def train():
 
 
 
-def predict():
+def eval():
     # Load models
     load_models()
     
@@ -208,10 +212,11 @@ def predict():
     cross_attention_model.eval()
 
     # Create a DataLoader
-    dataset = Preprocessing.dataloader.Program_Graph_Dataset()
+    dataset = Preprocessing.dataloader.Program_Graph_Dataset('eval_dataset')
     data_loader = DataLoader(dataset, batch_size=1, shuffle=False)
 
     predictions = []
+    ground_truths = []
 
     with torch.no_grad():
         for batch in tqdm(data_loader, desc="Predicting"):
@@ -250,13 +255,28 @@ def predict():
 
             # Make prediction
             prediction = cross_attention_model.predict_label(graph_embedding, program_encoding, brep_embedding)
-            predictions.append((prediction.item(), gt_next_token.item()))
+            predictions.append(prediction.item())
+            ground_truths.append(gt_next_token.item())
 
             print(f"Prediction: {prediction.item()}, Ground Truth: {gt_next_token.item()}")
 
-    return predictions
+    # Calculate evaluation metrics
+    accuracy = accuracy_score(ground_truths, predictions)
+    precision = precision_score(ground_truths, predictions, average='weighted')
+    recall = recall_score(ground_truths, predictions, average='weighted')
+    f1 = f1_score(ground_truths, predictions, average='weighted')
+    conf_matrix = confusion_matrix(ground_truths, predictions)
+
+    print(f"Accuracy: {accuracy:.4f}")
+    print(f"Precision: {precision:.4f}")
+    print(f"Recall: {recall:.4f}")
+    print(f"F1-Score: {f1:.4f}")
+    print("Confusion Matrix:")
+    print(conf_matrix)
+
+    return
 
 
 #---------------------------------- Public Functions ----------------------------------#
 
-predict()
+eval()
