@@ -16,28 +16,30 @@ import torch
 
 class dataset_generator():
 
-    def __init__(self, number_data = 1000):
-        self.number_data = number_data
+    def __init__(self):
         self.SBGCN_encoder = Preprocessing.SBGCN.run_SBGCN.load_pretrained_SBGCN_model()
-        self.generate_dataset()
- 
-
-    def generate_dataset(self):
-        successful_generations = 0
-        # Create directory /dataset/ if it doesn't exist
         if os.path.exists('dataset'):
             shutil.rmtree('dataset')
         os.makedirs('dataset', exist_ok=True)
-        
-        while successful_generations < self.number_data:
-            if self.generate_single_data(successful_generations):
+
+        self.generate_dataset('dataset/train_dataset', number_data = 10, start = 0)
+        self.generate_dataset('dataset/eval_dataset', number_data = 5, start = 0)
+ 
+
+    def generate_dataset(self, dir, number_data, start):
+        successful_generations = start
+
+        while successful_generations < number_data:
+            if self.generate_single_data(successful_generations, dir):
                 successful_generations += 1
             else:
                 print("Retrying...")
 
-    def generate_single_data(self, successful_generations):
-        # Create directory /dataset/data_{successful_generations}
-        data_directory = f'dataset/data_{successful_generations}'
+    def generate_single_data(self, successful_generations, dir):
+        data_directory = os.path.join(dir, f'data_{successful_generations}')
+        if os.path.exists(data_directory):
+            shutil.rmtree(data_directory)
+
         os.makedirs(data_directory, exist_ok=True)
         
         # Generate a new program & save the brep

@@ -73,7 +73,7 @@ def train():
     epochs = 5
 
     # Create a DataLoader
-    dataset = Preprocessing.dataloader.Program_Graph_Dataset()
+    dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/train_dataset')
 
     # Split dataset into training and validation
     train_size = int(0.8 * len(dataset))
@@ -214,7 +214,7 @@ def eval():
     cross_attention_model.eval()
 
     # Create a DataLoader
-    dataset = Preprocessing.dataloader.Program_Graph_Dataset('eval_dataset')
+    dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/train_dataset')
     data_loader = DataLoader(dataset, batch_size=1, shuffle=False)
 
     predictions = []
@@ -282,4 +282,5 @@ def eval():
 
 #---------------------------------- Public Functions ----------------------------------#
 
-eval()
+train()
+# eval()
