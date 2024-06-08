@@ -47,10 +47,11 @@ class Program_Graph_Dataset(Dataset):
         with open(graph_path, 'rb') as f:
             graph_data = pickle.load(f)
         
-        # Three matrices to build the graph
+        # Four matrices to build the graph
         node_features = graph_data['node_features']
         operations_matrix = graph_data['operations_matrix']
         intersection_matrix = graph_data['intersection_matrix']
+        operations_order_matrix = graph_data['operations_order_matrix']
 
 
         # 2) Load Program
@@ -90,7 +91,7 @@ class Program_Graph_Dataset(Dataset):
             edge_index_face_face_list = embedding_data['edge_index_face_face_list']
             index_id = embedding_data['index_id']
 
-        return node_features, operations_matrix, intersection_matrix, program, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id
+        return node_features, operations_matrix, intersection_matrix, operations_order_matrix, program, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id
 
     
 

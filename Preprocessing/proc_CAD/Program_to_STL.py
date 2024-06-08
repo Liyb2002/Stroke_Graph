@@ -34,7 +34,7 @@ class parsed_program():
                 if operation[0] == 'sketch':
                     self.parse_sketch(Op)
                 
-                if operation[0] == 'extrude_addition' or operation[0] == 'extrude_subtraction':
+                if operation[0] == 'extrude':
                     self.parse_extrude(Op, data[i-1])
                 
                 if operation[0] == 'fillet':
@@ -77,11 +77,11 @@ class parsed_program():
         
     def parse_extrude(self, Op, sketch_Op):
 
-        isSubtract = (Op['operation'][0] == 'extrude_subtraction')
         sketch_point_list = [vert['coordinates'] for vert in sketch_Op['vertices']]
         sketch_face_normal = sketch_Op['faces'][0]['normal']
         extrude_amount = Op['operation'][2]
-
+        isSubtract = (extrude_amount < 0)
+        
         expected_point = Preprocessing.proc_CAD.helper.expected_extrude_point(sketch_point_list[0], sketch_face_normal, extrude_amount)
         
         if not isSubtract: 

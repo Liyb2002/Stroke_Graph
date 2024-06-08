@@ -46,13 +46,13 @@ def generate_random_rectangle(perpendicular_axis):
     return points, normal_vector
 
 
-def generate_random_extrude_add():
-    random_float = np.random.uniform(0.9, 2)
+def generate_random_extrude():
+    if np.random.choice([True, False]):
+        random_float = np.random.uniform(0.9, 2)
+    else:
+        random_float = np.random.uniform(-2, -0.9)
     return random_float
 
-def generate_random_extrude_subtract():
-    random_float = np.random.uniform(-0.9, -2)
-    return random_float
 
 def generate_random_fillet():
     random_float = np.random.uniform(0.2, 0.5)

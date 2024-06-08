@@ -20,8 +20,8 @@ class create_stroke_cloud():
     def read_json_file(self):
         with open(self.file_path, 'r') as file:
             data = json.load(file)
-            for Op in data:
-                self.parse_op(Op)
+            for index, op in enumerate(data):
+                self.parse_op(op, index)
             
         
         self.adj_edges()
@@ -87,7 +87,7 @@ class create_stroke_cloud():
         plt.close(fig)
 
         
-    def parse_op(self, Op):
+    def parse_op(self, Op, index):
         op = Op['operation'][0]
 
         if op == 'terminate':
@@ -110,14 +110,14 @@ class create_stroke_cloud():
                 cur_op_vertex_ids.append(v_id)
 
             edge = Edge(id=edge_data['id'], vertices=vertices)
-            edge.set_Op(op)
+            edge.set_Op(op, index)
             edge.set_order_count(self.order_count)
             self.order_count += 1
             self.edges[edge.id] = edge
         
         #find the edges that has the current operation 
         #but not created by the current operation
-        self.find_unwritten_edges(cur_op_vertex_ids, op)
+        self.find_unwritten_edges(cur_op_vertex_ids, op, index)
 
         for face_data in Op['faces']:
             vertices = [self.vertices[v_id] for v_id in face_data['vertices']]
@@ -126,10 +126,10 @@ class create_stroke_cloud():
             self.faces[face.id] = face  
 
         if op == 'fillet':
-            self.parse_fillet(Op)
+            self.parse_fillet(Op, index)
 
 
-    def parse_fillet(self, Op):
+    def parse_fillet(self, Op, index):
         verts_ids = Op['operation'][5]['verts_id']
 
         old_pos = Op['operation'][3]['old_verts_pos']
@@ -149,7 +149,7 @@ class create_stroke_cloud():
                     elif vertex.position == old_pos[1]:
                         vertex.position = new_pos[1]
 
-                edge.set_Op('fillet')
+                edge.set_Op('fillet', index)
 
             # We also need to update the edge - vertex in need_to_change_edge
             #write here
@@ -190,12 +190,12 @@ class create_stroke_cloud():
             # print(f"Edge {edge_id} is connected to edges: {list(connected_edge_ids)}")
 
 
-    def find_unwritten_edges(self, cur_op_vertex_ids, op):
+    def find_unwritten_edges(self, cur_op_vertex_ids, op, index):
         vertex_id_set = set(cur_op_vertex_ids)
 
         for edge_id, edge in self.edges.items():
             if all(vertex.id in vertex_id_set for vertex in edge.vertices):
-                edge.set_Op(op)
+                edge.set_Op(op, index)
 
     
     def map_id_to_count(self):

@@ -339,7 +339,7 @@ def program_to_string(file_path):
     return Op_string
 
 def program_to_tensor(program):
-    operation_to_index = {'terminate': 0, 'sketch': 1, 'extrude_addition': 2, 'extrude_subtraction': 3, 'fillet': 4}
+    operation_to_index = {'terminate': 0, 'sketch': 1, 'extrude': 2, 'fillet': 3}
     Op_indices = []
 
     for Op in program:

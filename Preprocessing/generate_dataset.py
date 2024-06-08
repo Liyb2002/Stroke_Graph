@@ -16,7 +16,7 @@ import torch
 
 class dataset_generator():
 
-    def __init__(self, number_data = 20):
+    def __init__(self, number_data = 1000):
         self.number_data = number_data
         self.SBGCN_encoder = Preprocessing.SBGCN.run_SBGCN.load_pretrained_SBGCN_model()
         self.generate_dataset()
@@ -44,7 +44,7 @@ class dataset_generator():
         try:
             # Pass in the directory to the simple_gen function
             Preprocessing.proc_CAD.proc_gen.random_program(data_directory)
-            # proc_CAD.proc_gen.simple_gen(data_directory)
+            # Preprocessing.proc_CAD.proc_gen.simple_gen(data_directory)
 
             # Create brep for the new program and pass in the directory
             valid_parse = Preprocessing.proc_CAD.Program_to_STL.run(data_directory)
@@ -60,14 +60,15 @@ class dataset_generator():
         
         # 1) Save matrices for stroke_cloud_graph
         stroke_cloud= Preprocessing.proc_CAD.CAD_to_stroke_cloud.run(data_directory)
-        node_features, operations_matrix, intersection_matrix = Preprocessing.gnn_graph.build_graph(stroke_cloud)
+        node_features, operations_matrix, intersection_matrix, operations_order_matrix= Preprocessing.gnn_graph.build_graph(stroke_cloud)
         stroke_cloud_save_path = os.path.join(data_directory, 'stroke_cloud_graph.pkl')
 
         with open(stroke_cloud_save_path, 'wb') as f:
             pickle.dump({
                 'node_features': node_features,
                 'operations_matrix': operations_matrix,
-                'intersection_matrix': intersection_matrix
+                'intersection_matrix': intersection_matrix,
+                'operations_order_matrix': operations_order_matrix
             }, f)
 
 

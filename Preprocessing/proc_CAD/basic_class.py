@@ -27,20 +27,23 @@ class Edge:
         self.round = False
 
         self.Op = []
+        self.Op_orders = []
         self.order_count = 0
         self.connected_edges = []
     
     def fillet_edge(self):
         self.round = True
     
-    def set_Op(self, Op):
+    def set_Op(self, Op, order_count):
         self.Op.append(Op)
+        self.Op_orders.append(order_count)
     
     def set_order_count(self, order_count):
         self.order_count = order_count
 
     def connected_edges(self, edge_id):
         self.connected_edges.append(edge_id)
+
 
 class Vertex:
     def __init__(self, id, position):

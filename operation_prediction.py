@@ -95,15 +95,16 @@ def train():
         total_train_loss = 0.0
         
         for batch in tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs} - Training"):
-            node_features, operations_matrix, intersection_matrix, program, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
+            node_features, operations_matrix, intersection_matrix, operations_order_matrix, program, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
 
             # to device 
             node_features = node_features.to(torch.float32).to(device)
             operations_matrix = operations_matrix.to(torch.float32).to(device)
             intersection_matrix = intersection_matrix.to(torch.float32).to(device)
+            operations_order_matrix = operations_order_matrix.to(torch.float32).to(device)
 
             # graph embedding
-            gnn_graph = Preprocessing.gnn_graph.SketchHeteroData(node_features, operations_matrix, intersection_matrix)
+            gnn_graph = Preprocessing.gnn_graph.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
             gnn_graph.to_device(device)
             graph_embedding = graph_embedding_model(gnn_graph.x_dict, gnn_graph.edge_index_dict)
 
@@ -152,15 +153,16 @@ def train():
         
         with torch.no_grad():
             for batch in tqdm(val_loader, desc=f"Epoch {epoch+1}/{epochs} - Validation"):
-                node_features, operations_matrix, intersection_matrix, program, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
+                node_features, operations_matrix, intersection_matrix, operations_order_matrix, program, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
 
                 # to device 
                 node_features = node_features.to(torch.float32).to(device)
                 operations_matrix = operations_matrix.to(torch.float32).to(device)
                 intersection_matrix = intersection_matrix.to(torch.float32).to(device)
+                operations_order_matrix = operations_order_matrix.to(torch.float32).to(device)
 
                 # graph embedding
-                gnn_graph = Preprocessing.gnn_graph.SketchHeteroData(node_features, operations_matrix, intersection_matrix)
+                gnn_graph = Preprocessing.gnn_graph.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
                 gnn_graph.to_device(device)
                 graph_embedding = graph_embedding_model(gnn_graph.x_dict, gnn_graph.edge_index_dict)
 
@@ -220,15 +222,16 @@ def eval():
 
     with torch.no_grad():
         for batch in tqdm(data_loader, desc="Predicting"):
-            node_features, operations_matrix, intersection_matrix, program, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
+            node_features, operations_matrix, intersection_matrix, operations_order_matrix, program, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
 
             # to device 
             node_features = node_features.to(torch.float32).to(device)
             operations_matrix = operations_matrix.to(torch.float32).to(device)
             intersection_matrix = intersection_matrix.to(torch.float32).to(device)
+            operations_order_matrix = operations_order_matrix.to(torch.float32).to(device)
 
             # graph embedding
-            gnn_graph = Preprocessing.gnn_graph.SketchHeteroData(node_features, operations_matrix, intersection_matrix)
+            gnn_graph = Preprocessing.gnn_graph.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
             gnn_graph.to_device(device)
             graph_embedding = graph_embedding_model(gnn_graph.x_dict, gnn_graph.edge_index_dict)
 

@@ -12,20 +12,20 @@ from matplotlib import pyplot as plt
 from networkx.algorithms import community
 import seaborn as sns
 
-operations_dict = {
-                        "sketch": 0,
-                        "extrude_addition": 1,
-                        "extrude_substraction": 2, 
+operations_dict = {     "terminate": 0,
+                        "sketch": 1,
+                        "extrude": 2,
                         "fillet": 3
                     } 
 
 class SketchHeteroData(HeteroData):
-    def __init__(self, node_features, operations_matrix, intersection_matrix):
+    def __init__(self, node_features, operations_matrix, intersection_matrix, operations_order_matrix):
         super(SketchHeteroData, self).__init__()
 
         # Node features and labels
         self['stroke'].x = node_features
         self['stroke'].y = operations_matrix
+        self['stroke'].z = operations_order_matrix
         
         # Order of nodes (sequential order of reading)
         num_strokes = node_features.shape[0]
@@ -47,6 +47,8 @@ class SketchHeteroData(HeteroData):
     def to_device(self, device):
         self['stroke'].x = self['stroke'].x.to(device)
         self['stroke'].y = self['stroke'].y.to(device)
+        self['stroke'].z = self['stroke'].z.to(device)
+
         self['stroke'].order = self['stroke'].order.to(device)
         self['stroke', 'intersects', 'stroke'].edge_index = self['stroke', 'intersects', 'stroke'].edge_index.to(device)
         self['stroke', 'temp_previous', 'stroke'].edge_index = self['stroke', 'temp_previous', 'stroke'].edge_index.to(device)
@@ -72,6 +74,13 @@ class SketchHeteroData(HeteroData):
 def build_graph(stroke_dict):
     num_strokes = len(stroke_dict)
     num_operations = len(operations_dict)
+    num_operation_counts = 0
+
+    # find the total number of operations
+    for i, (_, stroke) in enumerate(stroke_dict.items()):
+        for index in stroke.Op_orders:
+            if index > num_operation_counts:
+                num_operation_counts = index
 
     # a map that maps stroke_id (e.g 'edge_0_0' to 0)
     stroke_id_to_index = {}
@@ -81,6 +90,7 @@ def build_graph(stroke_dict):
     node_features = np.zeros((num_strokes, 6))
     operations_matrix = np.zeros((num_strokes, num_operations))
     intersection_matrix = np.zeros((num_strokes, num_strokes))
+    operations_order_matrix = np.zeros((num_strokes, num_operation_counts+1))
 
 
     for i, (_, stroke) in enumerate(stroke_dict.items()):
@@ -93,7 +103,7 @@ def build_graph(stroke_dict):
         node_features[i, 3:] = end_point
 
         # build operations_matrix
-        # operations_matrix has shape num_strokes x num_ops
+        # operations_matrix has shape num_strokes x num_type_ops
         for op in stroke.Op:
             if op in operations_dict:
                 op_index = operations_dict[op]
@@ -109,8 +119,14 @@ def build_graph(stroke_dict):
                 intersection_matrix[i, j] = 1
                 intersection_matrix[j, i] = 1
 
+        # build operation_order_matrix
+        # operation_order_matrix has shape num_strokes x num_ops
+        for stroke_op_count in stroke.Op_orders:
+            operations_order_matrix[i, stroke_op_count] = 1
+
+
     # graph = SketchHeteroData(node_features, operations_matrix, intersection_matrix)
     # graph.output_info()
 
-    return node_features, operations_matrix, intersection_matrix
+    return node_features, operations_matrix, intersection_matrix, operations_order_matrix
 
