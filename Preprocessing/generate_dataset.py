@@ -18,12 +18,12 @@ class dataset_generator():
 
     def __init__(self):
         self.SBGCN_encoder = Preprocessing.SBGCN.run_SBGCN.load_pretrained_SBGCN_model()
-        if os.path.exists('dataset'):
-            shutil.rmtree('dataset')
-        os.makedirs('dataset', exist_ok=True)
+        # if os.path.exists('dataset'):
+        #     shutil.rmtree('dataset')
+        # os.makedirs('dataset', exist_ok=True)
 
-        self.generate_dataset('dataset/train_dataset', number_data = 10, start = 0)
-        self.generate_dataset('dataset/eval_dataset', number_data = 5, start = 0)
+        self.generate_dataset('dataset/train_dataset', number_data = 2000, start = 2000)
+        self.generate_dataset('dataset/eval_dataset', number_data = 200, start = 200)
  
 
     def generate_dataset(self, dir, number_data, start):

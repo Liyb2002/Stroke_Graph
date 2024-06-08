@@ -15,7 +15,9 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import os
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
+import pandas as pd
+
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, classification_report
 
 # Define the neural networks
 graph_embedding_model = Encoders.gnn.gnn.SemanticModule()
@@ -70,7 +72,7 @@ def train():
         lr=0.001
     )
 
-    epochs = 5
+    epochs = 20
 
     # Create a DataLoader
     dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/train_dataset')
@@ -214,14 +216,18 @@ def eval():
     cross_attention_model.eval()
 
     # Create a DataLoader
-    dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/train_dataset')
-    data_loader = DataLoader(dataset, batch_size=1, shuffle=False)
+    dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/eval_dataset')
+    train_dataset, val_dataset = random_split(dataset, [1392, len(dataset) - 1392])
+
+    data_loader = DataLoader(train_dataset, batch_size=1, shuffle=True)
+
+    # data_loader = DataLoader(dataset, batch_size=1, shuffle=False)
 
     predictions = []
     ground_truths = []
 
     with torch.no_grad():
-        for batch in tqdm(data_loader, desc="Predicting"):
+        for batch in tqdm(data_loader, desc="Evaluating"):
             node_features, operations_matrix, intersection_matrix, operations_order_matrix, program, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
 
             # to device 
@@ -261,7 +267,7 @@ def eval():
             predictions.append(prediction.item())
             ground_truths.append(gt_next_token.item())
 
-            print(f"Prediction: {prediction.item()}, Ground Truth: {gt_next_token.item()}")
+            # print(f"Prediction: {prediction.item()}, Ground Truth: {gt_next_token.item()}")
 
     # Calculate evaluation metrics
     accuracy = accuracy_score(ground_truths, predictions)
@@ -277,10 +283,20 @@ def eval():
     print("Confusion Matrix:")
     print(conf_matrix)
 
-    return
+    # Calculate metrics for each class
+    report = classification_report(ground_truths, predictions, output_dict=True)
+    metrics_df = pd.DataFrame(report).transpose()
 
+    # Save metrics to CSV
+    pwd = os.getcwd()
+    metrics_csv_path = os.path.join(pwd, 'dataset', 'classification_report.csv')
+    metrics_df.to_csv(metrics_csv_path, index=True)
+
+    print(f"Classification report saved to {metrics_csv_path}")
+
+    return
 
 #---------------------------------- Public Functions ----------------------------------#
 
-train()
-# eval()
+# train()
+eval()
