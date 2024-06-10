@@ -49,12 +49,21 @@ def load_models():
 def save_models():
     torch.save(graph_embedding_model.state_dict(), os.path.join(save_dir, 'graph_embedding_model.pth'))
     torch.save(SBGCN_model.state_dict(), os.path.join(save_dir, 'SBGCN_model.pth'))
+    torch.save(sketch_attention_model.state_dict(), os.path.join(save_dir, 'sketch_attention_model.pth'))
     print("Saved models.")
+
+
+def get_kth_operation(op_to_index_matrix, k):    
+    squeezed_matrix = op_to_index_matrix.squeeze(0)
+    kth_operation = squeezed_matrix[:, k].unsqueeze(1)
+
+    return kth_operation
+
 
 def train():
 
     # Define training
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.BCEWithLogitsLoss()
     optimizer = torch.optim.Adam(
         list(graph_embedding_model.parameters()) + 
         list(SBGCN_model.parameters()),
@@ -96,14 +105,91 @@ def train():
             intersection_matrix = intersection_matrix.to(torch.float32).to(device)
             operations_order_matrix = operations_order_matrix.to(torch.float32).to(device)
 
-            print('node_features', node_features.shape)
             gnn_graph = Preprocessing.gnn_graph.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
             gnn_graph.to_device(device)
             graph_embedding = graph_embedding_model(gnn_graph.x_dict, gnn_graph.edge_index_dict)
 
-            print('graph_embedding', graph_embedding.shape)
-            print("-----------------------------------------------------------------")
+            if face_features.shape[1] == 0:
+                # is empty program
+                brep_embedding = torch.zeros(1, 1, 32, device=device)
+            else:
+                brep_graph = Preprocessing.SBGCN.SBGCN_graph.GraphHeteroData(face_features, edge_features, vertex_features, 
+                            edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id)
+                
+                brep_graph.to_device(device)
+                face_embedding, edge_embedding, vertex_embedding = SBGCN_model(brep_graph)
+                brep_embedding = torch.cat((face_embedding, edge_embedding, vertex_embedding), dim=1)
 
+            output = sketch_attention_model(graph_embedding, brep_embedding)
+
+            # prepare ground_truth
+            target_op_index = len(program)
+            op_to_index_matrix = gnn_graph['stroke'].z
+            gt_matrix = get_kth_operation(op_to_index_matrix, target_op_index)
+
+            output = output.view(-1, 1).to(torch.float32)
+            gt_matrix = gt_matrix.view(-1, 1).to(torch.float32)
+
+            loss = criterion(output, gt_matrix)
+            total_train_loss += loss.item()
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+        avg_train_loss = total_train_loss / len(train_loader)
+        print(f"Epoch {epoch+1}/{epochs}, Training Loss: {avg_train_loss}")
+
+        graph_embedding_model.eval()
+        SBGCN_model.eval()
+        
+        total_val_loss = 0.0
+        
+        with torch.no_grad():
+            for batch in tqdm(val_loader, desc=f"Epoch {epoch+1}/{epochs} - Validation"):
+                node_features, operations_matrix, intersection_matrix, operations_order_matrix, program, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
+                
+                # to device 
+                node_features = node_features.to(torch.float32).to(device)
+                operations_matrix = operations_matrix.to(torch.float32).to(device)
+                intersection_matrix = intersection_matrix.to(torch.float32).to(device)
+                operations_order_matrix = operations_order_matrix.to(torch.float32).to(device)
+
+                gnn_graph = Preprocessing.gnn_graph.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
+                gnn_graph.to_device(device)
+                graph_embedding = graph_embedding_model(gnn_graph.x_dict, gnn_graph.edge_index_dict)
+
+                if face_features.shape[1] == 0:
+                    # is empty program
+                    brep_embedding = torch.zeros(1, 1, 32, device=device)
+                else:
+                    brep_graph = Preprocessing.SBGCN.SBGCN_graph.GraphHeteroData(face_features, edge_features, vertex_features, 
+                                edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id)
+                    
+                    brep_graph.to_device(device)
+                    face_embedding, edge_embedding, vertex_embedding = SBGCN_model(brep_graph)
+                    brep_embedding = torch.cat((face_embedding, edge_embedding, vertex_embedding), dim=1)
+
+                output = sketch_attention_model(graph_embedding, brep_embedding)
+
+                # prepare ground_truth
+                target_op_index = len(program)
+                op_to_index_matrix = gnn_graph['stroke'].z
+                gt_matrix = get_kth_operation(op_to_index_matrix, target_op_index).to(device)
+
+                output = output.view(-1, 1).to(torch.float32)
+                gt_matrix = gt_matrix.view(-1, 1).to(torch.float32)
+
+                loss = criterion(output, gt_matrix)
+                total_val_loss += loss.item()
+
+        avg_val_loss = total_val_loss / len(val_loader)
+        print(f"Epoch {epoch+1}/{epochs}, Validation Loss: {avg_val_loss}")
+
+        # Checkpoint saving
+        if avg_val_loss < best_val_loss:
+            best_val_loss = avg_val_loss
+            save_models()
 
 
 
