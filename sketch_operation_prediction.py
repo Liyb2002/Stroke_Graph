@@ -17,6 +17,8 @@ import torch.nn as nn
 import torch.optim as optim
 import os
 import pandas as pd
+import numpy as np
+from itertools import combinations
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -49,6 +51,7 @@ def load_models():
         sketch_attention_model.load_state_dict(torch.load(os.path.join(save_dir, 'sketch_attention_model.pth')))
         print("Loaded sketch_attention_model")
 
+
 def save_models():
     torch.save(graph_embedding_model.state_dict(), os.path.join(save_dir, 'graph_embedding_model.pth'))
     torch.save(SBGCN_model.state_dict(), os.path.join(save_dir, 'SBGCN_model.pth'))
@@ -63,7 +66,89 @@ def get_kth_operation(op_to_index_matrix, k):
     return kth_operation
 
 
-def plot_strokes_3d(strokes, stroke_features):
+def face_aggregate(strokes, stroke_features):
+    # Ensure strokes and stroke_features are tensors
+    strokes = strokes.clone().detach()
+    stroke_features = stroke_features.clone().detach().squeeze(0)
+    
+    # Get the coordinates of the chosen strokes
+    chosen_indices = (strokes > 0.5).nonzero(as_tuple=True)[0]
+    chosen_strokes = stroke_features[chosen_indices]
+
+    def find_coplanar_lines(lines):
+        subsets = []
+        lines = lines.numpy()
+
+        for i, line in enumerate(lines):
+            start, end = line[:3], line[3:]
+            coplanar_set = [line]
+
+            for j, other_line in enumerate(lines):
+                if i != j:
+                    other_start, other_end = other_line[:3], other_line[3:]
+                    # Check if the lines are coplanar by having two common coordinates
+                    if (start[0] == other_start[0] and end[0] == other_end[0]) or \
+                       (start[1] == other_start[1] and end[1] == other_end[1]) or \
+                       (start[2] == other_start[2] and end[2] == other_end[2]):
+                        coplanar_set.append(other_line)
+
+            if len(coplanar_set) > 2:
+                subsets.append(coplanar_set)
+
+        return subsets
+
+    def is_connected(subset):
+        graph = {}
+        for line in subset:
+            start = tuple(line[:3])
+            end = tuple(line[3:])
+            if start not in graph:
+                graph[start] = []
+            if end not in graph:
+                graph[end] = []
+            graph[start].append(end)
+            graph[end].append(start)
+
+        visited = set()
+        stack = [tuple(subset[0][:3])]
+
+        while stack:
+            node = stack.pop()
+            if node not in visited:
+                visited.add(node)
+                stack.extend(graph[node])
+
+        return len(visited) == len(graph)
+
+    def find_connected_subsets(subsets):
+        connected_subsets = []
+        for subset in subsets:
+            connected_lines = set()
+            new_subset = []
+
+            for line in subset:
+                start, end = tuple(line[:3]), tuple(line[3:])
+                if start in connected_lines or end in connected_lines or not connected_lines:
+                    new_subset.append(line)
+                    connected_lines.update([start, end])
+                else:
+                    if len(new_subset) > 2 and is_connected(new_subset):
+                        connected_subsets.append(new_subset)
+                    new_subset = [line]
+                    connected_lines = {start, end}
+
+            if len(new_subset) > 2 and is_connected(new_subset):
+                connected_subsets.append(new_subset)
+
+        return connected_subsets
+
+    coplanar_subsets = find_coplanar_lines(chosen_strokes)
+    connected_coplanar_subsets = find_connected_subsets(coplanar_subsets)
+
+    return connected_coplanar_subsets
+
+
+def vis_gt(strokes, stroke_features):
     # Ensure strokes and stroke_features are tensors
     strokes = strokes.clone().detach()
     stroke_features = stroke_features.clone().detach().squeeze(0)
@@ -86,6 +171,47 @@ def plot_strokes_3d(strokes, stroke_features):
         ax.plot(x, y, z, color=color)
     
     plt.show()
+
+
+def vis_predict(strokes, stroke_features):
+    # Ensure strokes and stroke_features are tensors
+    strokes = strokes.clone().detach()
+    stroke_features = stroke_features.clone().detach().squeeze(0)
+    
+    # Create a 3D plot
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    
+    num_strokes = stroke_features.shape[0]
+    
+    for i in range(num_strokes):
+        x = [stroke_features[i, 0].item(), stroke_features[i, 3].item()]
+        y = [stroke_features[i, 1].item(), stroke_features[i, 4].item()]
+        z = [stroke_features[i, 2].item(), stroke_features[i, 5].item()]
+        
+        color = 'red' if strokes[i, 0].item() > 0.5 else 'blue'
+        # ax.plot(x, y, z, color=color)
+    
+    chosen_strokes_sets = face_aggregate(strokes, stroke_features)
+    num_faces = len(chosen_strokes_sets)
+
+    for item in chosen_strokes_sets:
+        print("item", item)
+
+    print(f"Number of faces (sets of coplanar strokes): {num_faces}")
+
+    for chosen_strokes in chosen_strokes_sets:
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        
+        for stroke in chosen_strokes:
+            x = [stroke[0].item(), stroke[3].item()]
+            y = [stroke[1].item(), stroke[4].item()]
+            z = [stroke[2].item(), stroke[5].item()]
+            ax.plot(x, y, z, color='green')
+        
+        plt.show()
+
 
 def train():
 
@@ -150,7 +276,7 @@ def train():
             output = sketch_attention_model(graph_embedding, brep_embedding)
 
             # prepare ground_truth
-            target_op_index = len(program)
+            target_op_index = len(program[0])-1
             op_to_index_matrix = gnn_graph['stroke'].z
             gt_matrix = get_kth_operation(op_to_index_matrix, target_op_index)
 
@@ -200,7 +326,7 @@ def train():
                 output = sketch_attention_model(graph_embedding, brep_embedding)
 
                 # prepare ground_truth
-                target_op_index = len(program)
+                target_op_index = len(program[0])-1
                 op_to_index_matrix = gnn_graph['stroke'].z
                 gt_matrix = get_kth_operation(op_to_index_matrix, target_op_index).to(device)
 
@@ -281,7 +407,9 @@ def eval(vis=True):
             total_eval_loss += loss.item()
 
             if vis:
-                plot_strokes_3d(gt_matrix, gnn_graph['stroke'].x)
+                # vis_gt(gt_matrix, gnn_graph['stroke'].x)
+                vis_predict(output, gnn_graph['stroke'].x)
+
                 break
 
     avg_eval_loss = total_eval_loss / len(eval_loader)
