@@ -217,24 +217,11 @@ def vis_gt(strokes, stroke_features):
     plt.show()
 
 
-def vis_predict(strokes, stroke_features):
+def vis_predict(strokes, stroke_features, edge_features):
     # Ensure strokes and stroke_features are tensors
     strokes = strokes.clone().detach()
     stroke_features = stroke_features.clone().detach().squeeze(0)
-    
-    # Create a 3D plot
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    
-    num_strokes = stroke_features.shape[0]
-    
-    for i in range(num_strokes):
-        x = [stroke_features[i, 0].item(), stroke_features[i, 3].item()]
-        y = [stroke_features[i, 1].item(), stroke_features[i, 4].item()]
-        z = [stroke_features[i, 2].item(), stroke_features[i, 5].item()]
-        
-        color = 'red' if strokes[i, 0].item() > 0.5 else 'blue'
-        # ax.plot(x, y, z, color=color)
+    edge_features = edge_features.clone().detach().squeeze(0)
     
     chosen_strokes_sets = face_aggregate(strokes, stroke_features)
     num_faces = len(chosen_strokes_sets)
@@ -248,7 +235,7 @@ def vis_predict(strokes, stroke_features):
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         
-        # Separate the coordinates
+        # Plot the chosen strokes set
         x = [point[0] for point in chosen_points]
         y = [point[1] for point in chosen_points]
         z = [point[2] for point in chosen_points]
@@ -261,9 +248,20 @@ def vis_predict(strokes, stroke_features):
         # Plot the lines connecting the points
         ax.plot(x, y, z, marker='o', color='green')
         
-        # Optionally, scatter the points for better visibility
-        ax.scatter(x, y, z, color='red')
+        # Plot the edges from edge_features
+        num_strokes = edge_features.size(0)
         
+        for i in range(num_strokes):
+            start_point = edge_features[i][:3]
+            end_point = edge_features[i][3:]
+            
+            x_edge = [start_point[0].item(), end_point[0].item()]
+            y_edge = [start_point[1].item(), end_point[1].item()]
+            z_edge = [start_point[2].item(), end_point[2].item()]
+            
+            # Plot the edge as a line
+            ax.plot(x_edge, y_edge, z_edge, marker='o', color='blue')
+            
         plt.show()
 
 
@@ -459,10 +457,11 @@ def eval(vis=True):
 
             loss = criterion(output, gt_matrix)
             total_eval_loss += loss.item()
-
+            
             if vis:
+                print("face_features", face_features.shape)
                 # vis_gt(gt_matrix, gnn_graph['stroke'].x)
-                vis_predict(output, gnn_graph['stroke'].x)
+                vis_predict(output, gnn_graph['stroke'].x, edge_features)
 
                 break
 

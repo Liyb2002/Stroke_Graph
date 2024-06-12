@@ -45,7 +45,7 @@ def create_vertex_node(vertex):
     return [pt.X(), pt.Y(), pt.Z()]
 
 
-def check_duplicate(new_feature, feature_list, face = 0):
+def check_duplicate(new_feature, feature_list):
     for idx, existing_feature in feature_list:
         if existing_feature == new_feature:
             return idx
@@ -100,7 +100,7 @@ def create_graph_from_step_file(step_path):
         face = topods.Face(face_explorer.Current())
         face_features = create_face_node(face)
 
-        if check_duplicate(face_features, face_features_list, 1) != -1:
+        if check_duplicate(face_features, face_features_list) != -1:
             face_explorer.Next()
             continue
 
