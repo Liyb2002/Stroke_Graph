@@ -123,29 +123,73 @@ def face_aggregate(strokes, stroke_features):
     def find_connected_subsets(subsets):
         connected_subsets = []
         for subset in subsets:
-            connected_lines = set()
+            connected_points = set()
             new_subset = []
-
             for line in subset:
                 start, end = tuple(line[:3]), tuple(line[3:])
-                if start in connected_lines or end in connected_lines or not connected_lines:
-                    new_subset.append(line)
-                    connected_lines.update([start, end])
+                if start in connected_points or end in connected_points or not connected_points:
+                    new_subset.append(start)
+                    new_subset.append(end)
+                    connected_points.update([start, end])
                 else:
                     if len(new_subset) > 2 and is_connected(new_subset):
-                        connected_subsets.append(new_subset)
-                    new_subset = [line]
-                    connected_lines = {start, end}
-
+                        connected_subsets.append(list(set(new_subset)))
+                    new_subset = [start, end]
+                    connected_points = {start, end}
             if len(new_subset) > 2 and is_connected(new_subset):
-                connected_subsets.append(new_subset)
-
+                connected_subsets.append(list(set(new_subset)))
         return connected_subsets
+
+    def remove_contained_subsets(subsets):
+    # Convert each subset to a set for easier comparison
+        subset_sets = [set(subset) for subset in subsets]
+        
+        # Create a list to store subsets that are not fully contained in others
+        result = []
+        
+        for i, subset in enumerate(subset_sets):
+            is_contained = False
+            for j, other_subset in enumerate(subset_sets):
+                if i != j and subset.issubset(other_subset):
+                    is_contained = True
+                    break
+            if not is_contained:
+                result.append(subsets[i])
+    
+        return result
+
+    def reorder_points(points):
+        if not isinstance(points, np.ndarray):
+            points = np.array(points)
+        
+        ordered_points = [points[0]]
+        points = np.delete(points, 0, axis=0)
+        
+        while points.size > 0:
+            last_point = ordered_points[-1]
+            distances = np.linalg.norm(points - last_point, axis=1)
+            nearest_idx = np.argmin(distances)
+            ordered_points.append(points[nearest_idx])
+            points = np.delete(points, nearest_idx, axis=0)
+        
+        return ordered_points
 
     coplanar_subsets = find_coplanar_lines(chosen_strokes)
     connected_coplanar_subsets = find_connected_subsets(coplanar_subsets)
 
-    return connected_coplanar_subsets
+    # Remove duplicate point sets from connected_coplanar_subsets
+    unique_connected_coplanar_subsets = []
+    for subset in connected_coplanar_subsets:
+        if subset not in unique_connected_coplanar_subsets and len(subset) > 2:
+            unique_connected_coplanar_subsets.append(subset)
+
+    unique_connected_subsets = remove_contained_subsets(unique_connected_coplanar_subsets)
+    ordered_faces = []
+    for subset in unique_connected_subsets:
+        ordered_faces.append(reorder_points(subset))
+
+    return ordered_faces
+
 
 
 def vis_gt(strokes, stroke_features):
@@ -200,15 +244,25 @@ def vis_predict(strokes, stroke_features):
 
     print(f"Number of faces (sets of coplanar strokes): {num_faces}")
 
-    for chosen_strokes in chosen_strokes_sets:
+    for chosen_points in chosen_strokes_sets:
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         
-        for stroke in chosen_strokes:
-            x = [stroke[0].item(), stroke[3].item()]
-            y = [stroke[1].item(), stroke[4].item()]
-            z = [stroke[2].item(), stroke[5].item()]
-            ax.plot(x, y, z, color='green')
+        # Separate the coordinates
+        x = [point[0] for point in chosen_points]
+        y = [point[1] for point in chosen_points]
+        z = [point[2] for point in chosen_points]
+        
+        # Connect the last point with the first point
+        x.append(x[0])
+        y.append(y[0])
+        z.append(z[0])
+        
+        # Plot the lines connecting the points
+        ax.plot(x, y, z, marker='o', color='green')
+        
+        # Optionally, scatter the points for better visibility
+        ax.scatter(x, y, z, color='red')
         
         plt.show()
 
