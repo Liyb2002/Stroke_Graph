@@ -63,6 +63,7 @@ def build_sketch(count, canvas, Points_list, output, data_dir):
                 _ = canvas.part.export_stl(stl_dir)
                 _ = canvas.part.export_step(brep_dir)
 
+
     return perimeter
 
 
@@ -104,6 +105,7 @@ def build_extrude(count, canvas, target_face, extrude_amount, output, data_dir):
         _ = canvas.part.export_stl(stl_dir)
         _ = canvas.part.export_step(step_dir)
 
+
     return canvas
 
 def build_subtract(count, canvas, target_face, extrude_amount, output, data_dir):
@@ -118,6 +120,7 @@ def build_subtract(count, canvas, target_face, extrude_amount, output, data_dir)
         _ = canvas.part.export_stl(stl_dir)
         _ = canvas.part.export_step(step_dir)
 
+
     return canvas
 
 
@@ -131,5 +134,6 @@ def build_fillet(count, canvas, target_edge, radius, output, data_dir):
     if output:
         _ = canvas.part.export_stl(stl_dir)
         _ = canvas.part.export_step(step_dir)
+
 
     return canvas

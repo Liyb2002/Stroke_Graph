@@ -22,8 +22,8 @@ class dataset_generator():
         #     shutil.rmtree('dataset')
         # os.makedirs('dataset', exist_ok=True)
 
-        self.generate_dataset('dataset/train_dataset', number_data = 2000, start = 2000)
-        self.generate_dataset('dataset/eval_dataset', number_data = 200, start = 200)
+        self.generate_dataset('dataset/train_dataset', number_data = 3000, start = 3000)
+        self.generate_dataset('dataset/eval_dataset', number_data = 300, start = 0)
  
 
     def generate_dataset(self, dir, number_data, start):
@@ -78,10 +78,10 @@ class dataset_generator():
         brep_directory = os.path.join(data_directory, 'canvas')
         for file_name in os.listdir(brep_directory):
             if file_name.startswith('brep_') and file_name.endswith('.step'):
+                
                 brep_file_path = os.path.join(brep_directory, file_name)
                 face_features_list, edge_features_list, vertex_features_list, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id= Preprocessing.SBGCN.brep_read.create_graph_from_step_file(brep_file_path)
 
-                
                 face_features = Preprocessing.proc_CAD.helper.preprocess_features(face_features_list)
                 edge_features = Preprocessing.proc_CAD.helper.preprocess_features(edge_features_list)
                 vertex_features = Preprocessing.proc_CAD.helper.preprocess_features(vertex_features_list)

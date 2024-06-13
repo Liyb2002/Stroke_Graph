@@ -98,6 +98,7 @@ def face_aggregate(strokes, stroke_features):
         return subsets
 
     def is_connected(subset):
+        return True
         graph = {}
         for line in subset:
             start = tuple(line[:3])
@@ -121,6 +122,7 @@ def face_aggregate(strokes, stroke_features):
         return len(visited) == len(graph)
 
     def find_connected_subsets(subsets):
+
         connected_subsets = []
         for subset in subsets:
             connected_points = set()
@@ -132,32 +134,20 @@ def face_aggregate(strokes, stroke_features):
                     new_subset.append(end)
                     connected_points.update([start, end])
                 else:
-                    if len(new_subset) > 2 and is_connected(new_subset):
-                        connected_subsets.append(list(set(new_subset)))
-                    new_subset = [start, end]
-                    connected_points = {start, end}
-            if len(new_subset) > 2 and is_connected(new_subset):
-                connected_subsets.append(list(set(new_subset)))
+                    # Check reversed order as well
+                    if tuple(line[3:]) in connected_points or tuple(line[:3]) in connected_points:
+                        new_subset.append(tuple(line[3:]))
+                        new_subset.append(tuple(line[:3]))
+                        connected_points.update([tuple(line[3:]), tuple(line[:3])])
+                    else:
+                        if len(new_subset) > 2 and is_connected(new_subset):
+                            connected_subsets.append(list(set(new_subset)))
+                        new_subset = [start, end]
+                        connected_points = {start, end}
+                if len(new_subset) > 2 and is_connected(new_subset):
+                    connected_subsets.append(list(set(new_subset)))
         return connected_subsets
-
-    def remove_contained_subsets(subsets):
-    # Convert each subset to a set for easier comparison
-        subset_sets = [set(subset) for subset in subsets]
         
-        # Create a list to store subsets that are not fully contained in others
-        result = []
-        
-        for i, subset in enumerate(subset_sets):
-            is_contained = False
-            for j, other_subset in enumerate(subset_sets):
-                if i != j and subset.issubset(other_subset):
-                    is_contained = True
-                    break
-            if not is_contained:
-                result.append(subsets[i])
-    
-        return result
-
     def reorder_points(points):
         if not isinstance(points, np.ndarray):
             points = np.array(points)
@@ -174,21 +164,35 @@ def face_aggregate(strokes, stroke_features):
         
         return ordered_points
 
+    def remove_duplicate_ordered_faces(ordered_faces):
+        unique_faces = []
+        seen = set()
+        
+        for face in ordered_faces:
+            # Sort the face to normalize it, converting points to tuples for hashability
+            sorted_face = tuple(sorted(map(tuple, face)))
+            if sorted_face not in seen:
+                seen.add(sorted_face)
+                unique_faces.append(face)
+        
+        return unique_faces
+
     coplanar_subsets = find_coplanar_lines(chosen_strokes)
     connected_coplanar_subsets = find_connected_subsets(coplanar_subsets)
-
     # Remove duplicate point sets from connected_coplanar_subsets
     unique_connected_coplanar_subsets = []
     for subset in connected_coplanar_subsets:
         if subset not in unique_connected_coplanar_subsets and len(subset) > 2:
             unique_connected_coplanar_subsets.append(subset)
 
-    unique_connected_subsets = remove_contained_subsets(unique_connected_coplanar_subsets)
+
     ordered_faces = []
-    for subset in unique_connected_subsets:
+    for subset in unique_connected_coplanar_subsets:
         ordered_faces.append(reorder_points(subset))
 
-    return ordered_faces
+    unique_ordered_faces = remove_duplicate_ordered_faces(ordered_faces)
+
+    return unique_ordered_faces
 
 
 
@@ -225,9 +229,6 @@ def vis_predict(strokes, stroke_features, edge_features):
     
     chosen_strokes_sets = face_aggregate(strokes, stroke_features)
     num_faces = len(chosen_strokes_sets)
-
-    for item in chosen_strokes_sets:
-        print("item", item)
 
     print(f"Number of faces (sets of coplanar strokes): {num_faces}")
 
@@ -459,8 +460,7 @@ def eval(vis=True):
             total_eval_loss += loss.item()
             
             if vis:
-                print("face_features", face_features.shape)
-                # vis_gt(gt_matrix, gnn_graph['stroke'].x)
+                vis_gt(gt_matrix, gnn_graph['stroke'].x)
                 vis_predict(output, gnn_graph['stroke'].x, edge_features)
 
                 break

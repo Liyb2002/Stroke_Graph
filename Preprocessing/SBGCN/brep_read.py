@@ -15,6 +15,31 @@ import os
 from tqdm import tqdm
 import Preprocessing.SBGCN.SBGCN_graph
 
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
+def plot_edges_3d(edge_features):
+    """
+    Plot a list of edges in 3D.
+    
+    Args:
+    edge_features (list of list): A list where each element is a list of 6 points representing an edge.
+    """
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    
+    for edge in edge_features:
+        # Extract the points for the edge
+        x1, y1, z1, x2, y2, z2 = edge
+        # Plot the edge
+        ax.plot([x1, x2], [y1, y2], [z1, z2], marker='o')
+    
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+    
+    plt.show()
+
 def read_step_file(filename):
     step_reader = STEPControl_Reader()
     status = step_reader.ReadFile(filename)
@@ -34,19 +59,25 @@ def create_edge_node(edge):
     properties = GProp_GProps()
     brepgprop.LinearProperties(edge, properties)
     length = properties.Mass()
-    
-    edge_start = BRep_Tool.Pnt(topods.Vertex(TopExp_Explorer(edge, TopAbs_VERTEX).Current()))
-    edge_end = BRep_Tool.Pnt(topods.Vertex(TopExp_Explorer(edge, TopAbs_VERTEX, True).Current()))
-    
-    return [edge_start.X(), edge_start.Y(), edge_start.Z(), edge_end.X(), edge_end.Y(), edge_end.Z()]
+
+    vertices = []
+    vertex_explorer = TopExp_Explorer(edge, TopAbs_VERTEX)
+    while vertex_explorer.More():
+        vertex = topods.Vertex(vertex_explorer.Current())
+        vertex_coords = BRep_Tool.Pnt(vertex)
+        vertices.append([vertex_coords.X(), vertex_coords.Y(), vertex_coords.Z()])
+        vertex_explorer.Next()
+
+    return [vertices[0][0], vertices[0][1], vertices[0][2], vertices[1][0], vertices[1][1], vertices[1][2]]
 
 def create_vertex_node(vertex):
     pt = BRep_Tool.Pnt(vertex)
     return [pt.X(), pt.Y(), pt.Z()]
 
 
-def check_duplicate(new_feature, feature_list):
+def check_duplicate(new_feature, feature_list, edge = 0):
     for idx, existing_feature in feature_list:
+
         if existing_feature == new_feature:
             return idx
     
@@ -100,10 +131,6 @@ def create_graph_from_step_file(step_path):
         face = topods.Face(face_explorer.Current())
         face_features = create_face_node(face)
 
-        if check_duplicate(face_features, face_features_list) != -1:
-            face_explorer.Next()
-            continue
-
         face_features_list.append((index_counter, face_features))
         current_face_counter = index_counter
         index_to_type[current_face_counter] = 'face'
@@ -116,7 +143,7 @@ def create_graph_from_step_file(step_path):
             edge = topods.Edge(edge_explorer.Current())
             edge_features = create_edge_node(edge)
 
-            edge_duplicate_id = check_duplicate(edge_features, edge_features_list)
+            edge_duplicate_id = check_duplicate(edge_features, edge_features_list, 1)
             if edge_duplicate_id != -1:
                 edge_index_face_edge_list.append([current_face_counter, edge_duplicate_id])
                 edge_explorer.Next()
