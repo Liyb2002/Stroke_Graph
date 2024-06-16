@@ -6,7 +6,7 @@ import Preprocessing.SBGCN.SBGCN_network
 import Encoders.gnn.gnn
 import Encoders.program_encoder.program_encoder
 
-import Models.operation_model
+import Models.operation_model2
 
 from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
@@ -23,16 +23,16 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 graph_embedding_model = Encoders.gnn.gnn.SemanticModule()
 program_embedding_model = Encoders.program_encoder.program_encoder.ProgramEncoder()
 SBGCN_model = Preprocessing.SBGCN.SBGCN_network.FaceEdgeVertexGCN()
-cross_attention_model = Models.operation_model.CrossAttentionTransformer()
+self_attention_model = Models.operation_model2.SelfAttentionTransformer()
 
 graph_embedding_model.to(device)
 program_embedding_model.to(device)
 SBGCN_model.to(device)
-cross_attention_model.to(device)
+self_attention_model.to(device)
 
 # Directory for saving models
 current_dir = os.getcwd()
-save_dir = os.path.join(current_dir, 'checkpoints', 'operation_prediction')
+save_dir = os.path.join(current_dir, 'checkpoints', 'operation_prediction2')
 os.makedirs(save_dir, exist_ok=True)
 
 def load_models():
@@ -49,15 +49,15 @@ def load_models():
         SBGCN_model.load_state_dict(torch.load(os.path.join(save_dir, 'SBGCN_model.pth')))
         print("Loaded SBGCN_model")
 
-    if os.path.exists(os.path.join(save_dir, 'cross_attention_model.pth')):    
-        cross_attention_model.load_state_dict(torch.load(os.path.join(save_dir, 'cross_attention_model.pth')))
-        print("Loaded cross_attention_model")
+    if os.path.exists(os.path.join(save_dir, 'self_attention_model.pth')):    
+        self_attention_model.load_state_dict(torch.load(os.path.join(save_dir, 'self_attention_model.pth')))
+        print("Loaded self_attention_model")
 
 def save_models():
     torch.save(graph_embedding_model.state_dict(), os.path.join(save_dir, 'graph_embedding_model.pth'))
     torch.save(program_embedding_model.state_dict(), os.path.join(save_dir, 'program_embedding_model.pth'))
     torch.save(SBGCN_model.state_dict(), os.path.join(save_dir, 'SBGCN_model.pth'))
-    torch.save(cross_attention_model.state_dict(), os.path.join(save_dir, 'cross_attention_model.pth'))
+    torch.save(self_attention_model.state_dict(), os.path.join(save_dir, 'self_attention_model.pth'))
     print("Saved models.")
 
 def train():
@@ -68,17 +68,17 @@ def train():
         list(graph_embedding_model.parameters()) + 
         list(program_embedding_model.parameters()) + 
         list(SBGCN_model.parameters()) +
-        list(cross_attention_model.parameters()), 
-        lr=0.0004
+        list(self_attention_model.parameters()), 
+        lr=0.001
     )
 
-    epochs = 20
+    epochs = 5
 
     # Create a DataLoader
     dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/train_dataset')
 
     # Split dataset into training and validation
-    train_size = int(0.2 * len(dataset))
+    train_size = int(0.8 * len(dataset))
     val_size = len(dataset) - train_size
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
 
@@ -92,7 +92,7 @@ def train():
         graph_embedding_model.train()
         program_embedding_model.train()
         SBGCN_model.train()
-        cross_attention_model.train()
+        self_attention_model.train()
         
         total_train_loss = 0.0
         
@@ -132,7 +132,8 @@ def train():
                 brep_embedding = torch.cat((face_embedding, edge_embedding, vertex_embedding), dim=1)
 
             # Forward pass through cross attention model
-            output = cross_attention_model(graph_embedding, program_encoding, brep_embedding)
+    
+            output = self_attention_model(graph_embedding, program_encoding, brep_embedding)
             loss = criterion(output, gt_next_token.unsqueeze(0))
 
             # Backpropagation and optimization
@@ -149,7 +150,7 @@ def train():
         graph_embedding_model.eval()
         program_embedding_model.eval()
         SBGCN_model.eval()
-        cross_attention_model.eval()
+        self_attention_model.eval()
 
         total_val_loss = 0.0
         
@@ -190,7 +191,7 @@ def train():
                     brep_embedding = torch.cat((face_embedding, edge_embedding, vertex_embedding), dim=1)
 
                 # Forward pass through cross attention model
-                output = cross_attention_model(graph_embedding, program_encoding, brep_embedding)
+                output = self_attention_model(graph_embedding, program_encoding, brep_embedding)
                 loss = criterion(output, gt_next_token.unsqueeze(0))
 
                 total_val_loss += loss.item()
@@ -213,12 +214,13 @@ def eval():
     graph_embedding_model.eval()
     program_embedding_model.eval()
     SBGCN_model.eval()
-    cross_attention_model.eval()
+    self_attention_model.eval()
 
     # Create a DataLoader
     dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/eval_dataset')
+    train_dataset, val_dataset = random_split(dataset, [1392, len(dataset) - 1392])
 
-    data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
+    data_loader = DataLoader(train_dataset, batch_size=1, shuffle=True)
 
     # data_loader = DataLoader(dataset, batch_size=1, shuffle=False)
 
@@ -246,8 +248,8 @@ def eval():
 
             if len(current_program) == 0:
                 # is empty program
-                program_encoding = torch.zeros(1, 1, 32, device=device)
-                brep_embedding = torch.zeros(1, 1, 32, device=device)
+                program_encoding = torch.zeros(1, 20, 32, device=device)
+                brep_embedding = torch.zeros(1, 100, 32, device=device)
             else:
                 # is not empty program 
                 # program embedding
@@ -262,7 +264,7 @@ def eval():
                 brep_embedding = torch.cat((face_embedding, edge_embedding, vertex_embedding), dim=1)
 
             # Make prediction
-            prediction = cross_attention_model.predict_label(graph_embedding, program_encoding, brep_embedding)
+            prediction = self_attention_model.predict_label(graph_embedding, program_encoding, brep_embedding)
             predictions.append(prediction.item())
             ground_truths.append(gt_next_token.item())
 
@@ -298,4 +300,4 @@ def eval():
 #---------------------------------- Public Functions ----------------------------------#
 
 # train()
-eval()
+# eval()

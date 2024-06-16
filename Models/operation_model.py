@@ -22,9 +22,9 @@ class CrossAttentionTransformer(nn.Module):
         program_encoding = program_encoding.transpose(0, 1)
         brep_embedding = brep_embedding.transpose(0, 1)
         
-        attn_output1, _ = self.cross_attn1(brep_embedding, graph_embedding, graph_embedding)        
+        attn_output1, _ = self.cross_attn1(graph_embedding, brep_embedding, brep_embedding)        
         attn_output1 = self.dropout(attn_output1)
-        out1 = self.norm1(brep_embedding + attn_output1)
+        out1 = self.norm1(graph_embedding + attn_output1)
         
         attn_output2, _ = self.cross_attn2(program_encoding, out1, out1)
         attn_output2 = self.dropout(attn_output2)

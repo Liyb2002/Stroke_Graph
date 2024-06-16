@@ -14,7 +14,6 @@ class Program_Graph_Dataset(Dataset):
         self.data_dirs = [d for d in os.listdir(self.data_path) if os.path.isdir(os.path.join(self.data_path, d))]
         self.index_mapping = self._create_index_mapping()
 
-        self.SBGCN_encoder = Preprocessing.SBGCN.run_SBGCN.load_pretrained_SBGCN_model()
         print(f"Number of data directories: {len(self.data_dirs)}")
         print(f"Total number of brep_i.step files: {len(self.index_mapping)}")
 
