@@ -1,12 +1,11 @@
+import Models.operation_model
 import Preprocessing.dataloader
 import Preprocessing.gnn_graph
 import Preprocessing.SBGCN.SBGCN_graph
 import Preprocessing.SBGCN.SBGCN_network
 
-import Encoders.gnn.gnn
-import Encoders.program_encoder.program_encoder
-
-import Models.sketch_model
+import Models.sketch_arguments.face_aggregate
+import Models.sketch_arguments.sketch_model_2
 
 
 from torch.utils.data import DataLoader, random_split, Subset
@@ -25,7 +24,7 @@ from mpl_toolkits.mplot3d import Axes3D
 
 
 SBGCN_model = Preprocessing.SBGCN.SBGCN_network.FaceEdgeVertexGCN()
-nodes_embed_model = Models.sketch_model_2.StrokeEmbeddingNetwork()
+nodes_embed_model = Models.sketch_arguments.sketch_model_2.StrokeEmbeddingNetwork()
 
 SBGCN_model.to(device)
 nodes_embed_model.to(device)
@@ -71,7 +70,22 @@ def train():
         for batch in tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs} - Training"):
             node_features, operations_matrix, intersection_matrix, operations_order_matrix, program, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
 
-        # 1) Embed the strokes
-        # node_features has shape (num_strokes, 6)
-        node_embed = nodes_embed_model(node_features)
-        print("node_embed", node_embed.shape)
+            # 1) Embed the strokes
+            # node_features has shape (1, num_strokes, 6)
+            # node_embed has shape (1, num_strokes, 16)
+            node_features = node_features.to(torch.float32).to(device)
+            node_embed = nodes_embed_model(node_features)
+
+            # 2) Find all possible faces
+            faces = Models.sketch_arguments.face_aggregate.face_aggregate(node_features)
+            print("faces", len(faces))
+
+
+
+
+
+
+
+#---------------------------------- Public Functions ----------------------------------#
+
+train()
