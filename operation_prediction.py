@@ -69,7 +69,7 @@ def train():
         list(program_embedding_model.parameters()) + 
         list(SBGCN_model.parameters()) +
         list(cross_attention_model.parameters()), 
-        lr=0.0004
+        lr=0.0005
     )
 
     epochs = 20
