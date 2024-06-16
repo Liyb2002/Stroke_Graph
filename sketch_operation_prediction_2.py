@@ -77,8 +77,7 @@ def train():
             node_embed = nodes_embed_model(node_features)
 
             # 2) Find all possible faces
-            faces = Models.sketch_arguments.face_aggregate.face_aggregate(node_features)
-            print("faces", len(faces))
+            face_indices = Models.sketch_arguments.face_aggregate.face_aggregate(node_features)
 
 
 
