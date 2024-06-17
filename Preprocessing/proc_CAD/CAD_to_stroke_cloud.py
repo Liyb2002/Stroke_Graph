@@ -130,48 +130,14 @@ class create_stroke_cloud():
 
 
     def parse_fillet(self, Op, index):
-        verts_ids = Op['operation'][5]['verts_id']
+        verts_ids = Op['operation'][4]['verts_id']
 
-        old_pos = Op['operation'][3]['old_verts_pos']
-        new_pos = Op['operation'][4]['new_verts_pos']
-        need_to_change_edge = Op['operation'][6]['need_to_change_edge']
-
-        for edge_id, edge in self.edges.items():
+        for _, edge in self.edges.items():
             # Get the IDs of the vertices in the current edge
             edge_vertex_ids = [vertex.id for vertex in edge.vertices]
-            
             # Check if the two sets are equal
             if set(edge_vertex_ids) == set(verts_ids):
-                
-                for vertex in edge.vertices:
-                    if vertex.position == old_pos[0]:
-                        vertex.position = new_pos[0]
-                    elif vertex.position == old_pos[1]:
-                        vertex.position = new_pos[1]
-
                 edge.set_Op('fillet', index)
-
-            # We also need to update the edge - vertex in need_to_change_edge
-            #write here
-            for change in need_to_change_edge:
-                edge_id_to_change = change[0]
-                vert_id_1 = change[1]
-                vert_id_2 = change[2]
-
-                if edge_id == edge_id_to_change:
-                    # Find vertices whose IDs match vert_id_1 and vert_id_2
-                    vert_1 = None
-                    vert_2 = None
-
-                    for vertex_id, vertex in self.vertices.items():
-                        if vertex_id == vert_id_1:
-                            vert_1 = vertex
-                        elif vertex_id == vert_id_2:
-                            vert_2 = vertex
-                    
-                    if vert_1 and vert_2:
-                        edge.vertices = [vert_1, vert_2]
-
 
         return
 
