@@ -183,33 +183,20 @@ class Brep:
 
 
         #create 2 edge that connect new_B and new_D / new_A and new_C
-        new_edge_id_1 = f"edge_{self.idx}_0"
-        new_edge_1 = Edge(new_edge_id_1, [new_vert_B, new_vert_D])
-        new_edge_id_2 = f"edge_{self.idx}_0"
-        new_edge_2 = Edge(new_edge_id_2, [new_vert_A, new_vert_C])
+        new_edge_id_0 = f"edge_{self.idx}_0"
+        new_edge_0 = Edge(new_edge_id_0, [new_vert_B, new_vert_D])
+        new_edge_id_1 = f"edge_{self.idx}_1"
+        new_edge_1 = Edge(new_edge_id_1, [new_vert_A, new_vert_C])
+        self.Edges.append(new_edge_0)
         self.Edges.append(new_edge_1)
+
+        #create 2 edge that connect new_A and new_B / new_C and new_D
+        new_edge_id_2 = f"edge_{self.idx}_2"
+        new_edge_2 = Edge(new_edge_id_2, [new_vert_A, new_vert_B])
+        new_edge_id_3 = f"edge_{self.idx}_3"
+        new_edge_3 = Edge(new_edge_id_3, [new_vert_C, new_vert_D])
         self.Edges.append(new_edge_2)
-
-        #need to change the edge connecting neighbor_verts[0] - old_vert to neighbor_verts[0] - new_vert_B
-        # edge_vertex_pair = []
-        # for vert in target_edge.vertices:
-        #     neighbor_verts = Preprocessing.proc_CAD.helper.get_neighbor_verts(vert,target_edge, self.Edges)
-
-        #     need_to_change_edge = Preprocessing.proc_CAD.helper.find_edge_from_verts(vert, neighbor_verts[1], self.Edges)
-
-        #     if vert == target_edge.vertices[0]:
-        #         edge_vertex_pair.append([need_to_change_edge.id, neighbor_verts[1].id, new_vert_B.id])
-
-        #         #connect neighbor_verts[1] with new_vert_B and new_vert_D
-        #         edge1 = Edge(f"edge_{self.idx}_1", [new_vert_B, vert])  
-        #         self.Edges.append(edge1)
-        #     else:
-        #         edge_vertex_pair.append([need_to_change_edge.id, neighbor_verts[1].id, new_vert_D.id])
-                
-        #         #connect neighbor_verts[1] with new_vert_B and new_vert_D
-        #         edge2 = Edge(f"edge_{self.idx}_2", [new_vert_D, vert])  
-        #         self.Edges.append(edge2)
-            
+        self.Edges.append(new_edge_3)
 
         self.idx += 1
         self.op.append(['fillet', 

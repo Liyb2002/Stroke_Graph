@@ -27,4 +27,6 @@ def simple_gen(data_directory = None):
     canvas_class = Preprocessing.proc_CAD.generate_program.Brep()
     canvas_class.init_sketch_op()
     canvas_class.extrude_op()
+    canvas_class.random_fillet()
+
     canvas_class.write_to_json(data_directory)

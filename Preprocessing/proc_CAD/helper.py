@@ -8,6 +8,7 @@ import json
 import torch
 
 import matplotlib.pyplot as plt
+from itertools import permutations, combinations
 
 
 def compute_normal(face_vertices, other_point):
@@ -401,3 +402,33 @@ def preprocess_features(features):
     
     return torch.tensor(processed_features)
 
+
+
+#----------------------------------------------------------------------------------#
+
+
+def face_to_stroke(stroke_cloud_faces, stroke_features):
+    num_strokes = stroke_features.shape[0]
+    stroke_ids_per_face = []
+    
+    for face_id, face in stroke_cloud_faces.items():
+        face_stroke_ids = []
+        # Get all combinations of two vertices
+        vertex_combinations = list(combinations(face.vertices, 2))
+        
+        for comb in vertex_combinations:
+            vert1_pos = np.array(comb[0].position)
+            vert2_pos = np.array(comb[1].position)
+            
+            for stroke_id in range(num_strokes):
+                start_point = stroke_features[stroke_id, :3]
+                end_point = stroke_features[stroke_id, 3:]
+                
+                if (np.allclose(vert1_pos, start_point) and np.allclose(vert2_pos, end_point)) or \
+                   (np.allclose(vert1_pos, end_point) and np.allclose(vert2_pos, start_point)):
+                    face_stroke_ids.append(stroke_id)
+                    break
+        
+        stroke_ids_per_face.append(face_stroke_ids)
+    
+    return stroke_ids_per_face
