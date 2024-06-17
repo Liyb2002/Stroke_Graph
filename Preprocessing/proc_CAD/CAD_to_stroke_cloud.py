@@ -215,6 +215,6 @@ def run(directory, vis = True):
     # parsed_program_class.output()
 
     if vis:
-        stroke_cloud_class.vis_stroke_cloud(directory, show = False, target_Op = 'sketch')
+        stroke_cloud_class.vis_stroke_cloud(directory, show = True, target_Op = 'sketch')
 
     return stroke_cloud_class.edges

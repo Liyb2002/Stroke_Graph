@@ -22,8 +22,8 @@ class dataset_generator():
         #     shutil.rmtree('dataset')
         # os.makedirs('dataset', exist_ok=True)
 
-        self.generate_dataset('dataset/train_dataset', number_data = 3000, start = 3000)
-        self.generate_dataset('dataset/eval_dataset', number_data = 300, start = 0)
+        self.generate_dataset('dataset/train_dataset', number_data = 1, start = 0)
+        self.generate_dataset('dataset/eval_dataset', number_data = 0, start = 0)
  
 
     def generate_dataset(self, dir, number_data, start):

@@ -75,7 +75,7 @@ def train():
         SBGCN_model.train()
         
         for batch in tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs} - Training"):
-            node_features, _, _, _, _, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
+            node_features, operations_matrix, intersection_matrix, operations_order_matrix, program, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
 
             # 1) Embed the strokes
             # node_features has shape (1, num_strokes, 6)
@@ -106,6 +106,15 @@ def train():
             # output has shape (num_faces, 1)
             output = cross_attention_model(face_embed, brep_embedding)
 
+            # 6) Prepare ground_truth, it has shape (num_faces, 1)
+            # kth_operation has shape (num_strokes, 1), it denotes if a stroke is chosen for the current operation
+            target_op_index = len(program[0])-1
+            op_to_index_matrix = operations_order_matrix
+            kth_operation = Models.sketch_arguments.face_aggregate.get_kth_operation(op_to_index_matrix, target_op_index).to(device)
+            gt_matrix = Models.sketch_arguments.face_aggregate.build_gt_matrix(kth_operation, face_indices)
+            # print("gt_matrix", gt_matrix)
+            # print("gt_matrix", gt_matrix.shape)
+            print("number of faces", face_features.shape)
 
 
 
