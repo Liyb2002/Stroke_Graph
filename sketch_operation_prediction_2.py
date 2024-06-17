@@ -65,6 +65,28 @@ def save_models():
     print("Saved models.")
 
 
+def vis(node_features, chosen_face):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    
+    # Remove the first dimension
+    node_features = node_features.squeeze(0)
+
+    # Iterate over each stroke in the node_features tensor
+    for stroke in node_features:
+        start = stroke[:3].numpy()
+        end = stroke[3:].numpy()
+        
+        # Plot the line segment for the stroke
+        ax.plot([start[0], end[0]], [start[1], end[1]], [start[2], end[2]], marker='o', color='blue')
+
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+
+    plt.show()
+    
+
 def train():
     # Define training
     criterion = nn.BCEWithLogitsLoss()
@@ -285,6 +307,9 @@ def eval():
             loss = criterion(output, gt_matrix)
 
             eval_loss += loss.item()
+
+            vis(node_features, output)
+            break
 
     # Compute average evaluation loss
     eval_loss /= len(eval_loader)
