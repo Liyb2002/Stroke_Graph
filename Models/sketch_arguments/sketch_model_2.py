@@ -28,7 +28,14 @@ class PlaneEmbeddingNetwork(nn.Module):
         face_embeddings = []
 
         for indices in face_indices:
-            strokes = torch.stack([node_embed[0, idx] for idx in indices], dim=0).unsqueeze(0)  # Shape: (1, num_indices, 16)
+            # Ensure indices are flattened
+            indices = torch.cat(indices)
+            
+            # Shape: (num_indices, 16)
+            strokes = torch.stack([node_embed[0, idx] for idx in indices], dim=0)
+            
+            # Add a batch dimension (if not already batched)
+            strokes = strokes.unsqueeze(0)  # Shape: (1, num_indices, 16)
             
             # Apply self-attention
             attn_output, _ = self.self_attention(strokes, strokes, strokes)
@@ -42,6 +49,7 @@ class PlaneEmbeddingNetwork(nn.Module):
             face_embeddings.append(face_embedding.squeeze(0))
         
         face_embeddings = torch.stack(face_embeddings, dim=0).unsqueeze(0)  # Shape: (1, num_faces, output_dim)
+
         return face_embeddings
 
 

@@ -51,6 +51,7 @@ class Program_Graph_Dataset(Dataset):
         operations_matrix = graph_data['operations_matrix']
         intersection_matrix = graph_data['intersection_matrix']
         operations_order_matrix = graph_data['operations_order_matrix']
+        face_to_stroke = graph_data['face_aggregate']
 
 
         # 2) Load Program
@@ -90,7 +91,7 @@ class Program_Graph_Dataset(Dataset):
             edge_index_face_face_list = embedding_data['edge_index_face_face_list']
             index_id = embedding_data['index_id']
 
-        return node_features, operations_matrix, intersection_matrix, operations_order_matrix, program, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id
+        return node_features, operations_matrix, intersection_matrix, operations_order_matrix, face_to_stroke, program, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id
 
     
 

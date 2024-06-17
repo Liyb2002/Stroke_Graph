@@ -1,5 +1,6 @@
 import numpy as np
 from itertools import permutations, combinations
+import torch
 
 def face_aggregate(stroke_matrix):
     """
@@ -65,23 +66,22 @@ def get_kth_operation(op_to_index_matrix, k):
 
 
 def build_gt_matrix(kth_operation, face_indices):
-
     num_faces = len(face_indices)
-    gt_matrix = np.zeros((num_faces, 1), dtype=int)
+    gt_matrix = torch.zeros((num_faces, 1), dtype=torch.float32)
 
     for i, face in enumerate(face_indices):
         chosen_count = sum(kth_operation[stroke_index][0] == 1 for stroke_index in face)
         if chosen_count >= (len(face) // 2) + 1:
-            gt_matrix[i][0] = 1
+            gt_matrix[i][0] = 1.0
 
-    num_chosen_faces = np.sum(gt_matrix)
-    print(f"Number of faces chosen: {num_chosen_faces}")
+    # num_chosen_faces = torch.sum(gt_matrix)
+    # print(f"Number of faces chosen: {num_chosen_faces}")
 
-    if num_chosen_faces == 0:
-        chosen_strokes = np.where(kth_operation == 1)[0]
-        print(f"Chosen stroke indices: {chosen_strokes}")
+    # if num_chosen_faces == 0:
+    #     chosen_strokes = np.where(kth_operation == 1)[0]
+    #     print(f"Chosen stroke indices: {chosen_strokes}")
         
-        # Print out all the face tuples
-        print(f"Face tuples: {face_indices}")
+    #     # Print out all the face tuples
+    #     print(f"Face tuples: {face_indices}")
     
     return gt_matrix
