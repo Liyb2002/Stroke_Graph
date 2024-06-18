@@ -133,7 +133,7 @@ def train():
         list(stroke_embed_model.parameters()) +
         list(plane_embed_model.parameters()) +
         list(cross_attention_model.parameters()),
-        lr=0.001
+        lr=0.0005
     )
 
     epochs = 20
@@ -354,14 +354,9 @@ def eval():
             # vis(node_features, face_to_stroke, output)
 
             # 9) Evaluation Metrics - Percetange of the exact choice
-            preditcted_chosen_face_index = torch.where(output > 0.5)[0]
-            if len(preditcted_chosen_face_index) > 0:
-                predicted_chosen_face_index = torch.max(preditcted_chosen_face_index)
-            else:
-                predicted_chosen_face_index = -1
-
-            gt_chosen_face_index = torch.where(gt_matrix > 0.5)[0]
-            if predicted_chosen_face_index == gt_chosen_face_index:
+            predicted_chosen_face_index = torch.argmax(output)
+            gt_chosen_face_index = torch.where(gt_matrix == 1)[0]
+            if predicted_chosen_face_index in gt_chosen_face_index:
                 face_exact_match_count += 1
             total_count += 1
 
