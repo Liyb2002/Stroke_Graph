@@ -103,6 +103,27 @@ def vis(node_features, face_to_stroke, chosen_face):
     plt.show()
     
 
+def eval_inclusion(brep_edge_features, node_features, face_to_stroke, chosen_face):
+    # Find the chosen face
+    chosen_face_index = torch.where(chosen_face > 0.5)[0]
+    if len(chosen_face_index) > 0 and brep_edge_features.shape[1] != 0:
+        chosen_face_index = chosen_face_index[0].item()  # Get the first chosen face index
+        
+    # Find the strokes for the chosen face
+        matches = []
+        chosen_strokes = face_to_stroke[chosen_face_index]
+        for stroke_index in chosen_strokes:
+            stroke = node_features[0][stroke_index][0]
+            for i in range(brep_edge_features.shape[1]):
+                    if torch.allclose(brep_edge_features[0][i], stroke, atol=1e-5):
+                        matches.append(i)
+
+        return len(matches)
+    
+    return 0
+
+
+    
 
 def train():
     # Define training
@@ -281,7 +302,8 @@ def eval():
 
     eval_loss = 0.0
     criterion = nn.BCEWithLogitsLoss()
-    match_count = 0
+    face_exact_match_count = 0
+    face_in_brep_count = 0
     total_count = 0
 
     with torch.no_grad():
@@ -331,7 +353,7 @@ def eval():
             # vis(node_features, face_to_stroke, gt_matrix)
             # vis(node_features, face_to_stroke, output)
 
-            # 9) Evaluation Metrics
+            # 9) Evaluation Metrics - Percetange of the exact choice
             preditcted_chosen_face_index = torch.where(output > 0.5)[0]
             if len(preditcted_chosen_face_index) > 0:
                 predicted_chosen_face_index = torch.max(preditcted_chosen_face_index)
@@ -340,17 +362,25 @@ def eval():
 
             gt_chosen_face_index = torch.where(gt_matrix > 0.5)[0]
             if predicted_chosen_face_index == gt_chosen_face_index:
-                match_count += 1
+                face_exact_match_count += 1
             total_count += 1
+
+            # 10) Evaluation Metrics - Percetange of sketch face inside existing brep
+            face_in_brep_count += eval_inclusion(edge_features, node_features, face_to_stroke, output)
+
 
 
     # Compute average evaluation loss
     eval_loss /= len(eval_loader)
     print(f"Evaluation loss: {eval_loss:.4f}")
 
-    # Compute match probability
-    match_probability = match_count / total_count if total_count > 0 else 0.0
-    print(f"Match probability: {match_probability:.4f}")
+    # Compute face_exact_match_count probability
+    face_exact_match_count_prob = face_exact_match_count / total_count if total_count > 0 else 0.0
+    print(f"Face_exact_match: {face_exact_match_count}/{total_count} (Probability: {face_exact_match_count_prob:.4f})")
+
+    # Compute face_in_brep_count probability
+    face_in_brep_count_prob = face_in_brep_count / total_count if total_count > 0 else 0.0
+    print(f"Face_in_brep: {face_in_brep_count}/{total_count} (Probability: {face_in_brep_count_prob:.4f})")
 
 
 
