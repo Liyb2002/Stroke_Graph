@@ -65,45 +65,7 @@ def save_models():
     print("Saved models.")
 
 
-def vis_gt(node_features, face_to_stroke, chosen_face):
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    
-    # Remove the first dimension
-    node_features = node_features.squeeze(0)
-
-    # Plot all strokes in blue
-    for stroke in node_features:
-        start = stroke[:3].numpy()
-        end = stroke[3:].numpy()
-        
-        # Plot the line segment for the stroke in blue
-        ax.plot([start[0], end[0]], [start[1], end[1]], [start[2], end[2]], marker='o', color='blue')
-
-    # Find the chosen face
-    chosen_face_index = torch.where(chosen_face == 1)[0]
-    
-    if len(chosen_face_index) > 0:
-        chosen_face_index = chosen_face_index[0].item()  # Get the first chosen face index
-
-        # Find the strokes for the chosen face
-        chosen_strokes = face_to_stroke[chosen_face_index]
-
-        # Plot the chosen strokes in red
-        for stroke_index in chosen_strokes:
-            stroke = node_features[stroke_index]
-            start = stroke[0][:3].numpy()
-            end = stroke[0][3:].numpy()
-            ax.plot([start[0], end[0]], [start[1], end[1]], [start[2], end[2]], marker='o', color='red')
-
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_zlabel('Z')
-
-    plt.show()
-    
-
-def vis_output(node_features, face_to_stroke, chosen_face):
+def vis(node_features, face_to_stroke, chosen_face):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     
@@ -139,6 +101,7 @@ def vis_output(node_features, face_to_stroke, chosen_face):
     ax.set_zlabel('Z')
 
     plt.show()
+    
 
 
 def train():
@@ -318,6 +281,8 @@ def eval():
 
     eval_loss = 0.0
     criterion = nn.BCEWithLogitsLoss()
+    match_count = 0
+    total_count = 0
 
     with torch.no_grad():
         for batch in tqdm(eval_loader, desc="Evaluating"):
@@ -362,14 +327,30 @@ def eval():
 
             eval_loss += loss.item()
 
-            print("output", output)
-            vis_gt(node_features, face_to_stroke, gt_matrix)
-            vis_output(node_features, face_to_stroke, output)
-            break
+            # 8) Visulization
+            # vis(node_features, face_to_stroke, gt_matrix)
+            # vis(node_features, face_to_stroke, output)
+
+            # 9) Evaluation Metrics
+            preditcted_chosen_face_index = torch.where(output > 0.5)[0]
+            if len(preditcted_chosen_face_index) > 0:
+                predicted_chosen_face_index = torch.max(preditcted_chosen_face_index)
+            else:
+                predicted_chosen_face_index = -1
+
+            gt_chosen_face_index = torch.where(gt_matrix > 0.5)[0]
+            if predicted_chosen_face_index == gt_chosen_face_index:
+                match_count += 1
+            total_count += 1
+
 
     # Compute average evaluation loss
     eval_loss /= len(eval_loader)
     print(f"Evaluation loss: {eval_loss:.4f}")
+
+    # Compute match probability
+    match_probability = match_count / total_count if total_count > 0 else 0.0
+    print(f"Match probability: {match_probability:.4f}")
 
 
 
