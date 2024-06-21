@@ -16,6 +16,8 @@ import torch.nn as nn
 import torch.optim as optim
 import os
 import pandas as pd
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, classification_report
 
@@ -53,12 +55,61 @@ def load_models():
         cross_attention_model.load_state_dict(torch.load(os.path.join(save_dir, 'cross_attention_model.pth')))
         print("Loaded cross_attention_model")
 
+
 def save_models():
     torch.save(graph_embedding_model.state_dict(), os.path.join(save_dir, 'graph_embedding_model.pth'))
     torch.save(program_embedding_model.state_dict(), os.path.join(save_dir, 'program_embedding_model.pth'))
     torch.save(SBGCN_model.state_dict(), os.path.join(save_dir, 'SBGCN_model.pth'))
     torch.save(cross_attention_model.state_dict(), os.path.join(save_dir, 'cross_attention_model.pth'))
     print("Saved models.")
+
+
+def vis_brep(brep_edge_features):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    num_edges = brep_edge_features.shape[1]
+
+    for i in range(num_edges):
+        start_point = brep_edge_features[0, i, :3]
+        end_point = brep_edge_features[0, i, 3:]
+        ax.plot([start_point[0], end_point[0]], [start_point[1], end_point[1]], [start_point[2], end_point[2]], color='blue')
+
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+
+    plt.show()
+
+
+def vis_next_step(node_features, operations_order_matrix, next_program_count):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    node_features = node_features.squeeze(0)
+    operations_order_matrix = operations_order_matrix.squeeze(0)
+
+    # Get the ith column from the operations_order_matrix
+    if next_program_count >= operations_order_matrix.shape[1]:
+        new_operations_order_matrix = torch.zeros((operations_order_matrix.shape[0], 1))
+    else:
+        new_operations_order_matrix = operations_order_matrix[:, next_program_count].reshape(-1, 1)
+
+    # Plot strokes with color based on new_operations_order_matrix
+    for i, stroke in enumerate(node_features):
+        start = stroke[:3].numpy()
+        end = stroke[3:].numpy()
+        color = 'red' if new_operations_order_matrix[i] == 1 else 'blue'
+        
+        # Plot the line segment for the stroke
+        ax.plot([start[0], end[0]], [start[1], end[1]], [start[2], end[2]], marker='o', color=color)
+
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+
+    plt.show()
+
 
 def train():
 
@@ -78,12 +129,12 @@ def train():
     dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/train_dataset')
 
     # Split dataset into training and validation
-    train_size = int(0.2 * len(dataset))
+    train_size = int(0.08 * len(dataset))
     val_size = len(dataset) - train_size
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
 
     train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False)
+    val_loader = DataLoader(val_dataset, batch_size=1, shuffle=True)
 
     best_val_loss = float('inf')
 
@@ -97,7 +148,7 @@ def train():
         total_train_loss = 0.0
         
         for batch in tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs} - Training"):
-            node_features, operations_matrix, intersection_matrix, operations_order_matrix, program, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
+            node_features, operations_matrix, intersection_matrix, operations_order_matrix, _, program, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
 
             # to device 
             node_features = node_features.to(torch.float32).to(device)
@@ -155,7 +206,7 @@ def train():
         
         with torch.no_grad():
             for batch in tqdm(val_loader, desc=f"Epoch {epoch+1}/{epochs} - Validation"):
-                node_features, operations_matrix, intersection_matrix, operations_order_matrix, program, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
+                node_features, operations_matrix, intersection_matrix, operations_order_matrix, _, program, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
 
                 # to device 
                 node_features = node_features.to(torch.float32).to(device)
@@ -227,7 +278,7 @@ def eval():
 
     with torch.no_grad():
         for batch in tqdm(data_loader, desc="Evaluating"):
-            node_features, operations_matrix, intersection_matrix, operations_order_matrix, program, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
+            node_features, operations_matrix, intersection_matrix, operations_order_matrix, _, program, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
 
             # to device 
             node_features = node_features.to(torch.float32).to(device)
@@ -265,6 +316,12 @@ def eval():
             prediction = cross_attention_model.predict_label(graph_embedding, program_encoding, brep_embedding)
             predictions.append(prediction.item())
             ground_truths.append(gt_next_token.item())
+
+            if prediction.item() != gt_next_token.item() and gt_next_token.item() == 1:
+                print("prediction", prediction.item())
+                print("gt", gt_next_token.item())
+                vis_brep(edge_features)
+                vis_next_step(node_features, operations_order_matrix, len(current_program) )
 
             # print(f"Prediction: {prediction.item()}, Ground Truth: {gt_next_token.item()}")
 

@@ -230,6 +230,7 @@ def find_triangle_to_cut(points, normal):
 
     return [pin_point, point1, point2]
 
+
 def random_circle(points, normal):
     four_pts = find_rectangle_on_plane(points, normal)
 

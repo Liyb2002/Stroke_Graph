@@ -23,11 +23,19 @@ class Brep:
 
         axis = np.random.choice(['x', 'y', 'z'])
         points, normal = Preprocessing.proc_CAD.random_gen.generate_random_rectangle(axis)
+
+        if axis == 'x':
+            boundary_points = ([1, 0, 0])
+        elif axis == 'y':
+            boundary_points = ([0, 1, 0])
+        elif axis == 'z':
+            boundary_points = ([0, 0, 1])
+
         
-        self._sketch_op(points, normal)
+        self._sketch_op(points, normal, boundary_points)
 
 
-    def _sketch_op(self, points, normal):
+    def _sketch_op(self, points, normal, boundary_points):
         vertex_list = []
         for i, point in enumerate(points):
             vertex_id = f"vertex_{self.idx}_{i}"
@@ -47,7 +55,7 @@ class Brep:
         self.Faces.append(face)
         
         self.idx += 1
-        self.op.append(['sketch'])
+        self.op.append(['sketch', boundary_points])
 
 
     def regular_sketch_op(self):
@@ -78,7 +86,7 @@ class Brep:
         if selected_case == 'triangle_to_cut':
             random_polygon_points = Preprocessing.proc_CAD.helper.find_triangle_to_cut(boundary_points, normal)
 
-        self._sketch_op(random_polygon_points, normal)
+        self._sketch_op(random_polygon_points, normal, boundary_points)
 
 
     def regular_sketch_circle(self, normal, radius, center):

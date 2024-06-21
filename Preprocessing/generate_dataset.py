@@ -22,9 +22,10 @@ class dataset_generator():
         #     shutil.rmtree('dataset')
         # os.makedirs('dataset', exist_ok=True)
 
-        self.generate_dataset('dataset/train_dataset', number_data = 3000, start = 2420)
-        self.generate_dataset('dataset/eval_dataset', number_data = 300, start = 190)
- 
+        self.generate_dataset('dataset/train_dataset', number_data = 0, start = 2420)
+        self.generate_dataset('dataset/eval_dataset', number_data = 0, start = 190)
+        self.generate_dataset('dataset/example', number_data = 10, start = 0)
+
 
     def generate_dataset(self, dir, number_data, start):
         successful_generations = start
@@ -45,8 +46,8 @@ class dataset_generator():
         # Generate a new program & save the brep
         try:
             # Pass in the directory to the simple_gen function
-            Preprocessing.proc_CAD.proc_gen.random_program(data_directory)
-            # Preprocessing.proc_CAD.proc_gen.simple_gen(data_directory)
+            # Preprocessing.proc_CAD.proc_gen.random_program(data_directory)
+            Preprocessing.proc_CAD.proc_gen.simple_gen(data_directory)
 
             # Create brep for the new program and pass in the directory
             valid_parse = Preprocessing.proc_CAD.Program_to_STL.run(data_directory)
@@ -78,33 +79,36 @@ class dataset_generator():
 
         # 3) Save matrices for Brep Embedding
         brep_directory = os.path.join(data_directory, 'canvas')
-        for file_name in os.listdir(brep_directory):
-            if file_name.startswith('brep_') and file_name.endswith('.step'):
+        brep_files = [file_name for file_name in os.listdir(brep_directory)
+              if file_name.startswith('brep_') and file_name.endswith('.step')]
+        brep_files.sort(key=lambda x: int(x.split('_')[1].split('.')[0]))
+
+        for file_name in brep_files:
                 
-                brep_file_path = os.path.join(brep_directory, file_name)
-                face_features_list, edge_features_list, vertex_features_list, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id= Preprocessing.SBGCN.brep_read.create_graph_from_step_file(brep_file_path)
+            brep_file_path = os.path.join(brep_directory, file_name)
+            face_features_list, edge_features_list, vertex_features_list, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id= Preprocessing.SBGCN.brep_read.create_graph_from_step_file(brep_file_path)
 
-                face_features = Preprocessing.proc_CAD.helper.preprocess_features(face_features_list)
-                edge_features = Preprocessing.proc_CAD.helper.preprocess_features(edge_features_list)
-                vertex_features = Preprocessing.proc_CAD.helper.preprocess_features(vertex_features_list)
+            face_features = Preprocessing.proc_CAD.helper.preprocess_features(face_features_list)
+            edge_features = Preprocessing.proc_CAD.helper.preprocess_features(edge_features_list)
+            vertex_features = Preprocessing.proc_CAD.helper.preprocess_features(vertex_features_list)
 
-                # extract index i
-                index = file_name.split('_')[1].split('.')[0]
-                os.makedirs(os.path.join(data_directory, 'brep_embedding'), exist_ok=True)
-                embeddings_file_path = os.path.join(data_directory, 'brep_embedding', f'brep_info_{index}.pkl')
-                with open(embeddings_file_path, 'wb') as f:
-                    pickle.dump({
-                        'face_features': face_features,
-                        'edge_features': edge_features,
-                        'vertex_features': vertex_features,
-                        
-                        'edge_index_face_edge_list': edge_index_face_edge_list,
-                        'edge_index_edge_vertex_list': edge_index_edge_vertex_list,
-                        'edge_index_face_face_list': edge_index_face_face_list,
+            # extract index i
+            index = file_name.split('_')[1].split('.')[0]
+            os.makedirs(os.path.join(data_directory, 'brep_embedding'), exist_ok=True)
+            embeddings_file_path = os.path.join(data_directory, 'brep_embedding', f'brep_info_{index}.pkl')
+            with open(embeddings_file_path, 'wb') as f:
+                pickle.dump({
+                    'face_features': face_features,
+                    'edge_features': edge_features,
+                    'vertex_features': vertex_features,
+                    
+                    'edge_index_face_edge_list': edge_index_face_edge_list,
+                    'edge_index_edge_vertex_list': edge_index_edge_vertex_list,
+                    'edge_index_face_face_list': edge_index_face_face_list,
 
-                        'index_id': torch.tensor(index_id, dtype=torch.int64)
+                    'index_id': torch.tensor(index_id, dtype=torch.int64)
 
-                    }, f)
+                }, f)
 
         # 4) Save rendered 2D image
         Preprocessing.proc_CAD.render_images.run_render_images(data_directory)

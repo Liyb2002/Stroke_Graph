@@ -24,13 +24,9 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 # Define the neural networks
-graph_embedding_model = Encoders.gnn.gnn.SemanticModule()
 SBGCN_model = Preprocessing.SBGCN.SBGCN_network.FaceEdgeVertexGCN()
-sketch_attention_model = Models.sketch_model.GraphBrepAttention()
+stroke_embed_model = Models.sketch_model.StrokeEmbeddingNetwork()
 
-graph_embedding_model.to(device)
-SBGCN_model.to(device)
-sketch_attention_model.to(device)
 
 current_dir = os.getcwd()
 save_dir = os.path.join(current_dir, 'checkpoints', 'sketch_prediction')
@@ -38,240 +34,16 @@ os.makedirs(save_dir, exist_ok=True)
 
 
 def load_models():
-    # Load models if they exist
-    if os.path.exists(os.path.join(save_dir, 'graph_embedding_model.pth')):
-        graph_embedding_model.load_state_dict(torch.load(os.path.join(save_dir, 'graph_embedding_model.pth')))
-        print("Loaded graph_embedding_model")
-
-    if os.path.exists(os.path.join(save_dir, 'SBGCN_model.pth')):
-        SBGCN_model.load_state_dict(torch.load(os.path.join(save_dir, 'SBGCN_model.pth')))
-        print("Loaded SBGCN_model")
-
-    if os.path.exists(os.path.join(save_dir, 'sketch_attention_model.pth')):    
-        sketch_attention_model.load_state_dict(torch.load(os.path.join(save_dir, 'sketch_attention_model.pth')))
-        print("Loaded sketch_attention_model")
-
+    pass
 
 def save_models():
-    torch.save(graph_embedding_model.state_dict(), os.path.join(save_dir, 'graph_embedding_model.pth'))
-    torch.save(SBGCN_model.state_dict(), os.path.join(save_dir, 'SBGCN_model.pth'))
-    torch.save(sketch_attention_model.state_dict(), os.path.join(save_dir, 'sketch_attention_model.pth'))
-    print("Saved models.")
+    pass
 
-
-def get_kth_operation(op_to_index_matrix, k):    
-    squeezed_matrix = op_to_index_matrix.squeeze(0)
-    kth_operation = squeezed_matrix[:, k].unsqueeze(1)
-
-    return kth_operation
-
-
-def face_aggregate(strokes, stroke_features):
-    # Ensure strokes and stroke_features are tensors
-    strokes = strokes.clone().detach()
-    stroke_features = stroke_features.clone().detach().squeeze(0)
-    
-    # Get the coordinates of the chosen strokes
-    chosen_indices = (strokes > 0.5).nonzero(as_tuple=True)[0]
-    chosen_strokes = stroke_features[chosen_indices]
-
-    def find_coplanar_lines(lines):
-        subsets = []
-        lines = lines.numpy()
-
-        for i, line in enumerate(lines):
-            start, end = line[:3], line[3:]
-            coplanar_set = [line]
-
-            for j, other_line in enumerate(lines):
-                if i != j:
-                    other_start, other_end = other_line[:3], other_line[3:]
-                    # Check if the lines are coplanar by having two common coordinates
-                    if (start[0] == other_start[0] and end[0] == other_end[0]) or \
-                       (start[1] == other_start[1] and end[1] == other_end[1]) or \
-                       (start[2] == other_start[2] and end[2] == other_end[2]):
-                        coplanar_set.append(other_line)
-
-            if len(coplanar_set) > 2:
-                subsets.append(coplanar_set)
-
-        return subsets
-
-    def is_connected(subset):
-        return True
-        graph = {}
-        for line in subset:
-            start = tuple(line[:3])
-            end = tuple(line[3:])
-            if start not in graph:
-                graph[start] = []
-            if end not in graph:
-                graph[end] = []
-            graph[start].append(end)
-            graph[end].append(start)
-
-        visited = set()
-        stack = [tuple(subset[0][:3])]
-
-        while stack:
-            node = stack.pop()
-            if node not in visited:
-                visited.add(node)
-                stack.extend(graph[node])
-
-        return len(visited) == len(graph)
-
-    def find_connected_subsets(subsets):
-
-        connected_subsets = []
-        for subset in subsets:
-            connected_points = set()
-            new_subset = []
-            for line in subset:
-                start, end = tuple(line[:3]), tuple(line[3:])
-                if start in connected_points or end in connected_points or not connected_points:
-                    new_subset.append(start)
-                    new_subset.append(end)
-                    connected_points.update([start, end])
-                else:
-                    # Check reversed order as well
-                    if tuple(line[3:]) in connected_points or tuple(line[:3]) in connected_points:
-                        new_subset.append(tuple(line[3:]))
-                        new_subset.append(tuple(line[:3]))
-                        connected_points.update([tuple(line[3:]), tuple(line[:3])])
-                    else:
-                        if len(new_subset) > 2 and is_connected(new_subset):
-                            connected_subsets.append(list(set(new_subset)))
-                        new_subset = [start, end]
-                        connected_points = {start, end}
-                if len(new_subset) > 2 and is_connected(new_subset):
-                    connected_subsets.append(list(set(new_subset)))
-        return connected_subsets
-        
-    def reorder_points(points):
-        if not isinstance(points, np.ndarray):
-            points = np.array(points)
-        
-        ordered_points = [points[0]]
-        points = np.delete(points, 0, axis=0)
-        
-        while points.size > 0:
-            last_point = ordered_points[-1]
-            distances = np.linalg.norm(points - last_point, axis=1)
-            nearest_idx = np.argmin(distances)
-            ordered_points.append(points[nearest_idx])
-            points = np.delete(points, nearest_idx, axis=0)
-        
-        return ordered_points
-
-    def remove_duplicate_ordered_faces(ordered_faces):
-        unique_faces = []
-        seen = set()
-        
-        for face in ordered_faces:
-            # Sort the face to normalize it, converting points to tuples for hashability
-            sorted_face = tuple(sorted(map(tuple, face)))
-            if sorted_face not in seen:
-                seen.add(sorted_face)
-                unique_faces.append(face)
-        
-        return unique_faces
-
-    coplanar_subsets = find_coplanar_lines(chosen_strokes)
-    connected_coplanar_subsets = find_connected_subsets(coplanar_subsets)
-    # Remove duplicate point sets from connected_coplanar_subsets
-    unique_connected_coplanar_subsets = []
-    for subset in connected_coplanar_subsets:
-        if subset not in unique_connected_coplanar_subsets and len(subset) > 2:
-            unique_connected_coplanar_subsets.append(subset)
-
-
-    ordered_faces = []
-    for subset in unique_connected_coplanar_subsets:
-        ordered_faces.append(reorder_points(subset))
-
-    unique_ordered_faces = remove_duplicate_ordered_faces(ordered_faces)
-
-    return unique_ordered_faces
-
-
-
-def vis_gt(strokes, stroke_features):
-    # Ensure strokes and stroke_features are tensors
-    strokes = strokes.clone().detach()
-    stroke_features = stroke_features.clone().detach().squeeze(0)
-    
-    num_chosen_strokes = torch.sum(strokes).item()
-    print(f"Number of chosen strokes in the strokes matrix: {num_chosen_strokes}")
-
-    # Create a 3D plot
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    
-    num_strokes = stroke_features.shape[0]
-    
-    for i in range(num_strokes):
-        x = [stroke_features[i, 0].item(), stroke_features[i, 3].item()]
-        y = [stroke_features[i, 1].item(), stroke_features[i, 4].item()]
-        z = [stroke_features[i, 2].item(), stroke_features[i, 5].item()]
-        
-        color = 'red' if strokes[i, 0].item() == 1 else 'blue'
-        ax.plot(x, y, z, color=color)
-    
-    plt.show()
-
-
-def vis_predict(strokes, stroke_features, edge_features):
-    # Ensure strokes and stroke_features are tensors
-    strokes = strokes.clone().detach()
-    stroke_features = stroke_features.clone().detach().squeeze(0)
-    edge_features = edge_features.clone().detach().squeeze(0)
-    
-    chosen_strokes_sets = face_aggregate(strokes, stroke_features)
-    num_faces = len(chosen_strokes_sets)
-
-    print(f"Number of faces (sets of coplanar strokes): {num_faces}")
-
-    for chosen_points in chosen_strokes_sets:
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        
-        # Plot the chosen strokes set
-        x = [point[0] for point in chosen_points]
-        y = [point[1] for point in chosen_points]
-        z = [point[2] for point in chosen_points]
-        
-        # Connect the last point with the first point
-        x.append(x[0])
-        y.append(y[0])
-        z.append(z[0])
-        
-        # Plot the lines connecting the points
-        ax.plot(x, y, z, marker='o', color='green')
-        
-        # Plot the edges from edge_features
-        num_strokes = edge_features.size(0)
-        
-        for i in range(num_strokes):
-            start_point = edge_features[i][:3]
-            end_point = edge_features[i][3:]
-            
-            x_edge = [start_point[0].item(), end_point[0].item()]
-            y_edge = [start_point[1].item(), end_point[1].item()]
-            z_edge = [start_point[2].item(), end_point[2].item()]
-            
-            # Plot the edge as a line
-            ax.plot(x_edge, y_edge, z_edge, marker='o', color='blue')
-            
-        plt.show()
-
-
-def train():
+def train_face_prediction():
 
     # Define training
     criterion = nn.BCEWithLogitsLoss()
     optimizer = torch.optim.Adam(
-        list(graph_embedding_model.parameters()) + 
         list(SBGCN_model.parameters()),
         lr=0.001
     )
@@ -279,10 +51,10 @@ def train():
     epochs = 20
 
     # Create a DataLoader
-    dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/train_dataset')
+    dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/example')
 
     # Filter to only keep
-    good_data_indices = [i for i, data in enumerate(dataset) if data[4][-1] == 1]
+    good_data_indices = [i for i, data in enumerate(dataset) if data[5][-1] == 1]
     filtered_dataset = Subset(dataset, good_data_indices)
     print(f"Total number of sketch data: {len(filtered_dataset)}")
 
@@ -297,176 +69,17 @@ def train():
     best_val_loss = float('inf')
 
     for epoch in range(epochs):
-        graph_embedding_model.train()
         SBGCN_model.train()
+        stroke_embed_model.train()
         
         total_train_loss = 0.0
         
         for batch in tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs} - Training"):
-            node_features, operations_matrix, intersection_matrix, operations_order_matrix, program, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
+            node_features, operations_matrix, intersection_matrix, operations_order_matrix, face_to_stroke, program, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
             
-            # to device 
+            # 1) Embed the strokes
             node_features = node_features.to(torch.float32).to(device)
-            operations_matrix = operations_matrix.to(torch.float32).to(device)
-            intersection_matrix = intersection_matrix.to(torch.float32).to(device)
-            operations_order_matrix = operations_order_matrix.to(torch.float32).to(device)
-
-            gnn_graph = Preprocessing.gnn_graph.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
-            gnn_graph.to_device(device)
-            graph_embedding = graph_embedding_model(gnn_graph.x_dict, gnn_graph.edge_index_dict)
-
-            if face_features.shape[1] == 0:
-                # is empty program
-                brep_embedding = torch.zeros(1, 1, 32, device=device)
-            else:
-                brep_graph = Preprocessing.SBGCN.SBGCN_graph.GraphHeteroData(face_features, edge_features, vertex_features, 
-                            edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id)
-                
-                brep_graph.to_device(device)
-                face_embedding, edge_embedding, vertex_embedding = SBGCN_model(brep_graph)
-                brep_embedding = torch.cat((face_embedding, edge_embedding, vertex_embedding), dim=1)
-
-            output = sketch_attention_model(graph_embedding, brep_embedding)
-
-            # prepare ground_truth
-            target_op_index = len(program[0])-1
-            op_to_index_matrix = gnn_graph['stroke'].z
-            gt_matrix = get_kth_operation(op_to_index_matrix, target_op_index)
-
-            output = output.view(-1, 1).to(torch.float32)
-            gt_matrix = gt_matrix.view(-1, 1).to(torch.float32)
-
-            loss = criterion(output, gt_matrix)
-            total_train_loss += loss.item()
-
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-
-        avg_train_loss = total_train_loss / len(train_loader)
-        print(f"Epoch {epoch+1}/{epochs}, Training Loss: {avg_train_loss}")
-
-        graph_embedding_model.eval()
-        SBGCN_model.eval()
-        
-        total_val_loss = 0.0
-        
-        with torch.no_grad():
-            for batch in tqdm(val_loader, desc=f"Epoch {epoch+1}/{epochs} - Validation"):
-                node_features, operations_matrix, intersection_matrix, operations_order_matrix, program, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
-                
-                # to device 
-                node_features = node_features.to(torch.float32).to(device)
-                operations_matrix = operations_matrix.to(torch.float32).to(device)
-                intersection_matrix = intersection_matrix.to(torch.float32).to(device)
-                operations_order_matrix = operations_order_matrix.to(torch.float32).to(device)
-
-                gnn_graph = Preprocessing.gnn_graph.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
-                gnn_graph.to_device(device)
-                graph_embedding = graph_embedding_model(gnn_graph.x_dict, gnn_graph.edge_index_dict)
-
-                if face_features.shape[1] == 0:
-                    # is empty program
-                    brep_embedding = torch.zeros(1, 1, 32, device=device)
-                else:
-                    brep_graph = Preprocessing.SBGCN.SBGCN_graph.GraphHeteroData(face_features, edge_features, vertex_features, 
-                                edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id)
-                    
-                    brep_graph.to_device(device)
-                    face_embedding, edge_embedding, vertex_embedding = SBGCN_model(brep_graph)
-                    brep_embedding = torch.cat((face_embedding, edge_embedding, vertex_embedding), dim=1)
-
-                output = sketch_attention_model(graph_embedding, brep_embedding)
-
-                # prepare ground_truth
-                target_op_index = len(program[0])-1
-                op_to_index_matrix = gnn_graph['stroke'].z
-                gt_matrix = get_kth_operation(op_to_index_matrix, target_op_index).to(device)
-
-                output = output.view(-1, 1).to(torch.float32)
-                gt_matrix = gt_matrix.view(-1, 1).to(torch.float32)
-
-                loss = criterion(output, gt_matrix)
-                total_val_loss += loss.item()
-
-        avg_val_loss = total_val_loss / len(val_loader)
-        print(f"Epoch {epoch+1}/{epochs}, Validation Loss: {avg_val_loss}")
-
-        # Checkpoint saving
-        if avg_val_loss < best_val_loss:
-            best_val_loss = avg_val_loss
-            save_models()
-
-
-def eval(vis=True):
-    load_models()
-
-    graph_embedding_model.eval()
-    SBGCN_model.eval()
-    sketch_attention_model.eval()
-
-    # Define evaluation criterion
-    criterion = nn.BCEWithLogitsLoss()
-
-    # Create DataLoader
-    dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/eval_dataset')
-
-    # Filter to only keep good data
-    good_data_indices = [i for i, data in enumerate(dataset) if data[4][-1] == 1]
-    filtered_dataset = Subset(dataset, good_data_indices)
-    print(f"Total number of sketch data: {len(filtered_dataset)}")
-
-    eval_loader = DataLoader(filtered_dataset, batch_size=1, shuffle=False)
-
-    total_eval_loss = 0.0
-
-    with torch.no_grad():
-        for batch in tqdm(eval_loader, desc="Evaluating"):
-            node_features, operations_matrix, intersection_matrix, operations_order_matrix, program, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
-
-            # to device 
-            node_features = node_features.to(torch.float32).to(device)
-            operations_matrix = operations_matrix.to(torch.float32).to(device)
-            intersection_matrix = intersection_matrix.to(torch.float32).to(device)
-            operations_order_matrix = operations_order_matrix.to(torch.float32).to(device)
-
-            gnn_graph = Preprocessing.gnn_graph.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
-            gnn_graph.to_device(device)
-            graph_embedding = graph_embedding_model(gnn_graph.x_dict, gnn_graph.edge_index_dict)
-
-            if face_features.shape[1] == 0:
-                # is empty program
-                brep_embedding = torch.zeros(1, 1, 32, device=device)
-            else:
-                brep_graph = Preprocessing.SBGCN.SBGCN_graph.GraphHeteroData(face_features, edge_features, vertex_features, 
-                            edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id)
-                
-                brep_graph.to_device(device)
-                face_embedding, edge_embedding, vertex_embedding = SBGCN_model(brep_graph)
-                brep_embedding = torch.cat((face_embedding, edge_embedding, vertex_embedding), dim=1)
-
-            output = sketch_attention_model(graph_embedding, brep_embedding)
-
-            # prepare ground_truth
-            target_op_index = len(program[0])-1
-            op_to_index_matrix = gnn_graph['stroke'].z
-
-            gt_matrix = get_kth_operation(op_to_index_matrix, target_op_index).to(device)
-
-            output = output.view(-1, 1).to(torch.float32)
-            gt_matrix = gt_matrix.view(-1, 1).to(torch.float32)
-
-            loss = criterion(output, gt_matrix)
-            total_eval_loss += loss.item()
-            
-            if vis:
-                vis_gt(gt_matrix, gnn_graph['stroke'].x)
-                vis_predict(output, gnn_graph['stroke'].x, edge_features)
-
-                break
-
-    avg_eval_loss = total_eval_loss / len(eval_loader)
-    print(f"Evaluation Loss: {avg_eval_loss}")
+            stroke_embed = stroke_embed_model(node_features)
 
 
 
@@ -474,4 +87,4 @@ def eval(vis=True):
 
 #---------------------------------- Public Functions ----------------------------------#
 
-eval()
+train_face_prediction()
