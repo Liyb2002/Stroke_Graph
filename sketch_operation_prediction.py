@@ -26,7 +26,7 @@ from mpl_toolkits.mplot3d import Axes3D
 # Define the neural networks
 SBGCN_model = Preprocessing.SBGCN.SBGCN_network.FaceEdgeVertexGCN()
 stroke_embed_model = Models.sketch_model.StrokeEmbeddingNetwork()
-
+face_embed_model = Models.sketch_model.PlaneEmbeddingNetwork()
 
 current_dir = os.getcwd()
 save_dir = os.path.join(current_dir, 'checkpoints', 'sketch_prediction')
@@ -48,7 +48,7 @@ def train_face_prediction():
         lr=0.001
     )
 
-    epochs = 20
+    epochs = 1
 
     # Create a DataLoader
     dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/example')
@@ -71,6 +71,7 @@ def train_face_prediction():
     for epoch in range(epochs):
         SBGCN_model.train()
         stroke_embed_model.train()
+        face_embed_model.train()
         
         total_train_loss = 0.0
         
@@ -78,8 +79,18 @@ def train_face_prediction():
             node_features, operations_matrix, intersection_matrix, operations_order_matrix, face_to_stroke, program, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
             
             # 1) Embed the strokes
-            node_features = node_features.to(torch.float32).to(device)
-            stroke_embed = stroke_embed_model(node_features)
+            if edge_features.shape[1] == 0: 
+                edge_features = torch.zeros((1, 1, 6))
+
+            edge_features = edge_features.to(torch.float32).to(device)
+            stroke_embed = stroke_embed_model(edge_features)
+
+            # 2) Pair each stroke with faces
+            index_id = index_id[0]
+            face_embed = face_embed_model(edge_index_face_edge_list, index_id, stroke_embed)
+            print("face_embeddings", face_embed.shape)
+
+
 
 
 

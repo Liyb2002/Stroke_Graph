@@ -24,33 +24,49 @@ class PlaneEmbeddingNetwork(nn.Module):
         self.fc_output = nn.Linear(hidden_dim, output_dim)
         self.relu = nn.ReLU()
 
-    def forward(self, face_indices, node_embed):
-        face_embeddings = []
+    def forward(self, edge_index_face_edge_list, index_id, node_embed):
+        face_to_edges = {}
 
-        for indices in face_indices:
-            # Ensure indices are flattened
-            indices = torch.cat(indices)
+        if node_embed.shape[1] == 1:
+                return torch.zeros((1, 1, 32))
+
+        for face_edge_pair in edge_index_face_edge_list:
+            face_list_index = face_edge_pair[0]
+            edge_list_index = face_edge_pair[1]
+
+            face_id = index_id[face_list_index].item()
+            edge_id = index_id[edge_list_index].item()
+
+            if face_id not in face_to_edges:
+                face_to_edges[face_id] = []
+            face_to_edges[face_id].append(edge_id)
             
-            # Shape: (num_indices, 16)
-            strokes = torch.stack([node_embed[0, idx] for idx in indices], dim=0)
             
-            # Add a batch dimension (if not already batched)
-            strokes = strokes.unsqueeze(0)  # Shape: (1, num_indices, 16)
+
+        face_embeddings = []
+        for face_id, edge_ids in face_to_edges.items():
+            # Extract the corresponding node embeddings for the edges of the current face
+
+            face_edges = node_embed[:, edge_ids, :]
+
+            # Self-attention mechanism
+            attention_output, _ = self.self_attention(face_edges, face_edges, face_edges)
             
-            # Apply self-attention
-            attn_output, _ = self.self_attention(strokes, strokes, strokes)
+            # Apply the first fully connected layer
+            x = self.relu(self.fc(attention_output))
             
-            # Reduce to single vector per face
-            face_embedding = attn_output.mean(dim=1)  # Shape: (1, 16)
-            face_embedding = self.fc(face_embedding)  # Shape: (1, hidden_dim)
-            face_embedding = self.relu(face_embedding)
-            face_embedding = self.fc_output(face_embedding)  # Shape: (1, output_dim)
+            # Aggregate the embeddings (e.g., by mean)
+            x = x.mean(dim=1)
             
-            face_embeddings.append(face_embedding.squeeze(0))
-        
-        face_embeddings = torch.stack(face_embeddings, dim=0).unsqueeze(0)  # Shape: (1, num_faces, output_dim)
+            # Apply the output fully connected layer
+            face_embedding = self.fc_output(x)
+            face_embeddings.append(face_embedding)
+
+        # Stack the embeddings for all faces to form the output tensor
+        face_embeddings = torch.stack(face_embeddings, dim=1)
 
         return face_embeddings
+
 
 
 class FaceBrepAttention(nn.Module):
