@@ -1,3 +1,7 @@
+import numpy as np
+import torch
+
+
 def chosen_face_id(boundary_points, edge_index_face_edge_list, index_id, edge_features):
 
     if edge_features.shape[1] == 1:
@@ -35,10 +39,16 @@ def chosen_face_id(boundary_points, edge_index_face_edge_list, index_id, edge_fe
         face_to_points[face_id] = list(unique_points)
 
 
+    # Find which face has all its point in the boundary_point
+    # output is the face_id
+    boundary_points_values_set = {tuple(torch.cat(boundary_point).to(torch.float32).tolist()) for boundary_point in boundary_points}
 
-    for face_id, points in face_to_points.items():
-        print(f"Face ID: {face_id}")
-        print("Points:")
-        for point in points:
-            print(point)
+    for face_id, face_points in face_to_points.items():
+        face_points_values_set = {tuple(face_point.tolist()) for face_point in face_points}
+        if boundary_points_values_set.issubset(face_points_values_set):
+            print("face_id!", face_id)
+            break
 
+
+
+    
