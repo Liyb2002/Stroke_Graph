@@ -16,6 +16,8 @@ class StrokeEmbeddingNetwork(nn.Module):
         x = self.fc2(x)
         return x
 
+
+
 class PlaneEmbeddingNetwork(nn.Module):
     def __init__(self, stroke_embedding_dim=16, hidden_dim=32, output_dim=32):
         super(PlaneEmbeddingNetwork, self).__init__()
@@ -27,9 +29,11 @@ class PlaneEmbeddingNetwork(nn.Module):
     def forward(self, edge_index_face_edge_list, index_id, node_embed):
         face_to_edges = {}
 
+        # if we have empty brep
         if node_embed.shape[1] == 1:
                 return torch.zeros((1, 1, 32))
 
+        # pair the edges index with each face
         for face_edge_pair in edge_index_face_edge_list:
             face_list_index = face_edge_pair[0]
             edge_list_index = face_edge_pair[1]
@@ -45,26 +49,27 @@ class PlaneEmbeddingNetwork(nn.Module):
 
         face_embeddings = []
         for face_id, edge_ids in face_to_edges.items():
-            # Extract the corresponding node embeddings for the edges of the current face
-
+            
+            # face_edges: shape (1, 4, 32)
             face_edges = node_embed[:, edge_ids, :]
 
-            # Self-attention mechanism
+            # attention_output: shape (1, 4, 32)
             attention_output, _ = self.self_attention(face_edges, face_edges, face_edges)
             
-            # Apply the first fully connected layer
+            # x: shape (1, 4, 32)
             x = self.relu(self.fc(attention_output))
             
-            # Aggregate the embeddings (e.g., by mean)
+            # x: shape (1, 32)
             x = x.mean(dim=1)
             
-            # Apply the output fully connected layer
+            # face_embedding: shape (1, 32)
             face_embedding = self.fc_output(x)
             face_embeddings.append(face_embedding)
 
         # Stack the embeddings for all faces to form the output tensor
         face_embeddings = torch.stack(face_embeddings, dim=1)
 
+        # face_embedding: shape (1, num_faces, 32)
         return face_embeddings
 
 

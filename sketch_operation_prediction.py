@@ -24,9 +24,13 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 # Define the neural networks
-SBGCN_model = Preprocessing.SBGCN.SBGCN_network.FaceEdgeVertexGCN()
 stroke_embed_model = Models.sketch_model.StrokeEmbeddingNetwork()
 face_embed_model = Models.sketch_model.PlaneEmbeddingNetwork()
+graph_embedding_model = Encoders.gnn.gnn.SemanticModule()
+
+stroke_embed_model.to(device)
+face_embed_model.to(device)
+graph_embedding_model.to(device)
 
 current_dir = os.getcwd()
 save_dir = os.path.join(current_dir, 'checkpoints', 'sketch_prediction')
@@ -44,7 +48,7 @@ def train_face_prediction():
     # Define training
     criterion = nn.BCEWithLogitsLoss()
     optimizer = torch.optim.Adam(
-        list(SBGCN_model.parameters()),
+        list(graph_embedding_model.parameters()),
         lr=0.001
     )
 
@@ -69,9 +73,9 @@ def train_face_prediction():
     best_val_loss = float('inf')
 
     for epoch in range(epochs):
-        SBGCN_model.train()
         stroke_embed_model.train()
         face_embed_model.train()
+        graph_embedding_model.train()
         
         total_train_loss = 0.0
         
@@ -79,16 +83,33 @@ def train_face_prediction():
             node_features, operations_matrix, intersection_matrix, operations_order_matrix, face_to_stroke, program, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
             
             # 1) Embed the strokes
+            # stroke_embed: shape (1, num_strokes, 16)
             if edge_features.shape[1] == 0: 
                 edge_features = torch.zeros((1, 1, 6))
 
             edge_features = edge_features.to(torch.float32).to(device)
             stroke_embed = stroke_embed_model(edge_features)
 
+
             # 2) Pair each stroke with faces
+            # face_embed: shape (1, num_faces, 32)
+            # if empty brep, we have face_embed = (1,1,32) filled with 0
             index_id = index_id[0]
             face_embed = face_embed_model(edge_index_face_edge_list, index_id, stroke_embed)
-            print("face_embeddings", face_embed.shape)
+
+
+            # 3) Prepare the stroke cloud embedding
+            # graph_embedding has shape (1, num_nodes, 32)
+            node_features = node_features.to(torch.float32).to(device)
+            operations_matrix = operations_matrix.to(torch.float32).to(device)
+            intersection_matrix = intersection_matrix.to(torch.float32).to(device)
+            operations_order_matrix = operations_order_matrix.to(torch.float32).to(device)
+
+            gnn_graph = Preprocessing.gnn_graph.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
+            gnn_graph.to_device(device)
+            graph_embedding = graph_embedding_model(gnn_graph.x_dict, gnn_graph.edge_index_dict)
+            print("graph_embedding", graph_embedding.shape)
+
 
 
 
