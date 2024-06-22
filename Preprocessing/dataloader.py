@@ -67,6 +67,8 @@ class Program_Graph_Dataset(Dataset):
         program = program[:int(index)+2]
         program = Preprocessing.proc_CAD.helper.program_to_tensor(program)
 
+        # 2.5) If next program operation is sketch, need to know which face we are using
+        face_boundary_points = Preprocessing.proc_CAD.helper.sketch_face_selection(program_file_path)
 
         # 3) Load Brep embedding
         if int(index) == -1:
@@ -91,7 +93,7 @@ class Program_Graph_Dataset(Dataset):
             edge_index_face_face_list = embedding_data['edge_index_face_face_list']
             index_id = embedding_data['index_id']
 
-        return node_features, operations_matrix, intersection_matrix, operations_order_matrix, face_to_stroke, program, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id
+        return node_features, operations_matrix, intersection_matrix, operations_order_matrix, face_to_stroke, program, face_boundary_points, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id
 
     
 

@@ -116,3 +116,7 @@ class FaceBrepAttention(nn.Module):
         max_prob, max_index = torch.max(probabilities, dim=0)
 
         return max_index.item(), max_prob.item()
+
+
+
+

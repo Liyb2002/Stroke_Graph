@@ -7,7 +7,7 @@ import Encoders.gnn.gnn
 import Encoders.program_encoder.program_encoder
 
 import Models.sketch_model
-
+import Models.sketch_model_helper
 
 from torch.utils.data import DataLoader, random_split, Subset
 from tqdm import tqdm
@@ -83,7 +83,7 @@ def train_face_prediction():
         total_train_loss = 0.0
         
         for batch in tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs} - Training"):
-            node_features, operations_matrix, intersection_matrix, operations_order_matrix, face_to_stroke, program, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
+            node_features, operations_matrix, intersection_matrix, operations_order_matrix, face_to_stroke, program, face_boundary_points, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
             
             # 1) Embed the strokes
             # stroke_embed: shape (1, num_strokes, 16)
@@ -115,7 +115,14 @@ def train_face_prediction():
 
             # 4) Cross attention on face_embedding and stroke_cloud_embedding
             output = cross_attention_model(face_embed, graph_embedding)
-            print("output", output.shape)
+
+
+            # 5) Build gt_matrix
+            operation_count = len(program[0]) -1 
+            boundary_points = face_boundary_points[operation_count]
+            Models.sketch_model_helper.chosen_face_id(boundary_points, edge_index_face_edge_list, index_id, edge_features)
+            print("-----------")
+
 
 
 

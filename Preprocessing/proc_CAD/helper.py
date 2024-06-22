@@ -340,6 +340,7 @@ def program_to_string(file_path):
 
     return Op_string
 
+
 def program_to_tensor(program):
     operation_to_index = {'terminate': 0, 'sketch': 1, 'extrude': 2, 'fillet': 3}
     Op_indices = []
@@ -349,6 +350,19 @@ def program_to_tensor(program):
 
     return torch.tensor(Op_indices, dtype=torch.long)
 
+
+def sketch_face_selection(file_path):
+
+    boundary_points = []
+    with open(file_path, 'r') as file:
+        data = json.load(file)
+        for Op in data:
+            if Op['operation'][0] == 'sketch':
+                boundary_points.append(Op['operation'][1])
+            else:
+                boundary_points.append([])
+
+    return boundary_points
 
 #----------------------------------------------------------------------------------#
 
@@ -433,3 +447,12 @@ def face_to_stroke(stroke_cloud_faces, stroke_features):
         stroke_ids_per_face.append(face_stroke_ids)
     
     return stroke_ids_per_face
+
+
+
+#----------------------------------------------------------------------------------#
+
+
+def chosen_face_id(boundary_points, edge_features):
+    print("edge_features", len(edge_features))
+    print("boundary_points", len(boundary_points))

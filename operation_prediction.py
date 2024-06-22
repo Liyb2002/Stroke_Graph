@@ -148,7 +148,7 @@ def train():
         total_train_loss = 0.0
         
         for batch in tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs} - Training"):
-            node_features, operations_matrix, intersection_matrix, operations_order_matrix, _, program, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
+            node_features, operations_matrix, intersection_matrix, operations_order_matrix, _, program, _, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
 
             # to device 
             node_features = node_features.to(torch.float32).to(device)
@@ -206,7 +206,7 @@ def train():
         
         with torch.no_grad():
             for batch in tqdm(val_loader, desc=f"Epoch {epoch+1}/{epochs} - Validation"):
-                node_features, operations_matrix, intersection_matrix, operations_order_matrix, _, program, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
+                node_features, operations_matrix, intersection_matrix, operations_order_matrix, _, program, _, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
 
                 # to device 
                 node_features = node_features.to(torch.float32).to(device)
@@ -278,7 +278,7 @@ def eval():
 
     with torch.no_grad():
         for batch in tqdm(data_loader, desc="Evaluating"):
-            node_features, operations_matrix, intersection_matrix, operations_order_matrix, _, program, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
+            node_features, operations_matrix, intersection_matrix, operations_order_matrix, _, program, _, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
 
             # to device 
             node_features = node_features.to(torch.float32).to(device)
