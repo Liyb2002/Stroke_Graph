@@ -5,7 +5,8 @@ import torch
 def chosen_face_id(boundary_points, edge_index_face_edge_list, index_id, edge_features):
 
     if edge_features.shape[1] == 1:
-        return
+        boundary_points_tensor = torch.stack(boundary_points).to(torch.float32)
+        return boundary_points_tensor
 
     # pair the edges index with each face
     face_to_edges = {}
@@ -41,13 +42,22 @@ def chosen_face_id(boundary_points, edge_index_face_edge_list, index_id, edge_fe
 
     # Find which face has all its point in the boundary_point
     # output is the face_id
+    target_face_id = 0
+    num_faces = len(face_to_points)
+
     boundary_points_values_set = {tuple(torch.cat(boundary_point).to(torch.float32).tolist()) for boundary_point in boundary_points}
 
     for face_id, face_points in face_to_points.items():
         face_points_values_set = {tuple(face_point.tolist()) for face_point in face_points}
         if boundary_points_values_set.issubset(face_points_values_set):
-            print("face_id!", face_id)
+            target_face_id = face_id
             break
+    
+    # Now, build the ground truth matrix
+    gt_matrix = torch.zeros((num_faces, 1))
+    gt_matrix[target_face_id, 0] = 1
+
+    return gt_matrix
 
 
 
