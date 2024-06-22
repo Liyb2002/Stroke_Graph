@@ -27,10 +27,12 @@ from mpl_toolkits.mplot3d import Axes3D
 stroke_embed_model = Models.sketch_model.StrokeEmbeddingNetwork()
 face_embed_model = Models.sketch_model.PlaneEmbeddingNetwork()
 graph_embedding_model = Encoders.gnn.gnn.SemanticModule()
+cross_attention_model = Models.sketch_model.FaceBrepAttention()
 
 stroke_embed_model.to(device)
 face_embed_model.to(device)
 graph_embedding_model.to(device)
+cross_attention_model.to(device)
 
 current_dir = os.getcwd()
 save_dir = os.path.join(current_dir, 'checkpoints', 'sketch_prediction')
@@ -76,6 +78,7 @@ def train_face_prediction():
         stroke_embed_model.train()
         face_embed_model.train()
         graph_embedding_model.train()
+        cross_attention_model.train()
         
         total_train_loss = 0.0
         
@@ -108,8 +111,11 @@ def train_face_prediction():
             gnn_graph = Preprocessing.gnn_graph.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
             gnn_graph.to_device(device)
             graph_embedding = graph_embedding_model(gnn_graph.x_dict, gnn_graph.edge_index_dict)
-            print("graph_embedding", graph_embedding.shape)
 
+
+            # 4) Cross attention on face_embedding and stroke_cloud_embedding
+            output = cross_attention_model(face_embed, graph_embedding)
+            print("output", output.shape)
 
 
 

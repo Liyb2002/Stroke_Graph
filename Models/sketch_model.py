@@ -31,7 +31,7 @@ class PlaneEmbeddingNetwork(nn.Module):
 
         # if we have empty brep
         if node_embed.shape[1] == 1:
-                return torch.zeros((1, 1, 32))
+            return torch.zeros((1, 3, 32))
 
         # pair the edges index with each face
         for face_edge_pair in edge_index_face_edge_list:
