@@ -86,19 +86,19 @@ def save_stroke_models():
 def train_face_prediction():
 
     # Define training
-    criterion = nn.BCEWithLogitsLoss()
+    criterion = nn.BCELoss()
     optimizer = torch.optim.Adam(
-        list(graph_embedding_model.parameters()) +
         list(stroke_embed_model.parameters()) +
         list(face_embed_model.parameters()) +
+        list(graph_embedding_model.parameters()) +
         list(FaceBrepAttention.parameters()),
-        lr=0.01
+        lr= 1e-3
     )
 
-    epochs = 10
+    epochs = 50
 
     # Create a DataLoader
-    dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/train_dataset')
+    dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/example')
 
     # Filter to only keep good data
     good_data_indices = [i for i, data in enumerate(dataset) if data[5][-1] == 1]
@@ -106,7 +106,7 @@ def train_face_prediction():
     print(f"Total number of sketch data: {len(filtered_dataset)}")
 
     # Split dataset into training and validation
-    train_size = int(0.8 * len(filtered_dataset))
+    train_size = int(1.0 * len(filtered_dataset))
     val_size = len(filtered_dataset) - train_size
     train_dataset, val_dataset = random_split(filtered_dataset, [train_size, val_size])
 
@@ -161,6 +161,13 @@ def train_face_prediction():
             gt_matrix = Models.sketch_model_helper.chosen_face_id(boundary_points, edge_index_face_edge_list, index_id, edge_features)
             
             # 6) Calculate loss and update weights
+            print("output", output)
+            _, predicted_index = torch.max(output, dim=0)
+            gt_index = torch.argmax(gt_matrix)
+            print("gt_matrix", gt_matrix)
+            print("----------------------")
+
+
             loss = criterion(output, gt_matrix)
             total_train_loss += loss.item()
 
@@ -207,15 +214,20 @@ def train_face_prediction():
                 operation_count = len(program[0]) -1 
                 boundary_points = face_boundary_points[operation_count]
                 gt_matrix = Models.sketch_model_helper.chosen_face_id(boundary_points, edge_index_face_edge_list, index_id, edge_features)
+                
+                
+                gt_index = torch.argmax(gt_matrix)
+                Models.sketch_model_helper.vis_gt_face(edge_features, gt_index, edge_index_face_edge_list, index_id)
+                Models.sketch_model_helper.vis_stroke_cloud(node_features)
 
                 loss = criterion(output, gt_matrix)
                 total_val_loss += loss.item()
+    
+        # avg_val_loss = total_val_loss / len(val_loader)
+        # print(f"Epoch {epoch+1}/{epochs}, Validation Loss: {avg_val_loss}")
 
-        avg_val_loss = total_val_loss / len(val_loader)
-        print(f"Epoch {epoch+1}/{epochs}, Validation Loss: {avg_val_loss}")
-
-        if avg_val_loss < best_val_loss:
-            best_val_loss = avg_val_loss
+        if avg_train_loss < best_val_loss:
+            best_val_loss = avg_train_loss
             save_face_models()
 
 
@@ -230,15 +242,16 @@ def eval_face_prediction():
     criterion = nn.BCEWithLogitsLoss()
 
     # Create a DataLoader
-    dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/eval_dataset')
+    dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/example')
 
     # Filter to only keep good data
     good_data_indices = [i for i, data in enumerate(dataset) if data[5][-1] == 1]
     filtered_dataset = Subset(dataset, good_data_indices)
+
     print(f"Total number of sketch data: {len(filtered_dataset)}")
 
     # Split dataset into training and validation
-    data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
+    data_loader = DataLoader(filtered_dataset, batch_size=1, shuffle=True)
 
     for batch in tqdm(data_loader):
         node_features, operations_matrix, intersection_matrix, operations_order_matrix, face_to_stroke, program, face_boundary_points, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
@@ -280,7 +293,8 @@ def eval_face_prediction():
         # 6) Find chosen index & Vis
         gt_index = torch.argmax(gt_matrix)
         Models.sketch_model_helper.vis_gt_face(edge_features, gt_index, edge_index_face_edge_list, index_id)
-
+        Models.sketch_model_helper.vis_predicted_face(edge_features, predicted_index, edge_index_face_edge_list, index_id)
+        Models.sketch_model_helper.vis_stroke_cloud(node_features)
 
 
 
@@ -447,5 +461,4 @@ def train_stroke_prediction():
 
 
 
-
-eval_face_prediction()
+train_face_prediction()

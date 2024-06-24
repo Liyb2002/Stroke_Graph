@@ -103,9 +103,10 @@ class FaceBrepAttention(nn.Module):
         
         # Classification
         logits = self.classifier(out2)  # (n, 1, 1)
-        logits = logits.squeeze(-1)  # (n, 1)
+        logits = logits.squeeze(1)  # (n, 1)
         
-        return logits
+        probabilities = torch.sigmoid(logits)
+        return probabilities
 
     def predict(self, face_embedding, brep_embedding):
         logits = self.forward(face_embedding, brep_embedding)        
