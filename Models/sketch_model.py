@@ -120,3 +120,37 @@ class FaceBrepAttention(nn.Module):
 
 
 
+class Stroke_cross_attention_model(nn.Module):
+    def __init__(self, embed_dim=32, num_heads=4, ff_dim=128, dropout=0.1):
+        super(Stroke_cross_attention_model, self).__init__()
+        self.cross_attn1 = nn.MultiheadAttention(embed_dim, num_heads, dropout=dropout)
+        self.cross_attn2 = nn.MultiheadAttention(embed_dim, num_heads, dropout=dropout)
+        self.ff = nn.Sequential(
+            nn.Linear(embed_dim, ff_dim),
+            nn.ReLU(),
+            nn.Linear(ff_dim, embed_dim)
+        )
+        self.norm1 = nn.LayerNorm(embed_dim)
+        self.norm2 = nn.LayerNorm(embed_dim)
+        self.dropout = nn.Dropout(dropout)
+        self.final_layer = nn.Linear(embed_dim, 1)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, graph_embedding, face_embedding, brep_embedding):
+        graph_embedding = graph_embedding.transpose(0, 1)
+        face_embedding = face_embedding.transpose(0, 1)
+        brep_embedding = brep_embedding.transpose(0, 1)
+        
+        attn_output1, _ = self.cross_attn1(graph_embedding, face_embedding, face_embedding)        
+        attn_output1 = self.dropout(attn_output1)
+        out1 = self.norm1(graph_embedding + attn_output1)
+        
+        attn_output2, _ = self.cross_attn2(out1, brep_embedding, brep_embedding)
+        attn_output2 = self.dropout(attn_output2)
+        out2 = self.norm2(out1 + attn_output2)
+        
+        ff_output = self.ff(out2)
+        out2_final = self.final_layer(ff_output).squeeze(-1) 
+        out2_final = self.sigmoid(out2_final)
+        
+        return out2_final
