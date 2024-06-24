@@ -2,6 +2,10 @@ import numpy as np
 import torch
 
 
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
+
 def chosen_face_id(boundary_points, edge_index_face_edge_list, index_id, edge_features):
 
     if edge_features.shape[1] == 1:
@@ -61,4 +65,40 @@ def chosen_face_id(boundary_points, edge_index_face_edge_list, index_id, edge_fe
 
 
 
-    
+def vis_gt_face(brep_edge_features, gt_index, edge_index_face_edge_list, index_id):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    num_edges = brep_edge_features.shape[1]
+
+    face_to_edges = {}
+    for face_edge_pair in edge_index_face_edge_list:
+        face_list_index = face_edge_pair[0]
+        edge_list_index = face_edge_pair[1]
+
+        face_id = index_id[face_list_index].item()
+        edge_id = index_id[edge_list_index].item()
+
+        if face_id not in face_to_edges:
+            face_to_edges[face_id] = []
+        face_to_edges[face_id].append(edge_id)
+
+    chosen_face = face_to_edges[gt_index.item()]
+
+
+    for i in range(num_edges):
+        start_point = brep_edge_features[0, i, :3]
+        end_point = brep_edge_features[0, i, 3:]
+
+        col = 'blue'
+        if i in chosen_face:
+            col = 'red'
+
+        ax.plot([start_point[0], end_point[0]], [start_point[1], end_point[1]], [start_point[2], end_point[2]], color=col)
+
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+
+    plt.show()
+

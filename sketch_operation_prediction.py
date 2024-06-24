@@ -29,7 +29,7 @@ from mpl_toolkits.mplot3d import Axes3D
 stroke_embed_model = Models.sketch_model.StrokeEmbeddingNetwork()
 face_embed_model = Models.sketch_model.PlaneEmbeddingNetwork()
 graph_embedding_model = Encoders.gnn.gnn.SemanticModule()
-cross_attention_model = Models.sketch_model.FaceBrepAttention()
+FaceBrepAttention = Models.sketch_model.FaceBrepAttention()
 
 SBGCN_model = Preprocessing.SBGCN.SBGCN_network.FaceEdgeVertexGCN()
 Stroke_cross_attention_model = Models.sketch_model.Stroke_cross_attention_model()
@@ -37,7 +37,8 @@ Stroke_cross_attention_model = Models.sketch_model.Stroke_cross_attention_model(
 stroke_embed_model.to(device)
 face_embed_model.to(device)
 graph_embedding_model.to(device)
-cross_attention_model.to(device)
+FaceBrepAttention.to(device)
+
 SBGCN_model.to(device)
 Stroke_cross_attention_model.to(device)
 
@@ -62,15 +63,15 @@ def load_face_models():
         print("Loaded graph_embedding_model")
 
     if os.path.exists(os.path.join(save_dir, 'cross_attention_model.pth')):    
-        cross_attention_model.load_state_dict(torch.load(os.path.join(save_dir, 'cross_attention_model.pth')))
-        print("Loaded cross_attention_model")
+        FaceBrepAttention.load_state_dict(torch.load(os.path.join(save_dir, 'FaceBrepAttention.pth')))
+        print("Loaded FaceBrepAttention")
 
 
 def save_face_models():
     torch.save(stroke_embed_model.state_dict(), os.path.join(save_dir, 'stroke_embed_model.pth'))
     torch.save(face_embed_model.state_dict(), os.path.join(save_dir, 'face_embed_model.pth'))
     torch.save(graph_embedding_model.state_dict(), os.path.join(save_dir, 'graph_embedding_model.pth'))
-    torch.save(cross_attention_model.state_dict(), os.path.join(save_dir, 'cross_attention_model.pth'))
+    torch.save(FaceBrepAttention.state_dict(), os.path.join(save_dir, 'FaceBrepAttention.pth'))
 
     print("Saved face models.")
 
@@ -90,8 +91,8 @@ def train_face_prediction():
         list(graph_embedding_model.parameters()) +
         list(stroke_embed_model.parameters()) +
         list(face_embed_model.parameters()) +
-        list(cross_attention_model.parameters()),
-        lr=0.001
+        list(FaceBrepAttention.parameters()),
+        lr=0.01
     )
 
     epochs = 10
@@ -118,7 +119,7 @@ def train_face_prediction():
         stroke_embed_model.train()
         face_embed_model.train()
         graph_embedding_model.train()
-        cross_attention_model.train()
+        FaceBrepAttention.train()
         
         total_train_loss = 0.0
         
@@ -127,6 +128,7 @@ def train_face_prediction():
             
             # 1) Embed the strokes
             if edge_features.shape[1] == 0: 
+                continue
                 edge_features = torch.zeros((1, 1, 6))
 
             edge_features = edge_features.to(torch.float32).to(device)
@@ -150,7 +152,7 @@ def train_face_prediction():
 
 
             # 4) Cross attention on face_embedding and stroke_cloud_embedding
-            output = cross_attention_model(face_embed, graph_embedding)
+            output = FaceBrepAttention(face_embed, graph_embedding)
 
 
             # 5) Build gt_matrix
@@ -159,9 +161,6 @@ def train_face_prediction():
             gt_matrix = Models.sketch_model_helper.chosen_face_id(boundary_points, edge_index_face_edge_list, index_id, edge_features)
             
             # 6) Calculate loss and update weights
-            output = output.view(-1)
-            gt_matrix = gt_matrix.view(-1).to(torch.float32).to(device)
-
             loss = criterion(output, gt_matrix)
             total_train_loss += loss.item()
 
@@ -176,7 +175,7 @@ def train_face_prediction():
         stroke_embed_model.eval()
         face_embed_model.eval()
         graph_embedding_model.eval()
-        cross_attention_model.eval()
+        FaceBrepAttention.eval()
 
         total_val_loss = 0.0
 
@@ -185,6 +184,7 @@ def train_face_prediction():
                 node_features, operations_matrix, intersection_matrix, operations_order_matrix, face_to_stroke, program, face_boundary_points, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
                 
                 if edge_features.shape[1] == 0: 
+                    continue
                     edge_features = torch.zeros((1, 1, 6))
 
                 edge_features = edge_features.to(torch.float32).to(device)
@@ -202,14 +202,11 @@ def train_face_prediction():
                 gnn_graph.to_device(device)
                 graph_embedding = graph_embedding_model(gnn_graph.x_dict, gnn_graph.edge_index_dict)
 
-                output = cross_attention_model(face_embed, graph_embedding)
+                output = FaceBrepAttention(face_embed, graph_embedding)
 
                 operation_count = len(program[0]) -1 
                 boundary_points = face_boundary_points[operation_count]
                 gt_matrix = Models.sketch_model_helper.chosen_face_id(boundary_points, edge_index_face_edge_list, index_id, edge_features)
-
-                output = output.view(-1)
-                gt_matrix = gt_matrix.view(-1).to(torch.float32).to(device)
 
                 loss = criterion(output, gt_matrix)
                 total_val_loss += loss.item()
@@ -220,6 +217,71 @@ def train_face_prediction():
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
             save_face_models()
+
+
+def eval_face_prediction():
+    load_face_models()
+
+    stroke_embed_model.eval()
+    face_embed_model.eval()
+    graph_embedding_model.eval()
+    FaceBrepAttention.eval()
+
+    criterion = nn.BCEWithLogitsLoss()
+
+    # Create a DataLoader
+    dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/eval_dataset')
+
+    # Filter to only keep good data
+    good_data_indices = [i for i, data in enumerate(dataset) if data[5][-1] == 1]
+    filtered_dataset = Subset(dataset, good_data_indices)
+    print(f"Total number of sketch data: {len(filtered_dataset)}")
+
+    # Split dataset into training and validation
+    data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
+
+    for batch in tqdm(data_loader):
+        node_features, operations_matrix, intersection_matrix, operations_order_matrix, face_to_stroke, program, face_boundary_points, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
+        
+        # 1) Embed the strokes
+        if edge_features.shape[1] == 0: 
+            continue
+            edge_features = torch.zeros((1, 1, 6))
+
+        edge_features = edge_features.to(torch.float32).to(device)
+        stroke_embed = stroke_embed_model(edge_features)
+
+
+        # 2) Pair each stroke with faces
+        index_id = index_id[0]
+        face_embed = face_embed_model(edge_index_face_edge_list, index_id, stroke_embed)
+
+
+        # 3) Prepare the stroke cloud embedding
+        node_features = node_features.to(torch.float32).to(device)
+        operations_matrix = operations_matrix.to(torch.float32).to(device)
+        intersection_matrix = intersection_matrix.to(torch.float32).to(device)
+        operations_order_matrix = operations_order_matrix.to(torch.float32).to(device)
+
+        gnn_graph = Preprocessing.gnn_graph.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
+        gnn_graph.to_device(device)
+        graph_embedding = graph_embedding_model(gnn_graph.x_dict, gnn_graph.edge_index_dict)
+
+
+        # 4) Cross attention on face_embedding and stroke_cloud_embedding
+        predicted_index = FaceBrepAttention.predict(face_embed, graph_embedding)
+
+
+        # 5) Build gt_matrix
+        operation_count = len(program[0]) -1 
+        boundary_points = face_boundary_points[operation_count]
+        gt_matrix = Models.sketch_model_helper.chosen_face_id(boundary_points, edge_index_face_edge_list, index_id, edge_features)
+        
+        # 6) Find chosen index & Vis
+        gt_index = torch.argmax(gt_matrix)
+        Models.sketch_model_helper.vis_gt_face(edge_features, gt_index, edge_index_face_edge_list, index_id)
+
+
 
 
 
@@ -386,4 +448,4 @@ def train_stroke_prediction():
 
 
 
-train_face_prediction()
+eval_face_prediction()
