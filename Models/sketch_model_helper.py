@@ -192,7 +192,10 @@ def vis_predicted_strokes(brep_edge_features, predicted_matrix):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
-    print("gt_matrix", predicted_matrix)
+    predicted_matrix_np = predicted_matrix.detach().numpy().flatten()
+    max4indices = np.argsort(predicted_matrix_np)[-4:]
+    print("np.argsort(predicted_matrix_np)", np.argsort(predicted_matrix_np))
+
 
     num_edges = brep_edge_features.shape[1]
 
@@ -201,7 +204,7 @@ def vis_predicted_strokes(brep_edge_features, predicted_matrix):
         end_point = brep_edge_features[0, i, 3:]
 
         col = 'blue'
-        if predicted_matrix[i] > 0.5:
+        if i in max4indices:
             col = 'red'
 
         ax.plot([start_point[0], end_point[0]], [start_point[1], end_point[1]], [start_point[2], end_point[2]], color=col)
@@ -225,6 +228,31 @@ def chosen_edge_id(boundary_points, edge_features):
     for i in range(num_edges):
         start_point = edge_features[0, i, :3]
         end_point = edge_features[0, i, 3:]
+
+        # Check if both the start and end points are in boundary_points
+        start_in_boundary = any(torch.equal(start_point, bp) for bp in boundary_points_tensor)
+        end_in_boundary = any(torch.equal(end_point, bp) for bp in boundary_points_tensor)
+        
+        # Set the value in gt_matrix
+        if start_in_boundary and end_in_boundary:
+            gt_matrix[i, 0] = 1
+    
+    return gt_matrix
+
+
+
+def chosen_edge_id_stroke_cloud(boundary_points, node_features):
+    # Convert boundary_points to a tensor
+    boundary_points_tensor = torch.tensor(boundary_points, dtype=torch.float32)
+    
+    # Initialize the output matrix
+    num_edges = node_features.shape[1]
+    gt_matrix = torch.zeros((num_edges, 1), dtype=torch.float32)
+    
+    # Loop through each edge
+    for i in range(num_edges):
+        start_point = node_features[0, i, :3]
+        end_point = node_features[0, i, 3:]
 
         # Check if both the start and end points are in boundary_points
         start_in_boundary = any(torch.equal(start_point, bp) for bp in boundary_points_tensor)

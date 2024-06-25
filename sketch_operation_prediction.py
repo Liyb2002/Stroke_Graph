@@ -81,7 +81,7 @@ def train_face_prediction():
         list(StrokeEmbeddingNetwork.parameters())+
         list(graph_embedding_model.parameters())+
         list(BrepStrokeCloudAttention.parameters()),
-        lr= 1e-4
+        lr= 5e-4
     )
 
     epochs = 20
@@ -151,7 +151,7 @@ def train_face_prediction():
             # 5) Prepare the gt_matrix
             operation_count = len(program[0]) -1 
             boundary_points = face_boundary_points[operation_count]
-            gt_matrix = Models.sketch_model_helper.chosen_edge_id(boundary_points, edge_features)
+            gt_matrix = Models.sketch_model_helper.chosen_edge_id_stroke_cloud(boundary_points, node_features)
 
 
             # 6) Calculate loss and update weights
@@ -161,8 +161,8 @@ def train_face_prediction():
 
             if epoch > 10:
                 Models.sketch_model_helper.vis_stroke_cloud(node_features)
-                Models.sketch_model_helper.vis_gt_strokes(edge_features, gt_matrix)
-                Models.sketch_model_helper.vis_predicted_strokes(edge_features, edge_probs)
+                Models.sketch_model_helper.vis_gt_strokes(node_features, gt_matrix)
+                Models.sketch_model_helper.vis_predicted_strokes(node_features, edge_probs)
 
             
             optimizer.zero_grad()
