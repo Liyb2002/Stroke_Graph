@@ -24,7 +24,7 @@ class dataset_generator():
 
         self.generate_dataset('dataset/train_dataset', number_data = 1000, start = 1000)
         self.generate_dataset('dataset/eval_dataset', number_data = 100, start = 100)
-        self.generate_dataset('dataset/example', number_data = 10, start = 0)
+        self.generate_dataset('dataset/example', number_data = 1000, start = 0)
 
 
     def generate_dataset(self, dir, number_data, start):

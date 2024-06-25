@@ -18,8 +18,8 @@ def chosen_face_id(boundary_points, edge_index_face_edge_list, index_id, edge_fe
         face_list_index = face_edge_pair[0]
         edge_list_index = face_edge_pair[1]
 
-        face_id = index_id[face_list_index].item()
-        edge_id = index_id[edge_list_index].item()
+        face_id = index_id[0][face_list_index].item()
+        edge_id = index_id[0][edge_list_index].item()
 
         if face_id not in face_to_edges:
             face_to_edges[face_id] = []
@@ -162,3 +162,76 @@ def vis_stroke_cloud(node_features):
 
     plt.show()
 
+
+def vis_gt_strokes(brep_edge_features, gt_matrix):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    print("gt_matrix", gt_matrix)
+
+    num_edges = brep_edge_features.shape[1]
+
+    for i in range(num_edges):
+        start_point = brep_edge_features[0, i, :3]
+        end_point = brep_edge_features[0, i, 3:]
+
+        col = 'blue'
+        if gt_matrix[i] == 1:
+            col = 'red'
+
+        ax.plot([start_point[0], end_point[0]], [start_point[1], end_point[1]], [start_point[2], end_point[2]], color=col)
+
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+
+    plt.show()
+
+
+def vis_predicted_strokes(brep_edge_features, predicted_matrix):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    print("gt_matrix", predicted_matrix)
+
+    num_edges = brep_edge_features.shape[1]
+
+    for i in range(num_edges):
+        start_point = brep_edge_features[0, i, :3]
+        end_point = brep_edge_features[0, i, 3:]
+
+        col = 'blue'
+        if predicted_matrix[i] > 0.5:
+            col = 'red'
+
+        ax.plot([start_point[0], end_point[0]], [start_point[1], end_point[1]], [start_point[2], end_point[2]], color=col)
+
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+
+    plt.show()
+
+
+def chosen_edge_id(boundary_points, edge_features):
+    # Convert boundary_points to a tensor
+    boundary_points_tensor = torch.tensor(boundary_points, dtype=torch.float32)
+    
+    # Initialize the output matrix
+    num_edges = edge_features.shape[1]
+    gt_matrix = torch.zeros((num_edges, 1), dtype=torch.float32)
+    
+    # Loop through each edge
+    for i in range(num_edges):
+        start_point = edge_features[0, i, :3]
+        end_point = edge_features[0, i, 3:]
+
+        # Check if both the start and end points are in boundary_points
+        start_in_boundary = any(torch.equal(start_point, bp) for bp in boundary_points_tensor)
+        end_in_boundary = any(torch.equal(end_point, bp) for bp in boundary_points_tensor)
+        
+        # Set the value in gt_matrix
+        if start_in_boundary and end_in_boundary:
+            gt_matrix[i, 0] = 1
+    
+    return gt_matrix
