@@ -27,16 +27,15 @@ from mpl_toolkits.mplot3d import Axes3D
 
 # Define the neural networks
  
-# SBGCN_model = Preprocessing.SBGCN.SBGCN_network.FaceEdgeVertexGCN()
-StrokeEmbeddingNetwork = Models.sketch_model.StrokeEmbeddingNetwork()
+SBGCN_model = Preprocessing.SBGCN.SBGCN_network.FaceEdgeVertexGCN()
 graph_embedding_model = Encoders.gnn.gnn.SemanticModule()
 BrepStrokeCloudAttention = Models.sketch_model.BrepStrokeCloudAttention()
-BrepFaceEdgeAttention = Models.sketch_model.BrepStrokeCloudAttention()
+# BrepFaceEdgeAttention = Models.sketch_model.BrepStrokeCloudAttention()
 
-StrokeEmbeddingNetwork.to(device)
+SBGCN_model.to(device)
 graph_embedding_model.to(device)
 BrepStrokeCloudAttention.to(device)
-BrepFaceEdgeAttention.to(device)
+# BrepFaceEdgeAttention.to(device)
 
 current_dir = os.getcwd()
 save_dir = os.path.join(current_dir, 'checkpoints', 'sketch_prediction')
@@ -67,7 +66,7 @@ def save_face_models():
     torch.save(SBGCN_model.state_dict(), os.path.join(save_dir, 'SBGCN_model.pth'))
     torch.save(graph_embedding_model.state_dict(), os.path.join(save_dir, 'graph_embedding_model.pth'))
     torch.save(BrepStrokeCloudAttention.state_dict(), os.path.join(save_dir, 'BrepStrokeCloudAttention.pth'))
-    torch.save(BrepFaceEdgeAttention.state_dict(), os.path.join(save_dir, 'BrepFaceEdgeAttention.pth'))
+    # torch.save(BrepFaceEdgeAttention.state_dict(), os.path.join(save_dir, 'BrepFaceEdgeAttention.pth'))
 
     print("Saved face models.")
 
@@ -78,13 +77,13 @@ def train_face_prediction():
     # Define training
     criterion = nn.BCELoss()
     optimizer = torch.optim.Adam(
-        list(StrokeEmbeddingNetwork.parameters())+
+        list(SBGCN_model.parameters())+
         list(graph_embedding_model.parameters())+
         list(BrepStrokeCloudAttention.parameters()),
-        lr= 5e-4
+        lr= 4e-4
     )
 
-    epochs = 20
+    epochs = 100
 
     # Create a DataLoader
     dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/example')
@@ -105,10 +104,9 @@ def train_face_prediction():
     best_val_loss = float('inf')
 
     for epoch in range(epochs):
-        StrokeEmbeddingNetwork.train()
+        SBGCN_model.train()
         graph_embedding_model.train()
         BrepStrokeCloudAttention.train()
-        # BrepFaceEdgeAttention.train()
         
         total_train_loss = 0.0
         
@@ -120,12 +118,12 @@ def train_face_prediction():
                 continue
                 edge_features = torch.zeros((1, 1, 6))
 
-            # brep_graph = Preprocessing.SBGCN.SBGCN_graph.GraphHeteroData(face_features, edge_features, vertex_features, 
-            #             edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id)
-            # brep_graph.to_device(device)
-            # face_embedding, edge_embedding, vertex_embedding = SBGCN_model(brep_graph)
+            brep_graph = Preprocessing.SBGCN.SBGCN_graph.GraphHeteroData(face_features, edge_features, vertex_features, 
+                        edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id)
+            brep_graph.to_device(device)
+            face_embedding, edge_embedding, vertex_embedding = SBGCN_model(brep_graph)
 
-            edge_embedding = StrokeEmbeddingNetwork(edge_features)
+            # edge_embedding = StrokeEmbeddingNetwork(edge_features)
 
             
             # 2) Prepare the stroke cloud embedding
@@ -139,31 +137,28 @@ def train_face_prediction():
             gnn_graph.to_device(device)
             graph_embedding = graph_embedding_model(gnn_graph.x_dict, gnn_graph.edge_index_dict)
 
+            # stroke_cloud_stroke_embedding = StrokeEmbeddingNetwork(node_features)
 
             # 3) Cross attention on edge_embedding and stroke cloud
             # attentioned_edge is the edge embedding of the brep while contains information from the stroke cloud
             # attentioned_edge has shape (1, num_edges, 32)
             # attentioned_vertex has shape (1, num_vertex, 32)
-            edge_probs = BrepStrokeCloudAttention(edge_embedding, graph_embedding)
+            face_probs = BrepStrokeCloudAttention(face_embedding, graph_embedding)
 
 
 
             # 5) Prepare the gt_matrix
             operation_count = len(program[0]) -1 
             boundary_points = face_boundary_points[operation_count]
-            gt_matrix = Models.sketch_model_helper.chosen_edge_id_stroke_cloud(boundary_points, node_features)
+            gt_matrix = Models.sketch_model_helper.chosen_face_id(boundary_points,edge_index_face_edge_list, index_id,  edge_features)
 
 
-            # 6) Calculate loss and update weights
-            loss = criterion(edge_probs, gt_matrix)
+            # 6) Calculate validation loss
+            val_loss = criterion(face_probs, gt_matrix)
+
+            loss = criterion(face_probs, gt_matrix)
 
             total_train_loss += loss.item()
-
-            if epoch > 10:
-                Models.sketch_model_helper.vis_stroke_cloud(node_features)
-                Models.sketch_model_helper.vis_gt_strokes(node_features, gt_matrix)
-                Models.sketch_model_helper.vis_predicted_strokes(node_features, edge_probs)
-
             
             optimizer.zero_grad()
             loss.backward()
@@ -171,6 +166,77 @@ def train_face_prediction():
 
         avg_train_loss = total_train_loss / len(train_loader)
         print(f"Epoch {epoch+1}/{epochs}, Training Loss: {avg_train_loss}")
+        
+        # Validation phase
+        SBGCN_model.eval()
+        graph_embedding_model.eval()
+        BrepStrokeCloudAttention.eval()
+
+        total_val_loss = 0.0
+        
+        with torch.no_grad():
+            for batch in tqdm(val_loader, desc=f"Epoch {epoch+1}/{epochs} - Validation"):
+                node_features, operations_matrix, intersection_matrix, operations_order_matrix, face_to_stroke, program, face_boundary_points, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
+                
+                # 1) Prepare the brep embedding
+                if edge_features.shape[1] == 0: 
+                    continue
+                    edge_features = torch.zeros((1, 1, 6))
+
+                brep_graph = Preprocessing.SBGCN.SBGCN_graph.GraphHeteroData(face_features, edge_features, vertex_features, 
+                            edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id)
+                brep_graph.to_device(device)
+                face_embedding, edge_embedding, vertex_embedding = SBGCN_model(brep_graph)
+
+                # edge_embedding = StrokeEmbeddingNetwork(edge_features)
+
+                
+                # 2) Prepare the stroke cloud embedding
+                node_features = node_features.to(torch.float32).to(device)
+                operations_matrix = operations_matrix.to(torch.float32).to(device)
+                intersection_matrix = intersection_matrix.to(torch.float32).to(device)
+                operations_order_matrix = operations_order_matrix.to(torch.float32).to(device)
+
+                # graph embedding
+                gnn_graph = Preprocessing.gnn_graph.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
+                gnn_graph.to_device(device)
+                graph_embedding = graph_embedding_model(gnn_graph.x_dict, gnn_graph.edge_index_dict)
+
+                # stroke_cloud_stroke_embedding = StrokeEmbeddingNetwork(node_features)
+
+                # 3) Cross attention on edge_embedding and stroke cloud
+                # attentioned_edge is the edge embedding of the brep while contains information from the stroke cloud
+                # attentioned_edge has shape (1, num_edges, 32)
+                # attentioned_vertex has shape (1, num_vertex, 32)
+                edge_probs = BrepStrokeCloudAttention(edge_embedding, graph_embedding)
+
+                # 5) Prepare the gt_matrix
+                operation_count = len(program[0]) -1 
+                boundary_points = face_boundary_points[operation_count]
+                gt_matrix = Models.sketch_model_helper.chosen_edge_id(boundary_points, edge_features)
+
+                # 6) Calculate validation loss
+                val_loss = criterion(edge_probs, gt_matrix)
+
+
+                if epoch > 30:
+                    gt_matrix_index = torch.argmax(gt_matrix).item()
+                    predicted_index = torch.argmax(face_probs).item()
+                    Models.sketch_model_helper.vis_stroke_cloud(node_features)
+                    Models.sketch_model_helper.vis_gt_face(edge_features, gt_matrix_index, edge_index_face_edge_list, index_id)
+                    Models.sketch_model_helper.vis_predicted_face(edge_features, predicted_index, edge_index_face_edge_list, index_id)
+
+
+                total_val_loss += val_loss.item()
+
+        avg_val_loss = total_val_loss / len(val_loader)
+        print(f"Epoch {epoch+1}/{epochs}, Validation Loss: {avg_val_loss}")
+        
+        # Save the best model
+        if avg_val_loss < best_val_loss:
+            best_val_loss = avg_val_loss
+            save_face_models()
+            print(f"Model saved at epoch {epoch+1} with validation loss: {best_val_loss}")
 
 
 

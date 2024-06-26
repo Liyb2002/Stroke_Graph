@@ -76,14 +76,14 @@ def vis_gt_face(brep_edge_features, gt_index, edge_index_face_edge_list, index_i
         face_list_index = face_edge_pair[0]
         edge_list_index = face_edge_pair[1]
 
-        face_id = index_id[face_list_index].item()
-        edge_id = index_id[edge_list_index].item()
+        face_id = index_id[0][face_list_index].item()
+        edge_id = index_id[0][edge_list_index].item()
 
         if face_id not in face_to_edges:
             face_to_edges[face_id] = []
         face_to_edges[face_id].append(edge_id)
 
-    chosen_face = face_to_edges[gt_index.item()]
+    chosen_face = face_to_edges[gt_index]
 
 
     for i in range(num_edges):
@@ -114,14 +114,14 @@ def vis_predicted_face(brep_edge_features, predicted_index, edge_index_face_edge
         face_list_index = face_edge_pair[0]
         edge_list_index = face_edge_pair[1]
 
-        face_id = index_id[face_list_index].item()
-        edge_id = index_id[edge_list_index].item()
+        face_id = index_id[0][face_list_index].item()
+        edge_id = index_id[0][edge_list_index].item()
 
         if face_id not in face_to_edges:
             face_to_edges[face_id] = []
         face_to_edges[face_id].append(edge_id)
 
-    chosen_face = face_to_edges[predicted_index[0]]
+    chosen_face = face_to_edges[predicted_index]
 
 
     for i in range(num_edges):
