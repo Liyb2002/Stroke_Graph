@@ -211,4 +211,3 @@ class BrepStrokeCloudAttention(nn.Module):
         return edge_probabilities
 
 
-

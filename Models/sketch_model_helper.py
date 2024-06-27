@@ -216,6 +216,7 @@ def vis_predicted_strokes(brep_edge_features, predicted_matrix):
     plt.show()
 
 
+
 def chosen_edge_id(boundary_points, edge_features):
     # Convert boundary_points to a tensor
     boundary_points_tensor = torch.tensor(boundary_points, dtype=torch.float32)

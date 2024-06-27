@@ -143,20 +143,20 @@ def train_face_prediction():
             # attentioned_edge is the edge embedding of the brep while contains information from the stroke cloud
             # attentioned_edge has shape (1, num_edges, 32)
             # attentioned_vertex has shape (1, num_vertex, 32)
-            face_probs = BrepStrokeCloudAttention(face_embedding, graph_embedding)
+            edge_probs = BrepStrokeCloudAttention(edge_embedding, graph_embedding)
 
 
 
             # 5) Prepare the gt_matrix
             operation_count = len(program[0]) -1 
             boundary_points = face_boundary_points[operation_count]
-            gt_matrix = Models.sketch_model_helper.chosen_face_id(boundary_points,edge_index_face_edge_list, index_id,  edge_features)
+            gt_matrix = Models.sketch_model_helper.chosen_edge_id(boundary_points, edge_features)
 
 
             # 6) Calculate validation loss
-            val_loss = criterion(face_probs, gt_matrix)
+            val_loss = criterion(edge_probs, gt_matrix)
 
-            loss = criterion(face_probs, gt_matrix)
+            loss = criterion(edge_probs, gt_matrix)
 
             total_train_loss += loss.item()
             
@@ -219,12 +219,10 @@ def train_face_prediction():
                 val_loss = criterion(edge_probs, gt_matrix)
 
 
-                if epoch > 30:
-                    gt_matrix_index = torch.argmax(gt_matrix).item()
-                    predicted_index = torch.argmax(face_probs).item()
+                if epoch > -1:
                     Models.sketch_model_helper.vis_stroke_cloud(node_features)
-                    Models.sketch_model_helper.vis_gt_face(edge_features, gt_matrix_index, edge_index_face_edge_list, index_id)
-                    Models.sketch_model_helper.vis_predicted_face(edge_features, predicted_index, edge_index_face_edge_list, index_id)
+                    Models.sketch_model_helper.vis_gt_strokes(edge_features, gt_matrix)
+                    Models.sketch_model_helper.vis_predicted_strokes(edge_features, edge_probs)
 
 
                 total_val_loss += val_loss.item()
