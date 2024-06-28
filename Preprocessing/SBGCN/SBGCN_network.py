@@ -6,7 +6,7 @@ from Preprocessing.SBGCN.uvnet_encoders import UVNetCurveEncoder, UVNetSurfaceEn
 
 class FaceEdgeVertexGCN(torch.nn.Module):
     def __init__(self,
-                 f_in_width=4,
+                 f_in_width=12,
                  e_in_width=6,
                  v_in_width=3,
                  out_width=32,

@@ -17,14 +17,13 @@ import torch
 class dataset_generator():
 
     def __init__(self):
-        self.SBGCN_encoder = Preprocessing.SBGCN.run_SBGCN.load_pretrained_SBGCN_model()
         # if os.path.exists('dataset'):
         #     shutil.rmtree('dataset')
         # os.makedirs('dataset', exist_ok=True)
 
         self.generate_dataset('dataset/train_dataset', number_data = 1000, start = 1000)
         self.generate_dataset('dataset/eval_dataset', number_data = 100, start = 100)
-        self.generate_dataset('dataset/example', number_data = 1000, start = 0)
+        self.generate_dataset('dataset/example', number_data = 10, start = 0)
 
 
     def generate_dataset(self, dir, number_data, start):
@@ -88,6 +87,7 @@ class dataset_generator():
             brep_file_path = os.path.join(brep_directory, file_name)
             face_features_list, edge_features_list, vertex_features_list, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id= Preprocessing.SBGCN.brep_read.create_graph_from_step_file(brep_file_path)
 
+            print("face_features_list", face_features_list)
             face_features = Preprocessing.proc_CAD.helper.preprocess_features(face_features_list)
             edge_features = Preprocessing.proc_CAD.helper.preprocess_features(edge_features_list)
             vertex_features = Preprocessing.proc_CAD.helper.preprocess_features(vertex_features_list)

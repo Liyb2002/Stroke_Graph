@@ -192,14 +192,14 @@ class BrepStrokeCloudAttention(nn.Module):
         brep_feature = brep_feature.permute(1, 0, 2)  # (n, 1, 32)
         stroke_cloud = stroke_cloud.permute(1, 0, 2)  # (m, 1, 32)
         
-        attn_output, _ = self.attention(brep_feature, stroke_cloud, stroke_cloud)  # Cross attention
+        attn_output, _ = self.attention(stroke_cloud, brep_feature, brep_feature)  # Cross attention
         attn_output = attn_output.permute(1, 0, 2)  # (1, n, 32)
         
-        brep_feature = brep_feature.permute(1, 0, 2)  # Back to (1, n, 32)
-        brep_feature = self.layer_norm1(brep_feature + attn_output)  # Add & Norm
+        stroke_cloud = stroke_cloud.permute(1, 0, 2)  # Back to (1, n, 32)
+        stroke_cloud = self.layer_norm1(stroke_cloud + attn_output)  # Add & Norm
         
-        ff_output = self.feed_forward(brep_feature)
-        ff_output = self.layer_norm2(brep_feature + ff_output)  # Add & Norm
+        ff_output = self.feed_forward(stroke_cloud)
+        ff_output = self.layer_norm2(stroke_cloud + ff_output)  # Add & Norm
         
         # Compute edge scores
         ff_output = ff_output.squeeze(0)

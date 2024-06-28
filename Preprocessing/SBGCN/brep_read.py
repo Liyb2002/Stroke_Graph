@@ -52,8 +52,30 @@ def read_step_file(filename):
         raise Exception("Error reading STEP file.")
 
 def create_face_node(face):
-    u_min, u_max, v_min, v_max = breptools.UVBounds(face)
-    return[u_min, u_max, v_min, v_max]
+    vertices = []
+    unique_vertices = set()  # To store unique vertices
+    
+    vertex_explorer = TopExp_Explorer(face, TopAbs_VERTEX)
+    while vertex_explorer.More():
+        vertex = topods.Vertex(vertex_explorer.Current())
+        vertex_coords = BRep_Tool.Pnt(vertex)
+        vertex_tuple = (vertex_coords.X(), vertex_coords.Y(), vertex_coords.Z())
+        
+        if vertex_tuple not in unique_vertices:
+            unique_vertices.add(vertex_tuple)
+            vertices.append([vertex_coords.X(), vertex_coords.Y(), vertex_coords.Z()])
+        
+        vertex_explorer.Next()
+    
+    if len(vertices) == 3:
+        vertices.append(vertices[0])
+    elif len(vertices) > 4:
+        vertices = vertices[:4] 
+
+    # Flatten the list of vertices
+    flattened_vertices = [coord for vertex in vertices for coord in vertex]
+    return flattened_vertices
+
 
 def create_edge_node(edge):
     properties = GProp_GProps()

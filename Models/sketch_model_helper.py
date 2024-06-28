@@ -64,6 +64,28 @@ def chosen_face_id(boundary_points, edge_index_face_edge_list, index_id, edge_fe
     return gt_matrix
 
 
+def find_left_edge(edge_features, node_features):
+    # Extracting shapes
+    _, n, _ = edge_features.shape
+    _, m, _ = node_features.shape
+    
+    # Initialize the output tensor
+    output = torch.zeros((m, 1), dtype=torch.float32)
+    
+    # Iterate through each element in node_features
+    for i in range(m):
+        # Extract the current pair of 3D points from node_features
+        node_pair = node_features[0, i, :]
+        
+        # Check if this pair is in any of the edge_features
+        for j in range(n):
+            if torch.equal(node_pair, edge_features[0, j, :]):
+                output[i, 0] = 1
+                break
+    
+    return output
+
+
 
 def vis_gt_face(brep_edge_features, gt_index, edge_index_face_edge_list, index_id):
     fig = plt.figure()
