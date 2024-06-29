@@ -70,7 +70,7 @@ def find_left_edge(edge_features, node_features):
     _, m, _ = node_features.shape
     
     # Initialize the output tensor
-    output = torch.zeros((m, 1), dtype=torch.float32)
+    output = torch.ones((m, 1), dtype=torch.float32)
     
     # Iterate through each element in node_features
     for i in range(m):
@@ -80,7 +80,7 @@ def find_left_edge(edge_features, node_features):
         # Check if this pair is in any of the edge_features
         for j in range(n):
             if torch.equal(node_pair, edge_features[0, j, :]):
-                output[i, 0] = 1
+                output[i, 0] = 0
                 break
     
     return output
@@ -189,8 +189,6 @@ def vis_gt_strokes(brep_edge_features, gt_matrix):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
-    print("gt_matrix", gt_matrix)
-
     num_edges = brep_edge_features.shape[1]
 
     for i in range(num_edges):
@@ -198,7 +196,7 @@ def vis_gt_strokes(brep_edge_features, gt_matrix):
         end_point = brep_edge_features[0, i, 3:]
 
         col = 'blue'
-        if gt_matrix[i] == 1:
+        if gt_matrix[i] > 0.5:
             col = 'red'
 
         ax.plot([start_point[0], end_point[0]], [start_point[1], end_point[1]], [start_point[2], end_point[2]], color=col)
