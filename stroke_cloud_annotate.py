@@ -294,6 +294,40 @@ def eval_face_prediction():
     print(f"Average Evaluation Loss: {avg_eval_loss}")
     print(f"Match Probability: {match_probability}")
 
+
 #---------------------------------- Public Functions ----------------------------------#
 
-eval_face_prediction()
+def annotate(SBGCN_model, graph_embedding_model, BrepStrokeCloudAttention, batch):
+    node_features, operations_matrix, intersection_matrix, operations_order_matrix, face_to_stroke, program, face_boundary_points, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
+
+    # 1) Prepare the brep embedding
+    if edge_features.shape[1] == 0: 
+        return 
+
+    brep_graph = Preprocessing.SBGCN.SBGCN_graph.GraphHeteroData(face_features, edge_features, vertex_features, 
+                edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id)
+    brep_graph.to_device(device)
+    _, brep_edge_embedding, _ = SBGCN_model(brep_graph)
+
+    
+    # 2) Prepare the stroke cloud embedding
+    node_features = node_features.to(torch.float32).to(device)
+    operations_matrix = operations_matrix.to(torch.float32).to(device)
+    intersection_matrix = intersection_matrix.to(torch.float32).to(device)
+    operations_order_matrix = operations_order_matrix.to(torch.float32).to(device)
+
+    # graph embedding
+    gnn_graph = Preprocessing.gnn_graph.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
+    gnn_graph.to_device(device)
+    stroke_cloud_graph_embedding = graph_embedding_model(gnn_graph.x_dict, gnn_graph.edge_index_dict)
+
+    # 3) Cross attention on edge_embedding and stroke cloud
+    edge_left = BrepStrokeCloudAttention(brep_edge_embedding, stroke_cloud_graph_embedding)
+
+    return edge_left
+
+
+
+#---------------------------------- Testing Functions ----------------------------------#
+
+# eval_face_prediction()
