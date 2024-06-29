@@ -284,3 +284,27 @@ def chosen_edge_id_stroke_cloud(boundary_points, node_features):
             gt_matrix[i, 0] = 1
     
     return gt_matrix
+
+
+
+def edit_stroke_cloud(chosen_edges, node_features, operations_matrix, intersection_matrix, operations_order_matrix):
+    # Convert chosen_edges to boolean mask based on >0.5 threshold
+    chosen_mask = chosen_edges > 0.5
+    chosen_mask = chosen_mask.squeeze(0)  # Remove the first dimension if present
+    
+    # Select indices of chosen edges
+    chosen_indices = torch.nonzero(chosen_mask, as_tuple=False)[:, 0] 
+    
+    # Extract chosen node features
+    node_features = node_features[:, chosen_indices, :]
+
+    # Extract corresponding operations matrix
+    operations_matrix = operations_matrix[:, chosen_indices, :]
+    
+    # Extract intersection matrix for chosen edges
+    intersection_matrix = intersection_matrix[:, chosen_indices][:, :, chosen_indices]
+    
+    # Extract operations order matrix for chosen edges
+    operations_order_matrix = operations_order_matrix[:, chosen_indices, :]
+    
+    return node_features, operations_matrix, intersection_matrix, operations_order_matrix

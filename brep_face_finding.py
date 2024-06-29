@@ -1,5 +1,6 @@
 import Preprocessing.dataloader
 import stroke_cloud_annotate
+import Models.sketch_model_helper
 
 import stroke_cloud_annotate
 
@@ -88,8 +89,18 @@ class FindBrepFace():
             for batch in tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs} - Training"):
                 node_features, operations_matrix, intersection_matrix, operations_order_matrix, face_to_stroke, program, face_boundary_points, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
                 edge_left = stroke_cloud_annotate.annotate(self.SBGCN_model, self.graph_embedding_model, self.BrepStrokeCloudAttention, batch)
-                print("edge_left", edge_left)
-        
+                
+                if edge_features.shape[1] == 0: 
+                    continue
+                
+                node_features, operations_matrix, intersection_matrix, operations_order_matrix = Models.sketch_model_helper.edit_stroke_cloud(edge_left, node_features, operations_matrix, intersection_matrix, operations_order_matrix)
+
+                print("node_features", node_features.shape)
+                print("operations_matrix", operations_matrix.shape)
+                print("intersection_matrix", intersection_matrix.shape)
+                print("operations_order_matrix", operations_order_matrix.shape)
+                print("-----------")
+                break
 
 #---------------------------------- Testing Functions ----------------------------------#
 face_finder = FindBrepFace()
