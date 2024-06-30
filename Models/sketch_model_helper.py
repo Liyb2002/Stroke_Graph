@@ -86,7 +86,6 @@ def find_left_edge(edge_features, node_features):
     return output
 
 
-
 def vis_gt_face(brep_edge_features, gt_index, edge_index_face_edge_list, index_id):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
@@ -123,6 +122,7 @@ def vis_gt_face(brep_edge_features, gt_index, edge_index_face_edge_list, index_i
     ax.set_zlabel('Z')
 
     plt.show()
+
 
 
 def vis_predicted_face(brep_edge_features, predicted_index, edge_index_face_edge_list, index_id):
@@ -185,6 +185,7 @@ def vis_stroke_cloud(node_features):
     plt.show()
 
 
+
 def vis_gt_strokes(brep_edge_features, gt_matrix):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
@@ -206,6 +207,7 @@ def vis_gt_strokes(brep_edge_features, gt_matrix):
     ax.set_zlabel('Z')
 
     plt.show()
+
 
 
 def vis_predicted_strokes(brep_edge_features, predicted_matrix):
@@ -262,9 +264,33 @@ def chosen_edge_id(boundary_points, edge_features):
 
 
 
-def chosen_edge_id_stroke_cloud(boundary_points, node_features):
+def chosen_vertex_id(boundary_points, vertex_features):
     # Convert boundary_points to a tensor
     boundary_points_tensor = torch.tensor(boundary_points, dtype=torch.float32)
+    
+    # Initialize the output matrix
+    num_verts = vertex_features.shape[0]
+    gt_matrix = torch.zeros((num_verts), dtype=torch.float32)
+    
+    # Loop through each edge
+    for i in range(num_verts):
+        start_point = vertex_features[i, :3]
+
+        # Check if both the start and end points are in boundary_points
+        start_in_boundary = any(torch.equal(start_point, bp) for bp in boundary_points_tensor)
+        
+        # Set the value in gt_matrix
+        if start_in_boundary:
+            gt_matrix[i] = 1
+    
+    # print("gt_matrix", gt_matrix)
+    return gt_matrix
+
+
+def chosen_edge_id_stroke_cloud(boundary_points, node_features):
+
+    boundary_points_list = [[float(point[0]), float(point[1]), float(point[2])] for point in boundary_points]
+    print("boundary_points", boundary_points_list)
     
     # Initialize the output matrix
     num_edges = node_features.shape[1]
@@ -272,17 +298,17 @@ def chosen_edge_id_stroke_cloud(boundary_points, node_features):
     
     # Loop through each edge
     for i in range(num_edges):
-        start_point = node_features[0, i, :3]
-        end_point = node_features[0, i, 3:]
-
-        # Check if both the start and end points are in boundary_points
-        start_in_boundary = any(torch.equal(start_point, bp) for bp in boundary_points_tensor)
-        end_in_boundary = any(torch.equal(end_point, bp) for bp in boundary_points_tensor)
+        start_point = node_features[0, i, :3]  # Assuming x, y, z are the first three dimensions
+        end_point = node_features[0, i, 3:]    # Assuming x, y, z are the next three dimensions
         
-        # Set the value in gt_matrix
-        if start_in_boundary and end_in_boundary:
-            gt_matrix[i, 0] = 1
-    
+        print("start_point", start_point, "end_point", end_point)
+        # Check if start and end points are on the plane (exist in boundary_points)
+        start_on_plane = (start_point[0] in boundary_points[0]) and (start_point[1] in boundary_points[1]) and (start_point[2] in boundary_points[2])
+        end_on_plane = (end_point[0] in boundary_points[0]) and (end_point[1] in boundary_points[1]) and (end_point[2] in boundary_points[2])
+        
+        if start_on_plane and end_on_plane:
+            gt_matrix[i] = 1.0  # Mark the edge as on the plane
+        
     return gt_matrix
 
 
