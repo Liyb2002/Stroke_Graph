@@ -6,11 +6,11 @@ from torch_geometric.data import HeteroData
 
 import Encoders.gnn.basic
 
+
 class SemanticModule(nn.Module):
-    def __init__(self, in_channels=6, hidden_channels=32, mlp_channels=32, num_classes = 10):
+    def __init__(self, in_channels=6, hidden_channels=32, mlp_channels=32, num_classes=10):
         super(SemanticModule, self).__init__()
         self.local_head = Encoders.gnn.basic.GeneralHeteroConv(['temp_previous_add', 'intersects_mean'], in_channels, hidden_channels)
-
 
         self.layers = nn.ModuleList([
             Encoders.gnn.basic.ResidualGeneralHeteroConvBlock(['temp_previous_add', 'intersects_mean'], hidden_channels, hidden_channels),
@@ -19,13 +19,18 @@ class SemanticModule(nn.Module):
             Encoders.gnn.basic.ResidualGeneralHeteroConvBlock(['temp_previous_add', 'intersects_mean'], hidden_channels, mlp_channels)
         ])
 
+        self.linear_layer = nn.Linear(mlp_channels, 128) 
+
     def forward(self, x_dict, edge_index_dict):
         x_dict = self.local_head(x_dict, edge_index_dict)
 
         for layer in self.layers:
             x_dict = layer(x_dict, edge_index_dict)
 
-        return x_dict['stroke']
+        x = self.linear_layer(x_dict['stroke'])
+
+        return x
+
 
 
 class InstanceModule(nn.Module):

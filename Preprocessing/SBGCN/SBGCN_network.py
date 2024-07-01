@@ -9,7 +9,7 @@ class FaceEdgeVertexGCN(torch.nn.Module):
                  f_in_width=12,
                  e_in_width=6,
                  v_in_width=3,
-                 out_width=32,
+                 out_width=128,
                  k=4,
                  use_uvnet_features=False,
                  srf_in_dim=[0, 1, 2, 3, 4, 5, 8],

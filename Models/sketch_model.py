@@ -17,18 +17,6 @@ class StrokeEmbeddingNetwork(nn.Module):
         return x
 
 
-class VertexEmbeddingNetwork(nn.Module):
-    def __init__(self, input_dim=3, embedding_dim=32):
-        super(VertexEmbeddingNetwork, self).__init__()
-        self.fc1 = nn.Linear(input_dim, 16)
-        self.fc2 = nn.Linear(16, embedding_dim)
-        self.relu = nn.ReLU()
-
-    def forward(self, x):
-        x = self.relu(self.fc1(x))
-        x = self.fc2(x)
-        return x
-
 
 
 class PlaneEmbeddingNetwork(nn.Module):
@@ -186,18 +174,19 @@ class DummyClassifier(nn.Module):
 
 
 class BrepStrokeCloudAttention(nn.Module):
-    def __init__(self, input_dim=32, num_heads=8, dropout=0.1):
+    def __init__(self, input_dim=128, num_heads=32, dropout=0.1):
         super(BrepStrokeCloudAttention, self).__init__()
         self.attention = nn.MultiheadAttention(embed_dim=input_dim, num_heads=num_heads, dropout=dropout)
         self.layer_norm1 = nn.LayerNorm(input_dim)
         self.layer_norm2 = nn.LayerNorm(input_dim)
         self.feed_forward = nn.Sequential(
-            nn.Linear(input_dim, 128),
+            nn.Linear(input_dim, 512),
             nn.ReLU(),
-            nn.Linear(128, input_dim),
+            nn.Linear(512, input_dim),
             nn.Dropout(dropout)
         )
-        self.output_layer = nn.Linear(input_dim, 1)  # Output layer to compute scores for each edge
+        self.output_layer1 = nn.Linear(input_dim, 32)  # Output layer to compute scores for each edge
+        self.output_layer2 = nn.Linear(32, 1)  # Output layer to compute scores for each edge
 
     def forward(self, brep_feature, stroke_cloud):
         # brep_feature: (1, n, 32)
@@ -216,8 +205,9 @@ class BrepStrokeCloudAttention(nn.Module):
         
         # Compute edge scores
         ff_output = ff_output.squeeze(0)
-        edge_scores = self.output_layer(ff_output)  # (n, 1)
-        
+        edge_scores = self.output_layer1(ff_output)  # (n, 1)
+        edge_scores = self.output_layer2(edge_scores)  # (n, 1)
+
         # Compute probabilities using sigmoid
         edge_probabilities = torch.sigmoid(edge_scores)  # (n, 1)
         

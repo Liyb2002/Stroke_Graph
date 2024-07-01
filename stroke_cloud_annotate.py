@@ -330,4 +330,4 @@ def annotate(SBGCN_model, graph_embedding_model, BrepStrokeCloudAttention, batch
 
 #---------------------------------- Testing Functions ----------------------------------#
 
-# eval_face_prediction()
+train_face_prediction()
