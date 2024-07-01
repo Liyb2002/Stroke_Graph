@@ -19,7 +19,7 @@ class SemanticModule(nn.Module):
             Encoders.gnn.basic.ResidualGeneralHeteroConvBlock(['temp_previous_add', 'intersects_mean'], hidden_channels, mlp_channels)
         ])
 
-        self.linear_layer = nn.Linear(mlp_channels, 128) 
+        self.linear_layer = nn.Linear(mlp_channels, 32) 
 
     def forward(self, x_dict, edge_index_dict):
         x_dict = self.local_head(x_dict, edge_index_dict)

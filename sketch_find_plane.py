@@ -27,19 +27,16 @@ from mpl_toolkits.mplot3d import Axes3D
 
 # Define the neural networks
  
-# Stroke_embedding_model = Models.sketch_model.StrokeEmbeddingNetwork()
 SBGCN_model = Preprocessing.SBGCN.SBGCN_network.FaceEdgeVertexGCN()
-# SelfAttentionModel = Models.sketch_model.SelfAttentionModel()
 graph_embedding_model = Encoders.gnn.gnn.SemanticModule()
 BrepStrokeCloudAttention = Models.sketch_model.BrepStrokeCloudAttention()
-# BrepFaceEdgeAttention = Models.sketch_model.BrepStrokeCloudAttention()
 
 graph_embedding_model.to(device)
 SBGCN_model.to(device)
 BrepStrokeCloudAttention.to(device)
 
 current_dir = os.getcwd()
-save_dir = os.path.join(current_dir, 'checkpoints', 'sketch_prediction')
+save_dir = os.path.join(current_dir, 'checkpoints', 'planar_finding')
 os.makedirs(save_dir, exist_ok=True)
 
 

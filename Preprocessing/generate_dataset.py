@@ -21,10 +21,10 @@ class dataset_generator():
         #     shutil.rmtree('dataset')
         # os.makedirs('dataset', exist_ok=True)
 
-        self.generate_dataset('dataset/train_dataset', number_data = 0, start = 990)
-        self.generate_dataset('dataset/eval_dataset', number_data = 0, start = 90)
-        self.generate_dataset('dataset/full_train_dataset', number_data = 2000, start = 1670)
-        self.generate_dataset('dataset/full_eval_dataset', number_data = 200, start = 0)
+        self.generate_dataset('dataset/train_dataset', number_data = 3000, start = 0)
+        self.generate_dataset('dataset/eval_dataset', number_data = 200, start = 0)
+        self.generate_dataset('dataset/full_train_dataset', number_data = 0, start = 1670)
+        self.generate_dataset('dataset/full_eval_dataset', number_data = 0, start = 0)
 
 
     def generate_dataset(self, dir, number_data, start):
@@ -46,8 +46,8 @@ class dataset_generator():
         # Generate a new program & save the brep
         try:
             # Pass in the directory to the simple_gen function
-            Preprocessing.proc_CAD.proc_gen.random_program(data_directory)
-            # Preprocessing.proc_CAD.proc_gen.simple_gen(data_directory)
+            # Preprocessing.proc_CAD.proc_gen.random_program(data_directory)
+            Preprocessing.proc_CAD.proc_gen.simple_gen(data_directory)
 
             # Create brep for the new program and pass in the directory
             valid_parse = Preprocessing.proc_CAD.Program_to_STL.run(data_directory)

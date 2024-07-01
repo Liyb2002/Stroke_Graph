@@ -6,6 +6,7 @@ import Preprocessing.SBGCN.SBGCN_network
 
 import Models.sketch_arguments.face_aggregate
 import Models.sketch_arguments.sketch_model_2
+from Encoders.gnn.gnn import SemanticModule
 
 
 from torch.utils.data import DataLoader, random_split, Subset
@@ -24,13 +25,13 @@ from mpl_toolkits.mplot3d import Axes3D
 
 
 SBGCN_model = Preprocessing.SBGCN.SBGCN_network.FaceEdgeVertexGCN()
-stroke_embed_model = Models.sketch_arguments.sketch_model_2.StrokeEmbeddingNetwork()
-plane_embed_model = Models.sketch_arguments.sketch_model_2.PlaneEmbeddingNetwork()
+# stroke_embed_model = Models.sketch_arguments.sketch_model_2.StrokeEmbeddingNetwork()
+# plane_embed_model = Models.sketch_arguments.sketch_model_2.PlaneEmbeddingNetwork()
+graph_embedding_model = SemanticModule()
 cross_attention_model = Models.sketch_arguments.sketch_model_2.FaceBrepAttention()
 
 SBGCN_model.to(device)
-stroke_embed_model.to(device)
-plane_embed_model.to(device)
+graph_embedding_model.to(device)
 cross_attention_model.to(device)
 
 current_dir = os.getcwd()
@@ -58,8 +59,7 @@ def load_models():
 
 def save_models():
     torch.save(SBGCN_model.state_dict(), os.path.join(save_dir, 'SBGCN_model.pth'))
-    torch.save(stroke_embed_model.state_dict(), os.path.join(save_dir, 'stroke_embed_model.pth'))
-    torch.save(plane_embed_model.state_dict(), os.path.join(save_dir, 'plane_embed_model.pth'))
+    torch.save(graph_embedding_model.state_dict(), os.path.join(save_dir, 'graph_embedding_model.pth'))
     torch.save(cross_attention_model.state_dict(), os.path.join(save_dir, 'cross_attention_model.pth'))
 
     print("Saved models.")
@@ -148,8 +148,7 @@ def train():
     criterion = nn.BCEWithLogitsLoss()
     optimizer = torch.optim.Adam(
         list(SBGCN_model.parameters()) +
-        list(stroke_embed_model.parameters()) +
-        list(plane_embed_model.parameters()) +
+        list(graph_embedding_model.parameters()) +
         list(cross_attention_model.parameters()),
         lr=0.0005
     )
@@ -176,36 +175,33 @@ def train():
 
     for epoch in range(epochs):
         SBGCN_model.train()
-        stroke_embed_model.train()
-        plane_embed_model.train()
+        graph_embedding_model.train()
         cross_attention_model.train()
 
         # Training loop
         train_loss = 0.0
         for batch in tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs} - Training"):
-            node_features, _, _, operations_order_matrix, face_to_stroke, program, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
+            node_features, operations_matrix, intersection_matrix, operations_order_matrix, face_to_stroke, program, face_boundary_points, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
 
-            # Move data to device
-            node_features = node_features.to(torch.float32).to(device)
-
-            # face_to_stroke defines the order of the faces / the strokes each face have
-            # we want to permute the order of the faces
-            face_to_stroke = [[indices.to(device) for indices in face] for face in face_to_stroke]
-            permuted_indices = torch.randperm(len(face_to_stroke)).tolist()
-            permuted_face_to_stroke = [face_to_stroke[i] for i in permuted_indices]
-
-            
             # Zero the parameter gradients
             optimizer.zero_grad()
 
             # 1) Embed the strokes
-            stroke_embed = stroke_embed_model(node_features)
+            # stroke_embed = stroke_embed_model(node_features)
 
             # 2) Find all possible faces
             # This is given by face_to_stroke
 
             # 3) For each face, build the embedding
-            face_embed = plane_embed_model(permuted_face_to_stroke, stroke_embed)
+            node_features = node_features.to(torch.float32).to(device)
+            operations_matrix = operations_matrix.to(torch.float32).to(device)
+            intersection_matrix = intersection_matrix.to(torch.float32).to(device)
+            operations_order_matrix = operations_order_matrix.to(torch.float32).to(device)
+
+            # graph embedding
+            gnn_graph = Preprocessing.gnn_graph.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
+            gnn_graph.to_device(device)
+            stroke_cloud_graph_embedding = graph_embedding_model(gnn_graph.x_dict, gnn_graph.edge_index_dict)
 
             # 4) Prepare brep_embedding
             if face_features.shape[1] == 0:
@@ -220,16 +216,16 @@ def train():
                 brep_embedding = torch.cat((face_embedding, edge_embedding, vertex_embedding), dim=1)
 
             # 5) Do cross attention on face_embedding and brep_embedding
-            output = cross_attention_model(face_embed, brep_embedding)
+            output = cross_attention_model(stroke_cloud_graph_embedding, brep_embedding)
 
             # 6) Prepare ground_truth
             target_op_index = len(program[0]) - 1
             op_to_index_matrix = operations_order_matrix
             kth_operation = Models.sketch_arguments.face_aggregate.get_kth_operation(op_to_index_matrix, target_op_index).to(device)
-            gt_matrix = Models.sketch_arguments.face_aggregate.build_gt_matrix(kth_operation, permuted_face_to_stroke)
+            # gt_matrix = Models.sketch_arguments.face_aggregate.build_gt_matrix(kth_operation, permuted_face_to_stroke)
 
             # 7) Compute the loss
-            loss = criterion(output, gt_matrix)
+            loss = criterion(output, kth_operation)
 
             # 8) Backward pass and optimization
             loss.backward()
@@ -244,29 +240,23 @@ def train():
 
         # Validation loop
         SBGCN_model.eval()
-        stroke_embed_model.eval()
-        plane_embed_model.eval()
+        graph_embedding_model.eval()
         cross_attention_model.eval()
 
         val_loss = 0.0
         with torch.no_grad():
             for batch in tqdm(val_loader, desc=f"Epoch {epoch+1}/{epochs} - Validation"):
-                node_features, _, _, operations_order_matrix, face_to_stroke, program, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
+                node_features, operations_matrix, intersection_matrix, operations_order_matrix, face_to_stroke, program, face_boundary_points, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
 
-                # Move data to device
                 node_features = node_features.to(torch.float32).to(device)
-                face_to_stroke = [[indices.to(device) for indices in face] for face in face_to_stroke]
-                permuted_indices = torch.randperm(len(face_to_stroke)).tolist()
-                permuted_face_to_stroke = [face_to_stroke[i] for i in permuted_indices]
+                operations_matrix = operations_matrix.to(torch.float32).to(device)
+                intersection_matrix = intersection_matrix.to(torch.float32).to(device)
+                operations_order_matrix = operations_order_matrix.to(torch.float32).to(device)
 
-                # 1) Embed the strokes
-                stroke_embed = stroke_embed_model(node_features)
-
-                # 2) Find all possible faces
-                # This is given by face_to_stroke
-
-                # 3) For each face, build the embedding
-                face_embed = plane_embed_model(permuted_face_to_stroke, stroke_embed)
+                # graph embedding
+                gnn_graph = Preprocessing.gnn_graph.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
+                gnn_graph.to_device(device)
+                stroke_cloud_graph_embedding = graph_embedding_model(gnn_graph.x_dict, gnn_graph.edge_index_dict)
 
                 # 4) Prepare brep_embedding
                 if face_features.shape[1] == 0:
@@ -281,16 +271,15 @@ def train():
                     brep_embedding = torch.cat((face_embedding, edge_embedding, vertex_embedding), dim=1)
 
                 # 5) Do cross attention on face_embedding and brep_embedding
-                output = cross_attention_model(face_embed, brep_embedding)
+                output = cross_attention_model(stroke_cloud_graph_embedding, brep_embedding)
 
                 # 6) Prepare ground_truth
                 target_op_index = len(program[0]) - 1
                 op_to_index_matrix = operations_order_matrix
                 kth_operation = Models.sketch_arguments.face_aggregate.get_kth_operation(op_to_index_matrix, target_op_index).to(device)
-                gt_matrix = Models.sketch_arguments.face_aggregate.build_gt_matrix(kth_operation, permuted_face_to_stroke)
 
                 # 7) Compute the loss
-                loss = criterion(output, gt_matrix)
+                loss = criterion(output, kth_operation)
 
                 val_loss += loss.item()
 
@@ -415,4 +404,4 @@ def eval():
 
 #---------------------------------- Public Functions ----------------------------------#
 
-eval()
+train()

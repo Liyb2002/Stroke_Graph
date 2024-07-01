@@ -290,7 +290,6 @@ def chosen_vertex_id(boundary_points, vertex_features):
 def chosen_edge_id_stroke_cloud(boundary_points, node_features):
 
     boundary_points_list = [[float(point[0]), float(point[1]), float(point[2])] for point in boundary_points]
-    print("boundary_points", boundary_points_list)
     
     # Initialize the output matrix
     num_edges = node_features.shape[1]
@@ -334,3 +333,51 @@ def edit_stroke_cloud(chosen_edges, node_features, operations_matrix, intersecti
     operations_order_matrix = operations_order_matrix[:, chosen_indices, :]
     
     return node_features, operations_matrix, intersection_matrix, operations_order_matrix
+
+
+
+def coplanar_strokes(node_features, kth_operation):
+
+    # get the chosen strokes
+    chosen_strokes = []
+    num_strokes = node_features.shape[1]
+    
+    for i in range(num_strokes):
+        if kth_operation[i, 0] == 1:
+            chosen_strokes.append(node_features[0, i, :])
+    
+    # for stroke in chosen_strokes:
+    #     print("stroke", stroke)
+
+    chosen_strokes = torch.stack(chosen_strokes)
+
+    # Find the common plane
+    common_values = {}
+    planes = ['x', 'y', 'z']
+    for plane_idx in range(3):
+        # Get all values for the current plane (x, y, or z)
+        plane_values = chosen_strokes[:, [plane_idx, plane_idx + 3]]
+        # Flatten and find unique values
+        unique_values = torch.unique(plane_values)
+        for value in unique_values:
+            if torch.sum(plane_values == value).item() == 2 * chosen_strokes.shape[0]:
+                common_values[planes[plane_idx]] = value.item()
+                break
+    
+    common_plane = next(iter(common_values))
+    common_value = common_values[common_plane]
+    plane_idx = planes.index(common_plane)
+
+
+
+    # Initialize coplanar matrix
+    coplanar_matrix = torch.zeros(num_strokes, dtype=torch.float32)
+
+    # Check all strokes in node_features for coplanarity
+    for i in range(num_strokes):
+        stroke = node_features[0, i, :]
+        point1, point2 = stroke[:3], stroke[3:]
+        if point1[plane_idx] == common_value and point2[plane_idx] == common_value:
+            coplanar_matrix[i] = 1.0
+    
+    return coplanar_matrix
