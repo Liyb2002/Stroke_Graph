@@ -661,7 +661,6 @@ def node_features_to_plane(node_features):
         if len(plane) >= 3:
             z_planes.append(plane)
 
-    print("x_planes", x_planes)
-    print("y_planes", y_planes)
-    print("z_planes", z_planes)
+    planes = x_planes + y_planes + z_planes
 
+    return planes
