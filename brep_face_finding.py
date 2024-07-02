@@ -55,13 +55,9 @@ class FindBrepFace():
         
 
         # Initialize predict models
-        self.SBGCN_model_finding = SBGCN_network.FaceEdgeVertexGCN()
-        self.graph_embedding_model_finding = SemanticModule()
         self.BrepStrokeCloudAttention_finding = BrepStrokeCloudAttention_Reverse()
         
         # Move models to device
-        self.SBGCN_model_finding.to(device)
-        self.graph_embedding_model_finding.to(device)
         self.BrepStrokeCloudAttention_finding.to(device)
 
         # Load models if they exist
@@ -79,10 +75,8 @@ class FindBrepFace():
 
 
     def train_brep_face_finding(self):
-        criterion = nn.BCELoss()
+        criterion = nn.BCEWithLogitsLoss()
         optimizer = torch.optim.Adam(
-            list(self.SBGCN_model_finding.parameters()) +
-            list(self.graph_embedding_model_finding.parameters()) +
             list(self.BrepStrokeCloudAttention_finding.parameters()),
             lr=5e-4
         )
@@ -105,8 +99,6 @@ class FindBrepFace():
         best_val_loss = float('inf')
 
         for epoch in range(epochs):
-            self.SBGCN_model_finding.train()
-            self.graph_embedding_model_finding.train()
             self.BrepStrokeCloudAttention_finding.train()
 
             total_train_loss = 0.0
@@ -131,13 +123,13 @@ class FindBrepFace():
                 # graph embedding
                 gnn_graph = Preprocessing.gnn_graph.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
                 gnn_graph.to_device(device)
-                stroke_cloud_graph_embedding = self.graph_embedding_model_finding(gnn_graph.x_dict, gnn_graph.edge_index_dict)
+                stroke_cloud_graph_embedding = self.graph_embedding_model(gnn_graph.x_dict, gnn_graph.edge_index_dict)
 
 
                 # 3) Prepare brep_edges embedding
                 brep_graph = Preprocessing.SBGCN.SBGCN_graph.GraphHeteroData(face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id)
                 brep_graph.to_device(device)
-                brep_face_embedding, brep_edge_embedding, brep_vertex_embedding = self.SBGCN_model_finding(brep_graph)
+                brep_face_embedding, brep_edge_embedding, brep_vertex_embedding = self.SBGCN_model(brep_graph)
                 # brep_embedding = torch.cat((brep_face_embedding, brep_edge_embedding, brep_vertex_embedding), dim=1)
 
                 # 4) Cross attention on edge_embedding and stroke cloud
@@ -165,8 +157,6 @@ class FindBrepFace():
             print(f"Epoch {epoch + 1}/{epochs}, Training Loss: {avg_train_loss}")
 
             # Validation loop
-            self.SBGCN_model_finding.eval()
-            self.graph_embedding_model_finding.eval()
             self.BrepStrokeCloudAttention_finding.eval()
 
             total_val_loss = 0.0
@@ -190,13 +180,13 @@ class FindBrepFace():
                     # graph embedding
                     gnn_graph = Preprocessing.gnn_graph.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
                     gnn_graph.to_device(device)
-                    stroke_cloud_graph_embedding = self.graph_embedding_model_finding(gnn_graph.x_dict, gnn_graph.edge_index_dict)
+                    stroke_cloud_graph_embedding = self.graph_embedding_model(gnn_graph.x_dict, gnn_graph.edge_index_dict)
 
 
                     # 3) Prepare brep_edges embedding
                     brep_graph = Preprocessing.SBGCN.SBGCN_graph.GraphHeteroData(face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id)
                     brep_graph.to_device(device)
-                    brep_face_embedding, brep_edge_embedding, _ = self.SBGCN_model_finding(brep_graph)
+                    brep_face_embedding, brep_edge_embedding, _ = self.SBGCN_model(brep_graph)
                     
 
                     # 4) Cross attention on edge_embedding and stroke cloud

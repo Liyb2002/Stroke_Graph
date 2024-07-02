@@ -86,12 +86,3 @@ class FaceBrepAttention(nn.Module):
         
         return logits
 
-    def predict(self, face_embedding, brep_embedding):
-        logits = self.forward(face_embedding, brep_embedding)        
-        
-        probabilities = torch.sigmoid(logits)
-
-        # Find the face with the highest probability above the threshold
-        max_prob, max_index = torch.max(probabilities, dim=0)
-
-        return max_index.item(), max_prob.item()

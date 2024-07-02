@@ -72,7 +72,7 @@ def train_face_prediction():
     # load_face_models()
 
     # Define training
-    criterion = nn.BCELoss()
+    criterion = nn.BCEWithLogitsLoss()
     optimizer = torch.optim.Adam(
         list(graph_embedding_model.parameters())+
         list(SBGCN_model.parameters())+
@@ -137,7 +137,6 @@ def train_face_prediction():
 
             # 4) Prepare the gt_matrix
             gt_left = Models.sketch_model_helper.find_left_edge(edge_features, node_features)
-            gt_left = gt_left.squeeze(1)
 
             # 5) Calculate validation loss
             loss = criterion(edge_left, gt_left)
@@ -197,7 +196,6 @@ def train_face_prediction():
 
                 # 4) Prepare the gt_matrix
                 gt_left = Models.sketch_model_helper.find_left_edge(edge_features, node_features)
-                gt_left = gt_left.squeeze(1)
 
                 # 5) Calculate validation loss
                 val_loss = criterion(edge_left, gt_left)

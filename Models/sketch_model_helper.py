@@ -111,8 +111,10 @@ def chosen_all_face_id(node_features, edge_index_face_edge_list, index_id, edge_
         satisfaction = check_face_satisfaction(face_points, node_features)
         satisfaction_matrix.append(satisfaction)
 
-
-    return torch.tensor(satisfaction_matrix, dtype=torch.float32)
+    satisfaction_matrix = torch.tensor(satisfaction_matrix, dtype=torch.float32)
+    
+    satisfaction_matrix = satisfaction_matrix.unsqueeze(1)
+    return satisfaction_matrix
 
 
 def identify_coplanar_direction(face_points):

@@ -5,9 +5,9 @@ from torch.nn import TransformerEncoder, TransformerEncoderLayer
 
 
 class StrokeEmbeddingNetwork(nn.Module):
-    def __init__(self, input_dim=6, embedding_dim=16):
+    def __init__(self, input_dim=6, embedding_dim=32):
         super(StrokeEmbeddingNetwork, self).__init__()
-        self.fc1 = nn.Linear(input_dim, 32)
+        self.fc1 = nn.Linear(input_dim, 64)
         self.fc2 = nn.Linear(32, embedding_dim)
         self.relu = nn.ReLU()
 
@@ -174,86 +174,72 @@ class DummyClassifier(nn.Module):
 
 
 class BrepStrokeCloudAttention(nn.Module):
-    def __init__(self, input_dim=64, num_heads=16, dropout=0.1):
+    def __init__(self, embed_dim=32, num_heads=4, ff_dim=128, dropout=0.1):
         super(BrepStrokeCloudAttention, self).__init__()
-        self.attention = nn.MultiheadAttention(embed_dim=input_dim, num_heads=num_heads, dropout=dropout)
-        self.layer_norm1 = nn.LayerNorm(input_dim)
-        self.layer_norm2 = nn.LayerNorm(input_dim)
-        self.feed_forward = nn.Sequential(
-            nn.Linear(input_dim, 256),
+        self.cross_attn = nn.MultiheadAttention(embed_dim, num_heads, dropout=dropout)
+        self.ff = nn.Sequential(
+            nn.Linear(embed_dim, ff_dim),
             nn.ReLU(),
-            nn.Linear(256, input_dim),
-            nn.Dropout(dropout)
+            nn.Linear(ff_dim, embed_dim)
         )
-        self.output_layer1 = nn.Linear(input_dim, 32)  # Output layer to compute scores for each edge
-        self.output_layer2 = nn.Linear(32, 1)  # Output layer to compute scores for each edge
+        self.norm1 = nn.LayerNorm(embed_dim)
+        self.norm2 = nn.LayerNorm(embed_dim)
+        self.dropout = nn.Dropout(dropout)
+        self.classifier = nn.Linear(embed_dim, 1)
 
-    def forward(self, brep_feature, stroke_cloud):
-        # brep_feature: (1, n, 32)
-        # stroke_cloud: (1, m, 32)
-        brep_feature = brep_feature.permute(1, 0, 2)  # (n, 1, 32)
-        stroke_cloud = stroke_cloud.permute(1, 0, 2)  # (m, 1, 32)
+    def forward(self, brep_embedding, stroke_cloud_graph_embedding):
+        brep_embedding = brep_embedding.transpose(0, 1)  # Shape: (n, 1, 32)
+        stroke_cloud_graph_embedding = stroke_cloud_graph_embedding.transpose(0, 1)    # Shape: (m, 1, 32), where m is the number of brep embeddings
         
-        attn_output, _ = self.attention(stroke_cloud, brep_feature, brep_feature)  # Cross attention
-        attn_output = attn_output.permute(1, 0, 2)  # (1, n, 32)
+        # Cross attention
+        attn_output, _ = self.cross_attn(stroke_cloud_graph_embedding, brep_embedding, brep_embedding)  # (n, 1, 32)
+        attn_output = self.dropout(attn_output)
+        out1 = self.norm1(stroke_cloud_graph_embedding
+                           + attn_output)  # (n, 1, 32)
         
-        stroke_cloud = stroke_cloud.permute(1, 0, 2)  # Back to (1, n, 32)
-        stroke_cloud = self.layer_norm1(stroke_cloud + attn_output)  # Add & Norm
+        # Feed-forward
+        ff_output = self.ff(out1)  # (n, 1, 32)
+        out2 = self.norm2(out1 + ff_output)  # (n, 1, 32)
         
-        ff_output = self.feed_forward(stroke_cloud)
-        ff_output = self.layer_norm2(stroke_cloud + ff_output)  # Add & Norm
+        # Classification
+        logits = self.classifier(out2)  # (n, 1, 1)
+        logits = logits.squeeze(-1)  # (n, 1)
         
-        # Compute edge scores
-        ff_output = ff_output.squeeze(0)
-        edge_scores = self.output_layer1(ff_output)  # (n, 1)
-        edge_scores = self.output_layer2(edge_scores)  # (n, 1)
-
-        # Compute probabilities using sigmoid
-        edge_probabilities = torch.sigmoid(edge_scores)  # (n, 1)
-        edge_probabilities = edge_probabilities.squeeze()
-
-        return edge_probabilities
+        return logits
 
 
 
 
 class BrepStrokeCloudAttention_Reverse(nn.Module):
-    def __init__(self, input_dim=64, num_heads=16, dropout=0.1):
+    def __init__(self, embed_dim=32, num_heads=16, ff_dim=128, dropout=0.1):
         super(BrepStrokeCloudAttention_Reverse, self).__init__()
-        self.attention = nn.MultiheadAttention(embed_dim=input_dim, num_heads=num_heads, dropout=dropout)
-        self.layer_norm1 = nn.LayerNorm(input_dim)
-        self.layer_norm2 = nn.LayerNorm(input_dim)
-        self.feed_forward = nn.Sequential(
-            nn.Linear(input_dim, 256),
+        self.cross_attn = nn.MultiheadAttention(embed_dim, num_heads, dropout=dropout)
+        self.ff = nn.Sequential(
+            nn.Linear(embed_dim, ff_dim),
             nn.ReLU(),
-            nn.Linear(256, input_dim),
-            nn.Dropout(dropout)
+            nn.Linear(ff_dim, embed_dim)
         )
-        self.output_layer1 = nn.Linear(input_dim, 32)  # Output layer to compute scores for each edge
-        self.output_layer2 = nn.Linear(32, 1)  # Output layer to compute scores for each edge
+        self.norm1 = nn.LayerNorm(embed_dim)
+        self.norm2 = nn.LayerNorm(embed_dim)
+        self.dropout = nn.Dropout(dropout)
+        self.classifier = nn.Linear(embed_dim, 1)
 
-    def forward(self, brep_feature, stroke_cloud):
-        # brep_feature: (1, n, 32)
-        # stroke_cloud: (1, m, 32)
-        brep_feature = brep_feature.permute(1, 0, 2)  # (n, 1, 32)
-        stroke_cloud = stroke_cloud.permute(1, 0, 2)  # (m, 1, 32)
+    def forward(self, brep_embedding, stroke_cloud_graph_embedding):
+        brep_embedding = brep_embedding.transpose(0, 1)  # Shape: (n, 1, 32)
+        stroke_cloud_graph_embedding = stroke_cloud_graph_embedding.transpose(0, 1)    # Shape: (m, 1, 32), where m is the number of brep embeddings
         
-        attn_output, _ = self.attention(brep_feature, stroke_cloud, stroke_cloud)  # Cross attention
-        attn_output = attn_output.permute(1, 0, 2)  # (1, n, 32)
+        # Cross attention
+        attn_output, _ = self.cross_attn(brep_embedding, stroke_cloud_graph_embedding, stroke_cloud_graph_embedding)  # (n, 1, 32)
+        attn_output = self.dropout(attn_output)
+        out1 = self.norm1(brep_embedding + attn_output)  # (n, 1, 32)
         
-        brep_feature = brep_feature.permute(1, 0, 2)  # Back to (1, n, 32)
-        brep_feature = self.layer_norm1(brep_feature + attn_output)  # Add & Norm
+        # Feed-forward
+        ff_output = self.ff(out1)  # (n, 1, 32)
+        out2 = self.norm2(out1 + ff_output)  # (n, 1, 32)
         
-        ff_output = self.feed_forward(brep_feature)
-        ff_output = self.layer_norm2(brep_feature + ff_output)  # Add & Norm
+        # Classification
+        logits = self.classifier(out2)  # (n, 1, 1)
+        logits = logits.squeeze(-1)  # (n, 1)
         
-        # Compute edge scores
-        ff_output = ff_output.squeeze(0)
-        feature_scores = self.output_layer1(ff_output)  # (n, 1)
-        feature_scores = self.output_layer2(feature_scores)  # (n, 1)
-        
-        # Compute probabilities using sigmoid
-        feature_probabilities = torch.sigmoid(feature_scores)  # (n, 1)
-        feature_probabilities = feature_probabilities.squeeze()
+        return logits
 
-        return feature_probabilities

@@ -5,7 +5,7 @@ from tqdm import tqdm
 
 
 class MultiheadAttentionNetwork(nn.Module):
-    def __init__(self, input_dim=4, num_heads=4, dropout=0.1):
+    def __init__(self, input_dim=32, num_heads=8, dropout=0.1):
         super(MultiheadAttentionNetwork, self).__init__()
         self.attention = nn.MultiheadAttention(embed_dim=input_dim, num_heads=num_heads, dropout=dropout)
         self.layer_norm1 = nn.LayerNorm(input_dim)
@@ -39,9 +39,10 @@ class MultiheadAttentionNetwork(nn.Module):
 
 
 def generate_data():
+    num_embedding = 32
     # Create random tensors
-    tensorA_base = torch.randn(4, 4)  # Shape (4, 6)
-    tensorB_base = torch.randn(4, 4)  # Shape (4, 6)
+    tensorA_base = torch.randn(4, 8)  # Shape (4, 6)
+    tensorB_base = torch.randn(4, 8)  # Shape (4, 6)
 
     # Concatenate tensors A and B along the first dimension
     tensorC_base = torch.cat([tensorA_base, tensorB_base], dim=0)  # Shape (8, 6)
@@ -62,17 +63,19 @@ def generate_data():
 
 
     # Now add noise
-    # additional_data_A = torch.randn(4, 4 - tensorA_base.size(1))  # Shape (4, 26)
-    # tensorA = torch.cat([tensorA_base, additional_data_A], dim=1)  # Shape (4, 32)
+    additional_data_A = torch.randn(4, num_embedding - tensorA_base.size(1))  # Shape (4, 26)
+    tensorA = torch.cat([tensorA_base, additional_data_A], dim=1)  # Shape (4, num_embedding)
+    additional_data_A2 = torch.randn(8, num_embedding)  # Shape (8, num_embedding)
+    tensorA = torch.cat([tensorA, additional_data_A2], dim=0)   # Shape (12, num_embedding)
 
-    # # Generate random data to expand tensorC_base to (8, 32)
-    # additional_data_C = torch.randn(8, 4 - tensorC_base.size(1))  # Shape (8, 26)
-    # tensorC = torch.cat([tensorC_base, additional_data_C], dim=1)  # Shape (8, 32)
+    # Generate random data to expand tensorC_base to (8, num_embedding)
+    additional_data_C = torch.randn(8, num_embedding - tensorC_base.size(1))  # Shape (8, 26)
+    tensorC = torch.cat([tensorC_base, additional_data_C], dim=1)  # Shape (8, num_embedding)
 
 
 
     
-    return tensorA_base, tensorC_base, indices_in_A
+    return tensorA, tensorC, indices_in_A
 
 
 def create_dataset(n):
@@ -92,7 +95,7 @@ criterion = nn.BCELoss()  # Binary Cross Entropy Loss with logits
 optimizer = optim.Adam(model.parameters(), lr=1e-4)  # Adam optimizer
 
 # Training parameters
-num_epochs = 10
+num_epochs = 100
 
 # Training loop with tqdm for progress visualization
 for epoch in range(1, num_epochs + 1):
@@ -110,9 +113,14 @@ for epoch in range(1, num_epochs + 1):
             loss = criterion(logits, indices_in_A)
             train_losses.append(loss.item())
             
-            print("tensorA", tensorA)
-            print("tensorB", tensorC)
-            print("indices_in_A", indices_in_A)
+            # print("--------")
+            # print("tensorA", tensorA.shape)
+            # print("tensorB", tensorC.shape)
+
+            # print("tensorA", tensorA)
+            # print("tensorB", tensorC)
+
+            # print("indices_in_A", indices_in_A)
 
             # Backward pass and optimization
             optimizer.zero_grad()
