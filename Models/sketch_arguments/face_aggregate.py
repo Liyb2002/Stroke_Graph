@@ -65,23 +65,16 @@ def get_kth_operation(op_to_index_matrix, k):
     return kth_operation
 
 
-def build_gt_matrix(kth_operation, face_indices):
-    num_faces = len(face_indices)
-    gt_matrix = torch.zeros((num_faces, 1), dtype=torch.float32)
+def build_gt_matrix(kth_operation, planes):
+    num_planes = len(planes)
+    gt_matrix = torch.zeros((num_planes, 1), dtype=torch.float32)
 
-    for i, face in enumerate(face_indices):
-        chosen_count = sum(kth_operation[stroke_index][0] == 1 for stroke_index in face)
-        if chosen_count >= (len(face) // 2) + 1:
-            gt_matrix[i][0] = 1.0
+    # chosen_strokes = [i for i, val in enumerate(kth_operation) if val == 1]
+    # print("Strokes with value 1 in kth_operation:", chosen_strokes)
 
-    # num_chosen_faces = torch.sum(gt_matrix)
-    # print(f"Number of faces chosen: {num_chosen_faces}")
+    for idx, plane in enumerate(planes):
+        chosen_count = sum(kth_operation[stroke] == 1 for stroke in plane)
+        if chosen_count >= 3:
+            gt_matrix[idx] = 1.0
 
-    # if num_chosen_faces == 0:
-    #     chosen_strokes = np.where(kth_operation == 1)[0]
-    #     print(f"Chosen stroke indices: {chosen_strokes}")
-        
-    #     # Print out all the face tuples
-    #     print(f"Face tuples: {face_indices}")
-    
     return gt_matrix

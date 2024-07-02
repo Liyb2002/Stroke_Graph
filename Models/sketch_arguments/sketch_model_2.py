@@ -28,8 +28,6 @@ class PlaneEmbeddingNetwork(nn.Module):
         face_embeddings = []
 
         for indices in face_indices:
-            # Ensure indices are flattened
-            indices = torch.cat(indices)
             
             # Shape: (num_indices, 16)
             strokes = torch.stack([node_embed[0, idx] for idx in indices], dim=0)

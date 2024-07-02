@@ -186,18 +186,12 @@ def train():
         for batch in tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs} - Training"):
             node_features, operations_matrix, intersection_matrix, operations_order_matrix, face_to_stroke, program, face_boundary_points, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
 
+            if edge_features.shape[1] == 0:
+                continue
             # Move data to device
             node_features = node_features.to(torch.float32).to(device)
 
-            aa = Models.sketch_model_helper.node_features_to_plane(node_features)
-            
-
-            # face_to_stroke defines the order of the faces / the strokes each face have
-            # we want to permute the order of the faces
-            face_to_stroke = [[indices.to(device) for indices in face] for face in face_to_stroke]
-            permuted_indices = torch.randperm(len(face_to_stroke)).tolist()
-            permuted_face_to_stroke = [face_to_stroke[i] for i in permuted_indices]
-
+            planes = Models.sketch_model_helper.node_features_to_plane(node_features)
             
             # Zero the parameter gradients
             optimizer.zero_grad()
@@ -205,23 +199,16 @@ def train():
             # 1) Embed the strokes
             stroke_embed = stroke_embed_model(node_features)
 
-            # 2) Find all possible faces
-            # This is given by face_to_stroke
-
             # 3) For each face, build the embedding
-            face_embed = plane_embed_model(permuted_face_to_stroke, stroke_embed)
+            face_embed = plane_embed_model(planes, stroke_embed)
 
             # 4) Prepare brep_embedding
-            if face_features.shape[1] == 0:
-                # is empty program
-                brep_embedding = torch.zeros(1, 1, 32, device=device)
-            else:
-                brep_graph = Preprocessing.SBGCN.SBGCN_graph.GraphHeteroData(face_features, edge_features, vertex_features, 
-                            edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id)
-                
-                brep_graph.to_device(device)
-                face_embedding, edge_embedding, vertex_embedding = SBGCN_model(brep_graph)
-                brep_embedding = torch.cat((face_embedding, edge_embedding, vertex_embedding), dim=1)
+            brep_graph = Preprocessing.SBGCN.SBGCN_graph.GraphHeteroData(face_features, edge_features, vertex_features, 
+                        edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id)
+            
+            brep_graph.to_device(device)
+            face_embedding, edge_embedding, vertex_embedding = SBGCN_model(brep_graph)
+            brep_embedding = torch.cat((face_embedding, edge_embedding, vertex_embedding), dim=1)
 
             # 5) Do cross attention on face_embedding and brep_embedding
             output = cross_attention_model(face_embed, brep_embedding)
@@ -230,7 +217,7 @@ def train():
             target_op_index = len(program[0]) - 1
             op_to_index_matrix = operations_order_matrix
             kth_operation = Models.sketch_arguments.face_aggregate.get_kth_operation(op_to_index_matrix, target_op_index).to(device)
-            gt_matrix = Models.sketch_arguments.face_aggregate.build_gt_matrix(kth_operation, permuted_face_to_stroke)
+            gt_matrix = Models.sketch_arguments.face_aggregate.build_gt_matrix(kth_operation, planes)
 
             # 7) Compute the loss
             loss = criterion(output, gt_matrix)
@@ -257,32 +244,29 @@ def train():
             for batch in tqdm(val_loader, desc=f"Epoch {epoch+1}/{epochs} - Validation"):
                 node_features, operations_matrix, intersection_matrix, operations_order_matrix, face_to_stroke, program, face_boundary_points, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
 
+                if edge_features.shape[1] == 0:
+                    continue
                 # Move data to device
                 node_features = node_features.to(torch.float32).to(device)
-                face_to_stroke = [[indices.to(device) for indices in face] for face in face_to_stroke]
-                permuted_indices = torch.randperm(len(face_to_stroke)).tolist()
-                permuted_face_to_stroke = [face_to_stroke[i] for i in permuted_indices]
+
+                planes = Models.sketch_model_helper.node_features_to_plane(node_features)
+                
+                # Zero the parameter gradients
+                optimizer.zero_grad()
 
                 # 1) Embed the strokes
                 stroke_embed = stroke_embed_model(node_features)
 
-                # 2) Find all possible faces
-                # This is given by face_to_stroke
-
                 # 3) For each face, build the embedding
-                face_embed = plane_embed_model(permuted_face_to_stroke, stroke_embed)
+                face_embed = plane_embed_model(planes, stroke_embed)
 
                 # 4) Prepare brep_embedding
-                if face_features.shape[1] == 0:
-                    # is empty program
-                    brep_embedding = torch.zeros(1, 1, 32, device=device)
-                else:
-                    brep_graph = Preprocessing.SBGCN.SBGCN_graph.GraphHeteroData(face_features, edge_features, vertex_features, 
-                                edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id)
-                    
-                    brep_graph.to_device(device)
-                    face_embedding, edge_embedding, vertex_embedding = SBGCN_model(brep_graph)
-                    brep_embedding = torch.cat((face_embedding, edge_embedding, vertex_embedding), dim=1)
+                brep_graph = Preprocessing.SBGCN.SBGCN_graph.GraphHeteroData(face_features, edge_features, vertex_features, 
+                            edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id)
+                
+                brep_graph.to_device(device)
+                face_embedding, edge_embedding, vertex_embedding = SBGCN_model(brep_graph)
+                brep_embedding = torch.cat((face_embedding, edge_embedding, vertex_embedding), dim=1)
 
                 # 5) Do cross attention on face_embedding and brep_embedding
                 output = cross_attention_model(face_embed, brep_embedding)
@@ -291,7 +275,7 @@ def train():
                 target_op_index = len(program[0]) - 1
                 op_to_index_matrix = operations_order_matrix
                 kth_operation = Models.sketch_arguments.face_aggregate.get_kth_operation(op_to_index_matrix, target_op_index).to(device)
-                gt_matrix = Models.sketch_arguments.face_aggregate.build_gt_matrix(kth_operation, permuted_face_to_stroke)
+                gt_matrix = Models.sketch_arguments.face_aggregate.build_gt_matrix(kth_operation, planes)
 
                 # 7) Compute the loss
                 loss = criterion(output, gt_matrix)

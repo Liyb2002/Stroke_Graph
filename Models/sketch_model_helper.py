@@ -610,8 +610,6 @@ def math_all_stroke_edges(node_features, edge_features):
 def node_features_to_plane(node_features):
     node_features = node_features.squeeze(0)
 
-    for nn in node_features:
-        print("nn", nn)
     x_values = set()
     y_values = set()
     z_values = set()
