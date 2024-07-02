@@ -152,10 +152,10 @@ def train():
         list(stroke_embed_model.parameters()) +
         list(plane_embed_model.parameters()) +
         list(cross_attention_model.parameters()),
-        lr=0.0005
+        lr=0.0004
     )
 
-    epochs = 20
+    epochs = 40
 
     # Create a DataLoader
     dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/train_dataset')

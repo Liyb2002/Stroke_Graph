@@ -52,7 +52,7 @@ class PlaneEmbeddingNetwork(nn.Module):
 
 
 class FaceBrepAttention(nn.Module):
-    def __init__(self, embed_dim=32, num_heads=4, ff_dim=128, dropout=0.1):
+    def __init__(self, embed_dim=32, num_heads=8, ff_dim=128, dropout=0.1):
         super(FaceBrepAttention, self).__init__()
         self.cross_attn = nn.MultiheadAttention(embed_dim, num_heads, dropout=dropout)
         self.ff = nn.Sequential(
