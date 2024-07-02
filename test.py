@@ -5,7 +5,7 @@ from tqdm import tqdm
 
 
 class MultiheadAttentionNetwork(nn.Module):
-    def __init__(self, input_dim=32, num_heads=8, dropout=0.1):
+    def __init__(self, input_dim=8, num_heads=8, dropout=0.1):
         super(MultiheadAttentionNetwork, self).__init__()
         self.attention = nn.MultiheadAttention(embed_dim=input_dim, num_heads=num_heads, dropout=dropout)
         self.layer_norm1 = nn.LayerNorm(input_dim)
@@ -39,10 +39,15 @@ class MultiheadAttentionNetwork(nn.Module):
 
 
 def generate_data():
-    num_embedding = 32
+    num_embedding = 8
     # Create random tensors
-    tensorA_base = torch.randn(4, 8)  # Shape (4, 6)
-    tensorB_base = torch.randn(4, 8)  # Shape (4, 6)
+    tensorA_base = torch.randn(4, 2)  # Shape (4, 6)
+
+    tensorB_same = torch.randn(2, 2)  # Shape (4, 6)
+    tensorB_noise = torch.zeros_like(tensorB_same)
+    tensorB_noise[:, :1] = tensorA_base[:2, :1]
+    tensorB_noise[:, 1:] = torch.randn(2, 1)
+    tensorB_base = torch.cat([tensorB_same, tensorB_noise], dim=0)
 
     # Concatenate tensors A and B along the first dimension
     tensorC_base = torch.cat([tensorA_base, tensorB_base], dim=0)  # Shape (8, 6)
@@ -104,7 +109,7 @@ for epoch in range(1, num_epochs + 1):
     # Training phase
     model.train()
     train_losses = []
-    with tqdm(total=len(train_dataset), unit="batch") as progress_bar:
+    with tqdm(total=len(train_dataset), unit="it") as progress_bar:
         for tensorA, tensorC, indices_in_A in train_dataset:
             # Forward pass
             logits = model(tensorA, tensorC)
@@ -113,14 +118,14 @@ for epoch in range(1, num_epochs + 1):
             loss = criterion(logits, indices_in_A)
             train_losses.append(loss.item())
             
-            # print("--------")
-            # print("tensorA", tensorA.shape)
-            # print("tensorB", tensorC.shape)
+            print("--------")
+            print("tensorA", tensorA.shape)
+            print("tensorB", tensorC.shape)
 
-            # print("tensorA", tensorA)
-            # print("tensorB", tensorC)
+            print("tensorA", tensorA)
+            print("tensorB", tensorC)
 
-            # print("indices_in_A", indices_in_A)
+            print("indices_in_A", indices_in_A)
 
             # Backward pass and optimization
             optimizer.zero_grad()

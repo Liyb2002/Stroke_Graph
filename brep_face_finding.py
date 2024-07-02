@@ -52,6 +52,11 @@ class FindBrepFace():
         self.SBGCN_model.to(device)
         self.graph_embedding_model.to(device)
         self.BrepStrokeCloudAttention.to(device)
+
+
+        # Initialize stroke embedding networks
+        self.stroke_embed_network = StrokeEmbeddingNetwork()
+        self.stroke_embed_network.to(device)
         
 
         # Initialize predict models
@@ -73,17 +78,24 @@ class FindBrepFace():
             self.BrepStrokeCloudAttention.load_state_dict(torch.load(os.path.join(self.save_dir, 'BrepStrokeCloudAttention.pth')))
             print("Loaded BrepStrokeCloudAttention")
 
+    def save_brep_finding_model(self):
+        torch.save(self.stroke_embed_network.state_dict(), os.path.join(self.save_dir, 'stroke_embed_network.pth'))
+        torch.save(self.BrepStrokeCloudAttention_finding.state_dict(), os.path.join(self.save_dir, 'BrepStrokeCloudAttention_finding.pth'))
+
+        print("Saved models.")
+
+
 
     def train_brep_face_finding(self):
         criterion = nn.BCEWithLogitsLoss()
         optimizer = torch.optim.Adam(
             list(self.BrepStrokeCloudAttention_finding.parameters()),
-            lr=5e-4
+            lr=0.0002
         )
 
-        epochs = 20
+        epochs = 200
 
-        dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/train_dataset')
+        dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/full_train_dataset')
         good_data_indices = [i for i, data in enumerate(dataset) if data[5][-1] == 1]
         filtered_dataset = Subset(dataset, good_data_indices)
         print(f"Total number of sketch data: {len(filtered_dataset)}")
@@ -113,30 +125,19 @@ class FindBrepFace():
 
                 # 1) Find the left edges
                 node_features, operations_matrix, intersection_matrix, operations_order_matrix = Models.sketch_model_helper.edit_stroke_cloud(edge_left, full_node_features, operations_matrix, intersection_matrix, operations_order_matrix)
-
                 # 1) Prepare the stroke cloud embedding
                 node_features = node_features.to(torch.float32).to(device)
-                operations_matrix = operations_matrix.to(torch.float32).to(device)
-                intersection_matrix = intersection_matrix.to(torch.float32).to(device)
-                operations_order_matrix = operations_order_matrix.to(torch.float32).to(device)
-
-                # graph embedding
-                gnn_graph = Preprocessing.gnn_graph.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
-                gnn_graph.to_device(device)
-                stroke_cloud_graph_embedding = self.graph_embedding_model(gnn_graph.x_dict, gnn_graph.edge_index_dict)
+                stroke_embedding = self.stroke_embed_network(node_features)
 
 
                 # 3) Prepare brep_edges embedding
-                brep_graph = Preprocessing.SBGCN.SBGCN_graph.GraphHeteroData(face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id)
-                brep_graph.to_device(device)
-                brep_face_embedding, brep_edge_embedding, brep_vertex_embedding = self.SBGCN_model(brep_graph)
-                # brep_embedding = torch.cat((brep_face_embedding, brep_edge_embedding, brep_vertex_embedding), dim=1)
-
+                brep_edge_embedding = self.stroke_embed_network(edge_features)
+                
                 # 4) Cross attention on edge_embedding and stroke cloud
-                face_chosen = self.BrepStrokeCloudAttention_finding(brep_face_embedding, stroke_cloud_graph_embedding)
+                brep_edge_chosen = self.BrepStrokeCloudAttention_finding(brep_edge_embedding, stroke_embedding)
                 
                 # 5) Prepare the ground truth
-                gt_matrix = Models.sketch_model_helper.chosen_all_face_id(node_features, edge_index_face_edge_list, index_id, edge_features)
+                chosen_edges_matrix = Models.sketch_model_helper.math_all_stroke_edges(node_features, edge_features)
                 
                 # 6) Train
                 # Models.sketch_model_helper.vis_stroke_cloud(full_node_features)
@@ -144,9 +145,9 @@ class FindBrepFace():
                 # Models.sketch_model_helper.vis_gt_face(edge_features, gt_matrix, edge_index_face_edge_list, index_id)
                 # Models.sketch_model_helper.vis_stroke_cloud(edge_features)
                 # Models.sketch_model_helper.vis_gt_face(node_features, np.argwhere(kth_operation == 1)[0, 0].item() , edge_index_face_edge_list, index_id)
-                # Models.sketch_model_helper.vis_gt_strokes(node_features, coplanar_matrix)
+                # Models.sketch_model_helper.vis_gt_strokes(edge_features, chosen_edges_matrix)
 
-                loss = criterion(face_chosen, gt_matrix)
+                loss = criterion(brep_edge_chosen, chosen_edges_matrix)
                 total_train_loss += loss.item()
 
                 optimizer.zero_grad()
@@ -170,37 +171,39 @@ class FindBrepFace():
 
                     # 1) Find the left edges
                     node_features, operations_matrix, intersection_matrix, operations_order_matrix = Models.sketch_model_helper.edit_stroke_cloud(edge_left, full_node_features, operations_matrix, intersection_matrix, operations_order_matrix)
-
                     # 1) Prepare the stroke cloud embedding
                     node_features = node_features.to(torch.float32).to(device)
-                    operations_matrix = operations_matrix.to(torch.float32).to(device)
-                    intersection_matrix = intersection_matrix.to(torch.float32).to(device)
-                    operations_order_matrix = operations_order_matrix.to(torch.float32).to(device)
-
-                    # graph embedding
-                    gnn_graph = Preprocessing.gnn_graph.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
-                    gnn_graph.to_device(device)
-                    stroke_cloud_graph_embedding = self.graph_embedding_model(gnn_graph.x_dict, gnn_graph.edge_index_dict)
+                    stroke_embedding = self.stroke_embed_network(node_features)
 
 
                     # 3) Prepare brep_edges embedding
-                    brep_graph = Preprocessing.SBGCN.SBGCN_graph.GraphHeteroData(face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id)
-                    brep_graph.to_device(device)
-                    brep_face_embedding, brep_edge_embedding, _ = self.SBGCN_model(brep_graph)
+                    brep_edge_embedding = self.stroke_embed_network(edge_features)
                     
-
                     # 4) Cross attention on edge_embedding and stroke cloud
-                    face_chosen = self.BrepStrokeCloudAttention_finding(brep_face_embedding, stroke_cloud_graph_embedding)
-
+                    brep_edge_chosen = self.BrepStrokeCloudAttention_finding(brep_edge_embedding, stroke_embedding)
+                    
                     # 5) Prepare the ground truth
-                    gt_matrix = Models.sketch_model_helper.chosen_all_face_id(node_features, edge_index_face_edge_list, index_id, edge_features)
+                    chosen_edges_matrix = Models.sketch_model_helper.chosen_all_edge_id(node_features, edge_index_face_edge_list, index_id, edge_features)
+                    
+                    # 6) Train
+                    # Models.sketch_model_helper.vis_stroke_cloud(full_node_features)
+                    # Models.sketch_model_helper.vis_stroke_cloud(node_features)
+                    # Models.sketch_model_helper.vis_gt_face(edge_features, gt_matrix, edge_index_face_edge_list, index_id)
+                    # Models.sketch_model_helper.vis_stroke_cloud(edge_features)
+                    # Models.sketch_model_helper.vis_gt_face(node_features, np.argwhere(kth_operation == 1)[0, 0].item() , edge_index_face_edge_list, index_id)
+                    # Models.sketch_model_helper.vis_gt_strokes(edge_features, chosen_edges_matrix)
+
+                    val_loss = criterion(brep_edge_chosen, chosen_edges_matrix)
+                    total_train_loss += loss.item()
 
                     # 6) Calculate validation loss
-                    val_loss = criterion(face_chosen, gt_matrix)
                     total_val_loss += val_loss.item()
 
                 avg_val_loss = total_val_loss / len(val_loader)
                 print(f"Epoch {epoch + 1}/{epochs}, Validation Loss: {avg_val_loss}")
+                if avg_val_loss < best_val_loss:
+                    best_val_loss = avg_val_loss  
+                    self.save_brep_finding_model()
 
 
 

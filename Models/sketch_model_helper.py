@@ -515,3 +515,153 @@ def coplanar_strokes(node_features, kth_operation):
             coplanar_matrix[i] = 1.0
     
     return coplanar_matrix
+
+
+
+def chosen_all_edge_id(node_features, edge_index_face_edge_list, index_id, edge_features):
+    # pair the edges index with each face
+    face_to_edges = {}
+    for face_edge_pair in edge_index_face_edge_list:
+        face_list_index = face_edge_pair[0]
+        edge_list_index = face_edge_pair[1]
+
+        face_id = index_id[0][face_list_index].item()
+        edge_id = index_id[0][edge_list_index].item()
+
+        if face_id not in face_to_edges:
+            face_to_edges[face_id] = []
+        face_to_edges[face_id].append(edge_id)
+
+    # builds which points a face have
+    face_to_points = {}
+    for face_id, edge_ids in face_to_edges.items():
+        unique_points = set()
+        for edge_id in edge_ids:
+            # get the points for the edge
+            edge_points = edge_features[0, edge_id, :]
+
+            start_point = edge_points[:3]
+            end_point = edge_points[3:]
+            
+            # add each point to the set
+            unique_points.add(start_point)
+            unique_points.add(end_point)
+
+        # store the unique points in the dictionary
+        face_to_points[face_id] = list(unique_points)
+
+
+    # Find which face has all its point in the boundary_point
+    # output is the face_id
+    target_face_id = 0
+    num_faces = len(face_to_points)
+    num_edges = edge_features.shape[1]
+
+    node_features = node_features.squeeze(0)
+    satisfaction_matrix = []
+
+    for _, face_points in face_to_points.items():
+        satisfaction = check_face_satisfaction(face_points, node_features)
+        satisfaction_matrix.append(satisfaction)
+
+    chosen_edges_matrix = torch.zeros((num_edges, 1), dtype=float)
+    
+    # Iterate through satisfaction_matrix
+    for face_id, is_chosen in enumerate(satisfaction_matrix):
+        if is_chosen == 1:
+            # Get the list of edge ids for the chosen face
+            edges = face_to_edges.get(face_id, [])
+            # Mark these edges as chosen
+            for edge_id in edges:
+                chosen_edges_matrix[edge_id] = 1
+    
+    return chosen_edges_matrix
+
+
+
+def math_all_stroke_edges(node_features, edge_features):
+    node_features = node_features.squeeze(0)
+    edge_features = edge_features.squeeze(0)
+
+
+    chosen_edges = torch.zeros((edge_features.shape[0], 1), dtype=torch.float32)
+    
+    # Iterate through each edge
+    for i, edge in enumerate(edge_features):
+        # Extract the points of the edge
+        edge_start, edge_end = edge[:3], edge[3:]
+        
+        # Iterate through each node
+        for node in node_features:
+            # Extract the points of the node
+            node_start, node_end = node[:3], node[3:]
+            
+            # Check for common value in x, y, z directions
+            if (edge_start[0] == edge_end[0] == node_start[0] == node_end[0] or
+                edge_start[1] == edge_end[1] == node_start[1] == node_end[1] or
+                edge_start[2] == edge_end[2] == node_start[2] == node_end[2]):
+                chosen_edges[i] = 1
+                break  # No need to check other nodes if condition is met
+
+    return chosen_edges
+
+
+    
+def node_features_to_plane(node_features):
+    node_features = node_features.squeeze(0)
+
+    for nn in node_features:
+        print("nn", nn)
+    x_values = set()
+    y_values = set()
+    z_values = set()
+
+    # Iterate through each line in node_features
+    for line in node_features:
+        x1, y1, z1, x2, y2, z2 = line
+        x_values.update([x1.item(), x2.item()])
+        y_values.update([y1.item(), y2.item()])
+        z_values.update([z1.item(), z2.item()])
+
+    # Convert sets to sorted lists
+    x_values = sorted(list(x_values))
+    y_values = sorted(list(y_values))
+    z_values = sorted(list(z_values))
+
+    # Initialize lists to store plane indices
+    x_planes = []
+    y_planes = []
+    z_planes = []
+
+    # Iterate through unique values to create plane lists
+    for x in x_values:
+        plane = []
+        for idx, line in enumerate(node_features):
+            x1, y1, z1, x2, y2, z2 = line
+            if x1.item() == x and x2.item() == x:
+                plane.append(idx)
+        if len(plane) >= 3:
+            x_planes.append(plane)
+
+    for y in y_values:
+        plane = []
+        for idx, line in enumerate(node_features):
+            x1, y1, z1, x2, y2, z2 = line
+            if y1.item() == y and y2.item() == y:
+                plane.append(idx)
+        if len(plane) >= 3:
+            y_planes.append(plane)
+
+    for z in z_values:
+        plane = []
+        for idx, line in enumerate(node_features):
+            x1, y1, z1, x2, y2, z2 = line
+            if z1.item() == z and z2.item() == z:
+                plane.append(idx)
+        if len(plane) >= 3:
+            z_planes.append(plane)
+
+    print("x_planes", x_planes)
+    print("y_planes", y_planes)
+    print("z_planes", z_planes)
+

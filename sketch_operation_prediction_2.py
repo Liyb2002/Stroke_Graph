@@ -1,4 +1,5 @@
 import Models.operation_model
+import Models.sketch_model_helper
 import Preprocessing.dataloader
 import Preprocessing.gnn_graph
 import Preprocessing.SBGCN.SBGCN_graph
@@ -187,6 +188,9 @@ def train():
 
             # Move data to device
             node_features = node_features.to(torch.float32).to(device)
+
+            aa = Models.sketch_model_helper.node_features_to_plane(node_features)
+            
 
             # face_to_stroke defines the order of the faces / the strokes each face have
             # we want to permute the order of the faces
