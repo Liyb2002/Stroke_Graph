@@ -5,7 +5,7 @@ from torch.nn import TransformerEncoder, TransformerEncoderLayer
 
 
 class StrokeEmbeddingNetwork(nn.Module):
-    def __init__(self, input_dim=6, embedding_dim=32):
+    def __init__(self, input_dim=6, embedding_dim=16):
         super(StrokeEmbeddingNetwork, self).__init__()
         self.fc1 = nn.Linear(input_dim, 32)
         self.fc2 = nn.Linear(32, embedding_dim)
@@ -20,7 +20,7 @@ class StrokeEmbeddingNetwork(nn.Module):
 
 
 class PlaneEmbeddingNetwork(nn.Module):
-    def __init__(self, stroke_embedding_dim=16, hidden_dim=32, output_dim=32):
+    def __init__(self, stroke_embedding_dim=16, hidden_dim=64, output_dim=64):
         super(PlaneEmbeddingNetwork, self).__init__()
         self.self_attention = nn.MultiheadAttention(embed_dim=stroke_embedding_dim, num_heads=1, batch_first=True)
         self.fc = nn.Linear(stroke_embedding_dim, hidden_dim)
@@ -32,7 +32,7 @@ class PlaneEmbeddingNetwork(nn.Module):
 
         # if we have empty brep
         if node_embed.shape[1] == 1:
-            return torch.zeros((1, 3, 32))
+            return torch.zeros((1, 3, 64))
 
         # pair the edges index with each face
         for face_edge_pair in edge_index_face_edge_list:
@@ -174,15 +174,15 @@ class DummyClassifier(nn.Module):
 
 
 class BrepStrokeCloudAttention(nn.Module):
-    def __init__(self, input_dim=128, num_heads=32, dropout=0.1):
+    def __init__(self, input_dim=64, num_heads=16, dropout=0.1):
         super(BrepStrokeCloudAttention, self).__init__()
         self.attention = nn.MultiheadAttention(embed_dim=input_dim, num_heads=num_heads, dropout=dropout)
         self.layer_norm1 = nn.LayerNorm(input_dim)
         self.layer_norm2 = nn.LayerNorm(input_dim)
         self.feed_forward = nn.Sequential(
-            nn.Linear(input_dim, 512),
+            nn.Linear(input_dim, 256),
             nn.ReLU(),
-            nn.Linear(512, input_dim),
+            nn.Linear(256, input_dim),
             nn.Dropout(dropout)
         )
         self.output_layer1 = nn.Linear(input_dim, 32)  # Output layer to compute scores for each edge
@@ -218,15 +218,15 @@ class BrepStrokeCloudAttention(nn.Module):
 
 
 class BrepStrokeCloudAttention_Reverse(nn.Module):
-    def __init__(self, input_dim=128, num_heads=32, dropout=0.1):
+    def __init__(self, input_dim=64, num_heads=16, dropout=0.1):
         super(BrepStrokeCloudAttention_Reverse, self).__init__()
         self.attention = nn.MultiheadAttention(embed_dim=input_dim, num_heads=num_heads, dropout=dropout)
         self.layer_norm1 = nn.LayerNorm(input_dim)
         self.layer_norm2 = nn.LayerNorm(input_dim)
         self.feed_forward = nn.Sequential(
-            nn.Linear(input_dim, 512),
+            nn.Linear(input_dim, 256),
             nn.ReLU(),
-            nn.Linear(512, input_dim),
+            nn.Linear(256, input_dim),
             nn.Dropout(dropout)
         )
         self.output_layer1 = nn.Linear(input_dim, 32)  # Output layer to compute scores for each edge
@@ -254,5 +254,6 @@ class BrepStrokeCloudAttention_Reverse(nn.Module):
         
         # Compute probabilities using sigmoid
         feature_probabilities = torch.sigmoid(feature_scores)  # (n, 1)
-        
+        feature_probabilities = feature_probabilities.squeeze()
+
         return feature_probabilities

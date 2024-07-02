@@ -64,6 +64,129 @@ def chosen_face_id(boundary_points, edge_index_face_edge_list, index_id, edge_fe
     return gt_matrix
 
 
+def chosen_all_face_id(node_features, edge_index_face_edge_list, index_id, edge_features):
+
+
+    # pair the edges index with each face
+    face_to_edges = {}
+    for face_edge_pair in edge_index_face_edge_list:
+        face_list_index = face_edge_pair[0]
+        edge_list_index = face_edge_pair[1]
+
+        face_id = index_id[0][face_list_index].item()
+        edge_id = index_id[0][edge_list_index].item()
+
+        if face_id not in face_to_edges:
+            face_to_edges[face_id] = []
+        face_to_edges[face_id].append(edge_id)
+
+    # builds which points a face have
+    face_to_points = {}
+    for face_id, edge_ids in face_to_edges.items():
+        unique_points = set()
+        for edge_id in edge_ids:
+            # get the points for the edge
+            edge_points = edge_features[0, edge_id, :]
+
+            start_point = edge_points[:3]
+            end_point = edge_points[3:]
+            
+            # add each point to the set
+            unique_points.add(start_point)
+            unique_points.add(end_point)
+
+        # store the unique points in the dictionary
+        face_to_points[face_id] = list(unique_points)
+
+
+    # Find which face has all its point in the boundary_point
+    # output is the face_id
+    target_face_id = 0
+    num_faces = len(face_to_points)
+
+    node_features = node_features.squeeze(0)
+    satisfaction_matrix = []
+
+    for _, face_points in face_to_points.items():
+        satisfaction = check_face_satisfaction(face_points, node_features)
+        satisfaction_matrix.append(satisfaction)
+
+
+    return torch.tensor(satisfaction_matrix, dtype=torch.float32)
+
+
+def identify_coplanar_direction(face_points):
+    x_values = set(point[0].item() for point in face_points)
+    y_values = set(point[1].item() for point in face_points)
+    z_values = set(point[2].item() for point in face_points)
+
+    if len(x_values) == 1:
+        coplanar_direction = 'x'
+        coplanar_value = next(iter(x_values))
+    elif len(y_values) == 1:
+        coplanar_direction = 'y'
+        coplanar_value = next(iter(y_values))
+
+    elif len(z_values) == 1:
+        coplanar_direction = 'z'
+        coplanar_value = next(iter(z_values))
+    else:
+        coplanar_direction = None
+        coplanar_value = None
+
+    return coplanar_direction, coplanar_value
+
+def is_edge_within_bounds(edge, coplanar_direction, coplanar_value, face_points):
+    point1 = edge[:3]
+    point2 = edge[3:]
+
+    if coplanar_direction == 'x':
+        if point1[0] != coplanar_value or point2[0] != coplanar_value:
+            return False
+        y_values = [point[1] for point in face_points]
+        z_values = [point[2] for point in face_points]
+        y_min, y_max = min(y_values), max(y_values)
+        z_min, z_max = min(z_values), max(z_values)
+        return (y_min <= point1[1] <= y_max and y_min <= point2[1] <= y_max and
+                z_min <= point1[2] <= z_max and z_min <= point2[2] <= z_max)
+    elif coplanar_direction == 'y':
+        if point1[1] != coplanar_value or point2[1] != coplanar_value:
+            return False
+        x_values = [point[0] for point in face_points]
+        z_values = [point[2] for point in face_points]
+        x_min, x_max = min(x_values), max(x_values)
+        z_min, z_max = min(z_values), max(z_values)
+        return (x_min <= point1[0] <= x_max and x_min <= point2[0] <= x_max and
+                z_min <= point1[2] <= z_max and z_min <= point2[2] <= z_max)
+    elif coplanar_direction == 'z':
+        if point1[2] != coplanar_value or point2[2] != coplanar_value:
+            return False
+        x_values = [point[0] for point in face_points]
+        y_values = [point[1] for point in face_points]
+        x_min, x_max = min(x_values), max(x_values)
+        y_min, y_max = min(y_values), max(y_values)
+        return (x_min <= point1[0] <= x_max and x_min <= point2[0] <= x_max and
+                y_min <= point1[1] <= y_max and y_min <= point2[1] <= y_max)
+    else:
+        return False
+
+def check_face_satisfaction(face_points, node_features):
+    
+    coplanar_direction, coplanar_value = identify_coplanar_direction(face_points)
+    if coplanar_direction is None:
+        return 0  # Face is not coplanar in any single direction
+
+    for edge in node_features:
+        if is_edge_within_bounds(edge, coplanar_direction, coplanar_value, face_points):
+            return 1  # Face is satisfied if at least one edge satisfies the conditions
+
+    return 0  # Face is not satisfied
+
+
+
+
+
+
 def find_left_edge(edge_features, node_features):
     # Extracting shapes
     _, n, _ = edge_features.shape
@@ -86,7 +209,7 @@ def find_left_edge(edge_features, node_features):
     return output
 
 
-def vis_gt_face(brep_edge_features, gt_index, edge_index_face_edge_list, index_id):
+def vis_gt_face(brep_edge_features, gt_matrix, edge_index_face_edge_list, index_id):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
@@ -104,7 +227,14 @@ def vis_gt_face(brep_edge_features, gt_index, edge_index_face_edge_list, index_i
             face_to_edges[face_id] = []
         face_to_edges[face_id].append(edge_id)
 
-    chosen_face = face_to_edges[gt_index]
+
+    chosen_indices = (gt_matrix == 1).nonzero(as_tuple=True)[0].tolist()
+    chosen_edges = []
+    
+    for index in chosen_indices:
+        if index in face_to_edges:
+            chosen_edges.extend(face_to_edges[index])
+    
 
 
     for i in range(num_edges):
@@ -112,7 +242,7 @@ def vis_gt_face(brep_edge_features, gt_index, edge_index_face_edge_list, index_i
         end_point = brep_edge_features[0, i, 3:]
 
         col = 'blue'
-        if i in chosen_face:
+        if i in chosen_edges:
             col = 'red'
 
         ax.plot([start_point[0], end_point[0]], [start_point[1], end_point[1]], [start_point[2], end_point[2]], color=col)
@@ -364,17 +494,19 @@ def coplanar_strokes(node_features, kth_operation):
                 common_values[planes[plane_idx]] = value.item()
                 break
     
+    if len(common_values) == 0:
+        return None
     common_plane = next(iter(common_values))
     common_value = common_values[common_plane]
+
     plane_idx = planes.index(common_plane)
 
-
-
     # Initialize coplanar matrix
-    coplanar_matrix = torch.zeros(num_strokes, dtype=torch.float32)
+    coplanar_matrix = torch.zeros( (num_strokes, 1), dtype=torch.float32)
 
     # Check all strokes in node_features for coplanarity
     for i in range(num_strokes):
+
         stroke = node_features[0, i, :]
         point1, point2 = stroke[:3], stroke[3:]
         if point1[plane_idx] == common_value and point2[plane_idx] == common_value:

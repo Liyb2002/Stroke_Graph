@@ -83,7 +83,7 @@ def train_face_prediction():
     epochs = 20
 
     # Create a DataLoader
-    dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/full_train_dataset')
+    dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/train_dataset')
 
     # Filter to only keep good data
     good_data_indices = [i for i, data in enumerate(dataset) if data[5][-1] == 1]
@@ -137,6 +137,7 @@ def train_face_prediction():
 
             # 4) Prepare the gt_matrix
             gt_left = Models.sketch_model_helper.find_left_edge(edge_features, node_features)
+            gt_left = gt_left.squeeze(1)
 
             # 5) Calculate validation loss
             loss = criterion(edge_left, gt_left)
@@ -196,6 +197,7 @@ def train_face_prediction():
 
                 # 4) Prepare the gt_matrix
                 gt_left = Models.sketch_model_helper.find_left_edge(edge_features, node_features)
+                gt_left = gt_left.squeeze(1)
 
                 # 5) Calculate validation loss
                 val_loss = criterion(edge_left, gt_left)

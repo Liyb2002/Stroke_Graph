@@ -5,15 +5,15 @@ from tqdm import tqdm
 
 
 class MultiheadAttentionNetwork(nn.Module):
-    def __init__(self, input_dim=128, num_heads=16, dropout=0.1):
+    def __init__(self, input_dim=4, num_heads=4, dropout=0.1):
         super(MultiheadAttentionNetwork, self).__init__()
         self.attention = nn.MultiheadAttention(embed_dim=input_dim, num_heads=num_heads, dropout=dropout)
         self.layer_norm1 = nn.LayerNorm(input_dim)
         self.layer_norm2 = nn.LayerNorm(input_dim)
         self.feed_forward = nn.Sequential(
-            nn.Linear(input_dim, 512),
+            nn.Linear(input_dim, 128),
             nn.ReLU(),
-            nn.Linear(512, input_dim),
+            nn.Linear(128, input_dim),
             nn.Dropout(dropout)
         )
         self.output_layer = nn.Linear(input_dim, 1)  # Output layer to compute scores for each edge
@@ -40,26 +40,39 @@ class MultiheadAttentionNetwork(nn.Module):
 
 def generate_data():
     # Create random tensors
-    tensorA = torch.randn(4, 128)  # Shape (4, 1)
-    tensorB = torch.randn(4, 128)  # Shape (4, 1)
+    tensorA_base = torch.randn(4, 4)  # Shape (4, 6)
+    tensorB_base = torch.randn(4, 4)  # Shape (4, 6)
 
     # Concatenate tensors A and B along the first dimension
-    tensorC = torch.cat([tensorA, tensorB], dim=0)  # Shape (8, 1)
+    tensorC_base = torch.cat([tensorA_base, tensorB_base], dim=0)  # Shape (8, 6)
 
     permuted_indices = torch.randperm(8)
-    tensorC = tensorC[permuted_indices]
+    tensorC_base = tensorC_base[permuted_indices]
 
     # Determine which indices in tensorC correspond to tensorA
     indices_in_A = torch.zeros(8, dtype=torch.float)  # Initialize a tensor to store results
 
+
     for i in range(8):
         # Check if each row of tensorC is in tensorA
         for j in range(4):
-            if torch.equal(tensorC[i], tensorA[j]):
+            if torch.equal(tensorC_base[i], tensorA_base[j]):
                 indices_in_A[i] = 1
                 break  # Found a match, no need to check further
+
+
+    # Now add noise
+    # additional_data_A = torch.randn(4, 4 - tensorA_base.size(1))  # Shape (4, 26)
+    # tensorA = torch.cat([tensorA_base, additional_data_A], dim=1)  # Shape (4, 32)
+
+    # # Generate random data to expand tensorC_base to (8, 32)
+    # additional_data_C = torch.randn(8, 4 - tensorC_base.size(1))  # Shape (8, 26)
+    # tensorC = torch.cat([tensorC_base, additional_data_C], dim=1)  # Shape (8, 32)
+
+
+
     
-    return tensorA, tensorC, indices_in_A
+    return tensorA_base, tensorC_base, indices_in_A
 
 
 def create_dataset(n):
@@ -97,6 +110,10 @@ for epoch in range(1, num_epochs + 1):
             loss = criterion(logits, indices_in_A)
             train_losses.append(loss.item())
             
+            print("tensorA", tensorA)
+            print("tensorB", tensorC)
+            print("indices_in_A", indices_in_A)
+
             # Backward pass and optimization
             optimizer.zero_grad()
             loss.backward()
