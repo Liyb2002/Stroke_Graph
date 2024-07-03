@@ -152,7 +152,7 @@ def train():
         list(stroke_embed_model.parameters()) +
         list(plane_embed_model.parameters()) +
         list(cross_attention_model.parameters()),
-        lr=0.0004
+        lr=0.0002
     )
 
     epochs = 40
