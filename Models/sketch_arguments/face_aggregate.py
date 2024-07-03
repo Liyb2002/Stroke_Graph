@@ -2,6 +2,10 @@ import numpy as np
 from itertools import permutations, combinations
 import torch
 
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
+
 def face_aggregate(stroke_matrix):
     """
     This function permutes all the strokes and groups them into groups of 3 or 4.
@@ -78,3 +82,36 @@ def build_gt_matrix(kth_operation, planes):
             gt_matrix[idx] = 1.0
 
     return gt_matrix
+
+
+def vis_planar(plane_chosen, plane_to_node, node_features):
+    node_features = node_features.squeeze(0)
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    num_planes = plane_chosen.shape[0]
+    num_edges = node_features.shape[0]
+
+    for i in range(num_edges):
+        start_point = node_features[i, :3]
+        end_point = node_features[i, 3:]
+
+
+        ax.plot([start_point[0], end_point[0]], [start_point[1], end_point[1]], [start_point[2], end_point[2]], color='blue')
+
+
+    for i in range(num_planes):
+        if plane_chosen[i] > 0.3:
+            chosen_indices = plane_to_node[i]
+            for idx in chosen_indices:
+                start_point = node_features[idx, :3]
+                end_point = node_features[idx, 3:]
+
+                ax.plot([start_point[0], end_point[0]], [start_point[1], end_point[1]], [start_point[2], end_point[2]], color='red')
+
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+
+    plt.show()
+    
