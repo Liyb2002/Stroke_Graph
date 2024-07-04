@@ -21,8 +21,8 @@ class dataset_generator():
         #     shutil.rmtree('dataset')
         # os.makedirs('dataset', exist_ok=True)
 
-        self.generate_dataset('dataset/train_dataset', number_data = 3000, start = 0)
-        self.generate_dataset('dataset/eval_dataset', number_data = 200, start = 0)
+        self.generate_dataset('dataset/train_dataset', number_data = 1, start = 0)
+        self.generate_dataset('dataset/eval_dataset', number_data = 0, start = 0)
         self.generate_dataset('dataset/full_train_dataset', number_data = 0, start = 1670)
         self.generate_dataset('dataset/full_eval_dataset', number_data = 0, start = 0)
 
@@ -86,7 +86,7 @@ class dataset_generator():
         for file_name in brep_files:
                 
             brep_file_path = os.path.join(brep_directory, file_name)
-            face_features_list, edge_features_list, vertex_features_list, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id= Preprocessing.SBGCN.brep_read.create_graph_from_step_file(brep_file_path)
+            face_feature_gnn_list, face_features_list, edge_features_list, vertex_features_list, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id= Preprocessing.SBGCN.brep_read.create_graph_from_step_file(brep_file_path)
 
             face_features = Preprocessing.proc_CAD.helper.preprocess_features(face_features_list)
             edge_features = Preprocessing.proc_CAD.helper.preprocess_features(edge_features_list)
@@ -98,6 +98,7 @@ class dataset_generator():
             embeddings_file_path = os.path.join(data_directory, 'brep_embedding', f'brep_info_{index}.pkl')
             with open(embeddings_file_path, 'wb') as f:
                 pickle.dump({
+                    'face_feature_gnn_list': face_feature_gnn_list, 
                     'face_features': face_features,
                     'edge_features': edge_features,
                     'vertex_features': vertex_features,

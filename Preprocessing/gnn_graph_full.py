@@ -44,9 +44,10 @@ class SketchHeteroData(HeteroData):
 
         self.intersection_matrix = intersection_matrix
 
-    def set_brep_connection(self, brep_edge_features):
+    def set_brep_connection(self, brep_edge_features, face_feature_gnn_list):
         self['brep'].x = brep_edge_features
         self.brep_stroke_cloud_connect(self['stroke'].x, brep_edge_features)
+        self.brep_face_connect(face_feature_gnn_list)
 
     def to_device(self, device):
         self['stroke'].x = self['stroke'].x.to(device)
@@ -88,7 +89,44 @@ class SketchHeteroData(HeteroData):
         self['stroke', 'represented_by', 'brep'].edge_index = edge_indices.long()
 
     
+    def brep_face_connect(self, face_feature_gnn_list):
+        num_nodes = self['brep'].x.shape[0]
+        connectivity_matrix = torch.zeros((num_nodes, num_nodes), dtype=torch.float32)
 
+        # Function to find index of an edge in self.brep['x']
+        def find_edge_index(edge, brep_edges):
+            edge_points = [round(edge[i].item(), 3) for i in range(6)]
+            edge_point1 = edge_points[:3]
+            edge_point2 = edge_points[3:]
+
+            for idx, brep_edge in enumerate(brep_edges):
+                brep_edge_points = [round(brep_edge[i].item(), 3) for i in range(6)]
+                brep_edge_point1 = brep_edge_points[:3]
+                brep_edge_point2 = brep_edge_points[3:]
+
+                if (edge_point1 == brep_edge_point1 and edge_point2 == brep_edge_point2) or \
+                   (edge_point1 == brep_edge_point2 and edge_point2 == brep_edge_point1):
+                    return idx
+            return -1
+
+        # Iterate over each face
+        for face in face_feature_gnn_list:
+            face_edge_indices = []
+            for edge in face:
+                edge_index = find_edge_index(edge, self['brep'].x)
+                if edge_index != -1:
+                    face_edge_indices.append(edge_index)
+
+            # Mark all edges in the same face as connected
+            for i in range(len(face_edge_indices)):
+                for j in range(i + 1, len(face_edge_indices)):
+                    idx1 = face_edge_indices[i]
+                    idx2 = face_edge_indices[j]
+                    connectivity_matrix[idx1, idx2] = 1
+                    connectivity_matrix[idx2, idx1] = 1
+
+        edge_indices = torch.nonzero(connectivity_matrix == 1).t()
+        self['brep', 'coplanar', 'brep'].edge_index = edge_indices.long()
 
 
 

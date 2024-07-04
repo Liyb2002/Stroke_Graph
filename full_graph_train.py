@@ -28,8 +28,10 @@ for epoch in range(1):
     total_train_loss = 0.0
     
     for batch in tqdm(data_loader, desc=f"Epoch {epoch+1}/{1} - Training"):
-        node_features, operations_matrix, intersection_matrix, operations_order_matrix, _, program, _, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
+        node_features, operations_matrix, intersection_matrix, operations_order_matrix, _, program, _, face_feature_gnn_list, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
 
+        if edge_features.shape[1] == 0:
+            continue
         # to device 
         node_features = node_features.to(torch.float32).to(device)
         node_features = node_features.squeeze(0)
@@ -42,4 +44,5 @@ for epoch in range(1):
         edge_features = edge_features.squeeze(0)
 
         gnn_graph = Preprocessing.gnn_graph_full.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
-        gnn_graph.set_brep_connection(edge_features)
+        gnn_graph.set_brep_connection(edge_features, face_feature_gnn_list)
+        break

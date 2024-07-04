@@ -77,6 +77,19 @@ def create_face_node(face):
     return flattened_vertices
 
 
+def create_face_node_gnn(face):
+    face_feature_gnn = []
+    edge_explorer = TopExp_Explorer(face, TopAbs_EDGE)
+    while edge_explorer.More():
+        edge = topods.Edge(edge_explorer.Current())
+        edge_features = create_edge_node(edge)
+        face_feature_gnn.append(edge_features)
+        edge_explorer.Next()
+
+    return face_feature_gnn
+
+
+    
 def create_edge_node(edge):
     properties = GProp_GProps()
     brepgprop.LinearProperties(edge, properties)
@@ -138,6 +151,7 @@ def count_type(index_to_type_dict):
 def create_graph_from_step_file(step_path):
     shape = read_step_file(step_path)
 
+    face_feature_gnn_list = []
     face_features_list = []
     edge_features_list = []
     vertex_features_list = []
@@ -152,7 +166,9 @@ def create_graph_from_step_file(step_path):
     while face_explorer.More():
         face = topods.Face(face_explorer.Current())
         face_features = create_face_node(face)
-
+        face_feature_gnn = create_face_node_gnn(face)
+        
+        face_feature_gnn_list.append(face_feature_gnn)
         face_features_list.append((index_counter, face_features))
         current_face_counter = index_counter
         index_to_type[current_face_counter] = 'face'
@@ -210,7 +226,7 @@ def create_graph_from_step_file(step_path):
     # means that the 4th element in the 2nd face
     index_id = count_type(index_to_type)
     
-    return face_features_list, edge_features_list, vertex_features_list, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id
+    return face_feature_gnn_list, face_features_list, edge_features_list, vertex_features_list, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id
 
 
 class BRep_Dataset(Dataset):
