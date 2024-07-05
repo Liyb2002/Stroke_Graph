@@ -372,17 +372,18 @@ def vis_predicted_strokes(brep_edge_features, predicted_matrix):
 
 
 def chosen_edge_id(boundary_points, edge_features):
+
     # Convert boundary_points to a tensor
     boundary_points_tensor = torch.tensor(boundary_points, dtype=torch.float32)
     
     # Initialize the output matrix
-    num_edges = edge_features.shape[1]
+    num_edges = edge_features.shape[0]
     gt_matrix = torch.zeros((num_edges, 1), dtype=torch.float32)
     
     # Loop through each edge
     for i in range(num_edges):
-        start_point = edge_features[0, i, :3]
-        end_point = edge_features[0, i, 3:]
+        start_point = edge_features[i, :3]
+        end_point = edge_features[i, 3:]
 
         # Check if both the start and end points are in boundary_points
         start_in_boundary = any(torch.equal(start_point, bp) for bp in boundary_points_tensor)
