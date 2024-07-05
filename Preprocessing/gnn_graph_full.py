@@ -42,12 +42,14 @@ class SketchHeteroData(HeteroData):
         temporal_edge_tensor = torch.tensor(temporal_edge_index, dtype=torch.long).contiguous()
         self['stroke', 'temp_previous', 'stroke'].edge_index = temporal_edge_tensor
 
+        # self.stroke_coplanar()
+
         self.intersection_matrix = intersection_matrix
 
     def set_brep_connection(self, brep_edge_features, face_feature_gnn_list):
         self['brep'].x = brep_edge_features
         self.brep_stroke_cloud_connect(self['stroke'].x, brep_edge_features)
-        self.brep_face_connect(face_feature_gnn_list)
+        self.brep_coplanar(face_feature_gnn_list)
 
     def to_device(self, device):
         self['stroke'].x = self['stroke'].x.to(device)
@@ -89,7 +91,7 @@ class SketchHeteroData(HeteroData):
         self['stroke', 'represented_by', 'brep'].edge_index = edge_indices.long()
 
     
-    def brep_face_connect(self, face_feature_gnn_list):
+    def brep_coplanar(self, face_feature_gnn_list):
         num_nodes = self['brep'].x.shape[0]
         connectivity_matrix = torch.zeros((num_nodes, num_nodes), dtype=torch.float32)
 
@@ -126,7 +128,71 @@ class SketchHeteroData(HeteroData):
                     connectivity_matrix[idx2, idx1] = 1
 
         edge_indices = torch.nonzero(connectivity_matrix == 1).t()
-        self['brep', 'coplanar', 'brep'].edge_index = edge_indices.long()
+        self['brep', 'brepcoplanar', 'brep'].edge_index = edge_indices.long()
+
+
+    def stroke_coplanar(self):
+        node_features = self['stroke'].x
+
+        x_values = set()
+        y_values = set()
+        z_values = set()
+
+        # Iterate through each line in node_features
+        for line in node_features:
+            x1, y1, z1, x2, y2, z2 = line
+            x_values.update([x1.item(), x2.item()])
+            y_values.update([y1.item(), y2.item()])
+            z_values.update([z1.item(), z2.item()])
+
+        # Convert sets to sorted lists
+        x_values = sorted(list(x_values))
+        y_values = sorted(list(y_values))
+        z_values = sorted(list(z_values))
+
+        # Initialize lists to store plane indices
+        x_planes = []
+        y_planes = []
+        z_planes = []
+
+        # Iterate through unique values to create plane lists
+        for x in x_values:
+            plane = []
+            for idx, line in enumerate(node_features):
+                x1, y1, z1, x2, y2, z2 = line
+                if x1.item() == x and x2.item() == x:
+                    plane.append(idx)
+            if len(plane) >= 3:
+                x_planes.append(plane)
+
+        for y in y_values:
+            plane = []
+            for idx, line in enumerate(node_features):
+                x1, y1, z1, x2, y2, z2 = line
+                if y1.item() == y and y2.item() == y:
+                    plane.append(idx)
+            if len(plane) >= 3:
+                y_planes.append(plane)
+
+        for z in z_values:
+            plane = []
+            for idx, line in enumerate(node_features):
+                x1, y1, z1, x2, y2, z2 = line
+                if z1.item() == z and z2.item() == z:
+                    plane.append(idx)
+            if len(plane) >= 3:
+                z_planes.append(plane)
+
+        planes = x_planes + y_planes + z_planes
+
+        coplanar_matrix = torch.zeros((node_features.shape[0], node_features.shape[0]), dtype=torch.float32)
+        for sublist in planes:
+            for i in range(len(sublist)):
+                for j in range(i + 1, len(sublist)):
+                    coplanar_matrix[sublist[i], sublist[j]] = 1
+                    coplanar_matrix[sublist[j], sublist[i]] = 1
+        edge_indices = torch.nonzero(coplanar_matrix == 1).t()
+        self['stroke', 'strokecoplanar', 'stroke'].edge_index = edge_indices.long()
 
 
 

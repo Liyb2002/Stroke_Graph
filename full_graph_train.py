@@ -6,6 +6,7 @@ import Preprocessing.SBGCN.SBGCN_network
 
 import Models.sketch_model_helper
 import Encoders.gnn_full.gnn
+import Models.sketch_arguments.face_aggregate
 
 from torch.utils.data import DataLoader, random_split, Subset
 from tqdm import tqdm
@@ -70,7 +71,7 @@ for epoch in range(10):  # Assuming you want to train for 10 epochs
         # Forward pass
         output = graph_model(gnn_graph.x_dict, gnn_graph.edge_index_dict)
         gt = Models.sketch_model_helper.chosen_edge_id(face_boundary_points[len(program[0])-1], edge_features)
-        
+
         # Compute loss and backpropagate
         loss = loss_function(output, gt)  # Define your loss function
         loss.backward()
@@ -104,7 +105,7 @@ for epoch in range(10):  # Assuming you want to train for 10 epochs
             # Forward pass
             output = graph_model(gnn_graph.x_dict, gnn_graph.edge_index_dict)
             gt = Models.sketch_model_helper.chosen_edge_id(face_boundary_points[len(program[0])-1], edge_features)
-            
+
             # Compute loss
             loss = loss_function(output, gt)
             total_val_loss += loss.item()

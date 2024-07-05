@@ -8,18 +8,18 @@ import Encoders.gnn_full.basic
 
 
 class SemanticModule(nn.Module):
-    def __init__(self, in_channels=6, hidden_channels=32, mlp_channels=32):
+    def __init__(self, in_channels=6, mlp_channels=128):
         super(SemanticModule, self).__init__()
-        self.local_head = Encoders.gnn_full.basic.GeneralHeteroConv(['temp_previous_add', 'intersects_mean', 'represented_by_mean', 'coplanar_max'], in_channels, hidden_channels)
+        self.local_head = Encoders.gnn_full.basic.GeneralHeteroConv(['temp_previous_add', 'intersects_mean', 'represented_by_mean', 'brepcoplanar_max'], in_channels, 64)
 
         self.layers = nn.ModuleList([
-            Encoders.gnn_full.basic.ResidualGeneralHeteroConvBlock(['temp_previous_add', 'intersects_mean', 'represented_by_mean', 'coplanar_max'], hidden_channels, hidden_channels),
-            Encoders.gnn_full.basic.ResidualGeneralHeteroConvBlock(['temp_previous_add', 'intersects_mean', 'represented_by_mean', 'coplanar_max'], hidden_channels, hidden_channels),
-            Encoders.gnn_full.basic.ResidualGeneralHeteroConvBlock(['temp_previous_add', 'intersects_mean', 'represented_by_mean', 'coplanar_max'], hidden_channels, hidden_channels),
-            Encoders.gnn_full.basic.ResidualGeneralHeteroConvBlock(['temp_previous_add', 'intersects_mean', 'represented_by_mean', 'coplanar_max'], hidden_channels, mlp_channels)
+            Encoders.gnn_full.basic.ResidualGeneralHeteroConvBlock(['temp_previous_add', 'intersects_mean', 'represented_by_mean', 'brepcoplanar_max'], 64, 128),
+            Encoders.gnn_full.basic.ResidualGeneralHeteroConvBlock(['temp_previous_add', 'intersects_mean', 'represented_by_mean', 'brepcoplanar_max'], 128, 128),
+            Encoders.gnn_full.basic.ResidualGeneralHeteroConvBlock(['temp_previous_add', 'intersects_mean', 'represented_by_mean', 'brepcoplanar_max'], 128, 128),
+            Encoders.gnn_full.basic.ResidualGeneralHeteroConvBlock(['temp_previous_add', 'intersects_mean', 'represented_by_mean', 'brepcoplanar_max'], 128, mlp_channels)
         ])
 
-        self.linear_layer = nn.Linear(mlp_channels, 32) 
+        self.linear_layer = nn.Linear(mlp_channels, 128) 
 
     def forward(self, x_dict, edge_index_dict):
 
@@ -35,15 +35,15 @@ class SemanticModule(nn.Module):
 
 
 class InstanceModule(nn.Module):
-    def __init__(self, in_channels=6, hidden_channels=64, mlp_channels = 32):
+    def __init__(self, in_channels=6, hidden_channels=512, mlp_channels = 128):
         super(InstanceModule, self).__init__()
-        num_classes = 1  # Binary classification
 
         self.encoder = SemanticModule()
         self.decoder = nn.Sequential(
             nn.Linear(mlp_channels, hidden_channels),
             nn.ReLU(inplace=True),
-            nn.Linear(hidden_channels, num_classes)
+            nn.Linear(hidden_channels, 128),
+            nn.Linear(128, 1)
         )
 
     def forward(self, x_dict, edge_index_dict):

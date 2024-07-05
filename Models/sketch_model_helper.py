@@ -191,8 +191,8 @@ def check_face_satisfaction(face_points, node_features):
 
 def find_left_edge(edge_features, node_features):
     # Extracting shapes
-    _, n, _ = edge_features.shape
-    _, m, _ = node_features.shape
+    n, _ = edge_features.shape
+    m, _ = node_features.shape
     
     # Initialize the output tensor
     output = torch.ones((m, 1), dtype=torch.float32)
@@ -200,11 +200,11 @@ def find_left_edge(edge_features, node_features):
     # Iterate through each element in node_features
     for i in range(m):
         # Extract the current pair of 3D points from node_features
-        node_pair = node_features[0, i, :]
+        node_pair = node_features[i, :]
         
         # Check if this pair is in any of the edge_features
         for j in range(n):
-            if torch.equal(node_pair, edge_features[0, j, :]):
+            if torch.equal(node_pair, edge_features[j, :]):
                 output[i, 0] = 0
                 break
     
@@ -322,11 +322,11 @@ def vis_gt_strokes(brep_edge_features, gt_matrix):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
-    num_edges = brep_edge_features.shape[1]
+    num_edges = brep_edge_features.shape[0]
 
     for i in range(num_edges):
-        start_point = brep_edge_features[0, i, :3]
-        end_point = brep_edge_features[0, i, 3:]
+        start_point = brep_edge_features[ i, :3]
+        end_point = brep_edge_features[i, 3:]
 
         col = 'blue'
         if gt_matrix[i] > 0.5:
