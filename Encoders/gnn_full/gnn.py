@@ -10,13 +10,24 @@ import Encoders.gnn_full.basic
 class SemanticModule(nn.Module):
     def __init__(self, in_channels=6, mlp_channels=128):
         super(SemanticModule, self).__init__()
-        self.local_head = Encoders.gnn_full.basic.GeneralHeteroConv(['temp_previous_add', 'intersects_mean', 'represented_by_mean', 'brepcoplanar_max'], in_channels, 64)
+        self.local_head = Encoders.gnn_full.basic.GeneralHeteroConv(['temp_previous_add',  'represented_by_mean', 'brepcoplanar_max', 'strokecoplanar_max'], in_channels, 64)
 
         self.layers = nn.ModuleList([
-            Encoders.gnn_full.basic.ResidualGeneralHeteroConvBlock(['temp_previous_add', 'intersects_mean', 'represented_by_mean', 'brepcoplanar_max'], 64, 128),
-            Encoders.gnn_full.basic.ResidualGeneralHeteroConvBlock(['temp_previous_add', 'intersects_mean', 'represented_by_mean', 'brepcoplanar_max'], 128, 128),
-            Encoders.gnn_full.basic.ResidualGeneralHeteroConvBlock(['temp_previous_add', 'intersects_mean', 'represented_by_mean', 'brepcoplanar_max'], 128, 128),
-            Encoders.gnn_full.basic.ResidualGeneralHeteroConvBlock(['temp_previous_add', 'intersects_mean', 'represented_by_mean', 'brepcoplanar_max'], 128, mlp_channels)
+            Encoders.gnn_full.basic.ResidualGeneralHeteroConvBlock(['temp_previous_add',  'represented_by_mean', 'brepcoplanar_max', 'strokecoplanar_max'], 64, 128),
+            Encoders.gnn_full.basic.ResidualGeneralHeteroConvBlock(['temp_previous_add',  'represented_by_mean', 'brepcoplanar_max', 'strokecoplanar_max'], 128, 128),
+            Encoders.gnn_full.basic.ResidualGeneralHeteroConvBlock(['temp_previous_add',  'represented_by_mean', 'brepcoplanar_max', 'strokecoplanar_max'], 128, 128),
+            Encoders.gnn_full.basic.ResidualGeneralHeteroConvBlock(['temp_previous_add','represented_by_mean', 'brepcoplanar_max', 'strokecoplanar_max'], 128, 128),
+            Encoders.gnn_full.basic.ResidualGeneralHeteroConvBlock(['temp_previous_add','represented_by_mean', 'brepcoplanar_max', 'strokecoplanar_max'], 128, 128),
+
+        ])
+
+
+        self.layers2 = nn.ModuleList([
+            Encoders.gnn_full.basic.ResidualGeneralHeteroConvBlock(['temp_previous_add',  'represented_by_mean', 'brepcoplanar_max', 'strokecoplanar_max'], 128, 128),
+            Encoders.gnn_full.basic.ResidualGeneralHeteroConvBlock(['temp_previous_add',  'represented_by_mean', 'brepcoplanar_max', 'strokecoplanar_max'], 128, 128),
+            Encoders.gnn_full.basic.ResidualGeneralHeteroConvBlock(['temp_previous_add',  'represented_by_mean', 'brepcoplanar_max', 'strokecoplanar_max'], 128, 128),
+            Encoders.gnn_full.basic.ResidualGeneralHeteroConvBlock(['temp_previous_add',  'represented_by_mean', 'brepcoplanar_max', 'strokecoplanar_max'], 128, 128),
+            Encoders.gnn_full.basic.ResidualGeneralHeteroConvBlock(['temp_previous_add','represented_by_mean', 'brepcoplanar_max', 'strokecoplanar_max'], 128, mlp_channels)
         ])
 
         self.linear_layer = nn.Linear(mlp_channels, 128) 
@@ -26,6 +37,12 @@ class SemanticModule(nn.Module):
         x_dict = self.local_head(x_dict, edge_index_dict)
 
         for layer in self.layers:
+            x_dict = layer(x_dict, edge_index_dict)
+        
+        x_dict = {key: x.relu() for key, x in x_dict.items()}
+
+
+        for layer in self.layers2:
             x_dict = layer(x_dict, edge_index_dict)
 
         x = self.linear_layer(x_dict['brep'])

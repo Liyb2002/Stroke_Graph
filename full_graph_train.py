@@ -25,7 +25,7 @@ graph_model = Encoders.gnn_full.gnn.InstanceModule()
 graph_model.to(device)
 
 # Define optimizer and loss function
-optimizer = optim.Adam(graph_model.parameters(), lr=0.001)
+optimizer = optim.Adam(graph_model.parameters(), lr=0.0005)
 loss_function = nn.BCELoss()
 
 # Load the dataset
@@ -41,7 +41,7 @@ train_dataset, val_dataset = random_split(filtered_dataset, [train_size, val_siz
 
 # Create DataLoaders for training and validation
 train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True)
-val_loader = DataLoader(val_dataset, batch_size=1, shuffle=True)
+val_loader = DataLoader(train_dataset, batch_size=1, shuffle=True)
 
 # Training and validation loop
 best_val_loss = float('inf')
@@ -70,10 +70,13 @@ for epoch in range(10):  # Assuming you want to train for 10 epochs
         
         # Forward pass
         output = graph_model(gnn_graph.x_dict, gnn_graph.edge_index_dict)
-        gt = Models.sketch_model_helper.chosen_edge_id(face_boundary_points[len(program[0])-1], edge_features)
-
+        target_op_index = len(program[0]) - 1
+        op_to_index_matrix = operations_order_matrix
+        kth_operation = Models.sketch_arguments.face_aggregate.get_kth_operation(op_to_index_matrix, target_op_index).to(device)
+        gt = Models.sketch_model_helper.coplanar_strokes(node_features, kth_operation)
+        
         # Compute loss and backpropagate
-        loss = loss_function(output, gt)  # Define your loss function
+        loss = loss_function(output, gt)
         loss.backward()
         optimizer.step()
         optimizer.zero_grad()
@@ -104,8 +107,16 @@ for epoch in range(10):  # Assuming you want to train for 10 epochs
             
             # Forward pass
             output = graph_model(gnn_graph.x_dict, gnn_graph.edge_index_dict)
-            gt = Models.sketch_model_helper.chosen_edge_id(face_boundary_points[len(program[0])-1], edge_features)
-
+            target_op_index = len(program[0]) - 1
+            op_to_index_matrix = operations_order_matrix
+            kth_operation = Models.sketch_arguments.face_aggregate.get_kth_operation(op_to_index_matrix, target_op_index).to(device)
+            gt = Models.sketch_model_helper.coplanar_strokes(node_features, kth_operation)
+            
+            # if epoch > -1:
+            #     print("output", output)
+            #     print("gt", gt)
+                # Models.sketch_model_helper.vis_stroke_cloud(node_features)
+                # Models.sketch_model_helper.vis_gt_strokes(edge_features, output)
             # Compute loss
             loss = loss_function(output, gt)
             total_val_loss += loss.item()

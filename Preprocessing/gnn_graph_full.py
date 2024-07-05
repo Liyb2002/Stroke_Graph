@@ -35,7 +35,7 @@ class SketchHeteroData(HeteroData):
         # Intersection matrix to edge indices
         intersection_matrix = intersection_matrix.squeeze(0)
         edge_indices = torch.nonzero(intersection_matrix == 1).t()
-        self['stroke', 'intersects', 'stroke'].edge_index = edge_indices.long()
+        # self['stroke', 'intersects', 'stroke'].edge_index = edge_indices.long()
 
         # Temporal edge index (order of nodes)
         temporal_edge_index = [order[:-1], order[1:]]
@@ -51,27 +51,7 @@ class SketchHeteroData(HeteroData):
         self.brep_stroke_cloud_connect(self['stroke'].x, brep_edge_features)
         self.brep_coplanar(face_feature_gnn_list)
 
-    def to_device(self, device):
-        self['stroke'].x = self['stroke'].x.to(device)
-        self['stroke'].y = self['stroke'].y.to(device)
-        self['stroke'].z = self['stroke'].z.to(device)
 
-        self['stroke'].order = self['stroke'].order.to(device)
-        self['stroke', 'intersects', 'stroke'].edge_index = self['stroke', 'intersects', 'stroke'].edge_index.to(device)
-        self['stroke', 'temp_previous', 'stroke'].edge_index = self['stroke', 'temp_previous', 'stroke'].edge_index.to(device)
-        # self.intersection_matrix = torch.tensor(self.intersection_matrix).to(device)
-
-    def output_info(self):
-        print("Node Features (x):")
-        print(self['stroke'].x)
-        print("Operations Matrix (y):")
-        print(self['stroke'].y)
-        print("Order (z):")
-        print(self['stroke'].order)
-        print("Intersection Edge Index:")
-        print(self['stroke', 'intersects', 'stroke'].edge_index)
-        print("Temporal Edge Index:")
-        print(self['stroke', 'temp_previous', 'stroke'].edge_index)
     
 
     def brep_stroke_cloud_connect(self, node_features, edge_features):

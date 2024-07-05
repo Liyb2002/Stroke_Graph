@@ -104,7 +104,6 @@ def chosen_all_face_id(node_features, edge_index_face_edge_list, index_id, edge_
     target_face_id = 0
     num_faces = len(face_to_points)
 
-    node_features = node_features.squeeze(0)
     satisfaction_matrix = []
 
     for _, face_points in face_to_points.items():
@@ -473,11 +472,11 @@ def coplanar_strokes(node_features, kth_operation):
 
     # get the chosen strokes
     chosen_strokes = []
-    num_strokes = node_features.shape[1]
+    num_strokes = node_features.shape[0]
     
     for i in range(num_strokes):
         if kth_operation[i, 0] == 1:
-            chosen_strokes.append(node_features[0, i, :])
+            chosen_strokes.append(node_features[i, :])
     
     # for stroke in chosen_strokes:
     #     print("stroke", stroke)
@@ -510,7 +509,7 @@ def coplanar_strokes(node_features, kth_operation):
     # Check all strokes in node_features for coplanarity
     for i in range(num_strokes):
 
-        stroke = node_features[0, i, :]
+        stroke = node_features[ i, :]
         point1, point2 = stroke[:3], stroke[3:]
         if point1[plane_idx] == common_value and point2[plane_idx] == common_value:
             coplanar_matrix[i] = 1.0
@@ -521,6 +520,7 @@ def coplanar_strokes(node_features, kth_operation):
 
 def chosen_all_edge_id(node_features, edge_index_face_edge_list, index_id, edge_features):
     # pair the edges index with each face
+
     face_to_edges = {}
     for face_edge_pair in edge_index_face_edge_list:
         face_list_index = face_edge_pair[0]
@@ -539,7 +539,7 @@ def chosen_all_edge_id(node_features, edge_index_face_edge_list, index_id, edge_
         unique_points = set()
         for edge_id in edge_ids:
             # get the points for the edge
-            edge_points = edge_features[0, edge_id, :]
+            edge_points = edge_features[edge_id, :]
 
             start_point = edge_points[:3]
             end_point = edge_points[3:]
@@ -556,16 +556,16 @@ def chosen_all_edge_id(node_features, edge_index_face_edge_list, index_id, edge_
     # output is the face_id
     target_face_id = 0
     num_faces = len(face_to_points)
-    num_edges = edge_features.shape[1]
+    num_edges = edge_features.shape[0]
 
-    node_features = node_features.squeeze(0)
     satisfaction_matrix = []
+
 
     for _, face_points in face_to_points.items():
         satisfaction = check_face_satisfaction(face_points, node_features)
         satisfaction_matrix.append(satisfaction)
 
-    chosen_edges_matrix = torch.zeros((num_edges, 1), dtype=float)
+    chosen_edges_matrix = torch.zeros((num_edges, 1), dtype=torch.float32)
     
     # Iterate through satisfaction_matrix
     for face_id, is_chosen in enumerate(satisfaction_matrix):
