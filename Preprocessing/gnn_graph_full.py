@@ -42,7 +42,7 @@ class SketchHeteroData(HeteroData):
         temporal_edge_tensor = torch.tensor(temporal_edge_index, dtype=torch.long).contiguous()
         self['stroke', 'temp_previous', 'stroke'].edge_index = temporal_edge_tensor
 
-        # self.stroke_coplanar()
+        self.stroke_coplanar()
 
         self.intersection_matrix = intersection_matrix
 
