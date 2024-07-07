@@ -35,7 +35,7 @@ class SketchHeteroData(HeteroData):
         # Intersection matrix to edge indices
         intersection_matrix = intersection_matrix.squeeze(0)
         edge_indices = torch.nonzero(intersection_matrix == 1).t()
-        # self['stroke', 'intersects', 'stroke'].edge_index = edge_indices.long()
+        self['stroke', 'intersects', 'stroke'].edge_index = edge_indices.long()
 
         # Temporal edge index (order of nodes)
         temporal_edge_index = [order[:-1], order[1:]]
