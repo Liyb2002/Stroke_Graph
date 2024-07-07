@@ -90,6 +90,7 @@ def train():
             output = graph_model(gnn_graph.x_dict, gnn_graph.edge_index_dict)
             gt = Models.sketch_model_helper.chosen_edge_id(face_boundary_points[len(program[0])-1], edge_features)
 
+
             loss = loss_function(output, gt)
             loss.backward()
             optimizer.step()
@@ -122,7 +123,7 @@ def train():
                 # Forward pass
                 output = graph_model(gnn_graph.x_dict, gnn_graph.edge_index_dict)
                 gt = Models.sketch_model_helper.chosen_edge_id(face_boundary_points[len(program[0])-1], edge_features)
-            
+
                             
                 # Compute loss
                 loss = loss_function(output, gt)
@@ -195,4 +196,4 @@ def eval():
 
 #---------------------------------- Public Functions ----------------------------------#
 
-eval()
+train()

@@ -369,27 +369,39 @@ def vis_predicted_strokes(brep_edge_features, predicted_matrix):
     plt.show()
 
 
+def find_coplanar_axis(tensor):
+    # Check if all x values are the same
+    if torch.all(tensor[:, 0] == tensor[0, 0]):
+        return 'x', tensor[0, 0].item()
+    # Check if all y values are the same
+    elif torch.all(tensor[:, 1] == tensor[0, 1]):
+        return 'y', tensor[0, 1].item()
+    # Check if all z values are the same
+    elif torch.all(tensor[:, 2] == tensor[0, 2]):
+        return 'z', tensor[0, 2].item()
+    else:
+        return None, None
+
 
 def chosen_edge_id(boundary_points, edge_features):
 
     # Convert boundary_points to a tensor
     boundary_points_tensor = torch.tensor(boundary_points, dtype=torch.float32)
+    plane, value = find_coplanar_axis(boundary_points_tensor)
     
     # Initialize the output matrix
     num_edges = edge_features.shape[0]
     gt_matrix = torch.zeros((num_edges, 1), dtype=torch.float32)
-    
+    plane_idx = {'x': 0, 'y': 1, 'z': 2}[plane]
+
     # Loop through each edge
     for i in range(num_edges):
         start_point = edge_features[i, :3]
         end_point = edge_features[i, 3:]
 
-        # Check if both the start and end points are in boundary_points
-        start_in_boundary = any(torch.equal(start_point, bp) for bp in boundary_points_tensor)
-        end_in_boundary = any(torch.equal(end_point, bp) for bp in boundary_points_tensor)
-        
-        # Set the value in gt_matrix
-        if start_in_boundary and end_in_boundary:
+        # Check if both the start and end points have the correct value in the plane
+        if start_point[plane_idx] == value and end_point[plane_idx] == value:
+            # Set the value in gt_matrix
             gt_matrix[i, 0] = 1
     
     return gt_matrix

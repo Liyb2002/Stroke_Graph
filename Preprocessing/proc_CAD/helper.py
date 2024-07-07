@@ -456,3 +456,5 @@ def face_to_stroke(stroke_cloud_faces, stroke_features):
 def chosen_face_id(boundary_points, edge_features):
     print("edge_features", len(edge_features))
     print("boundary_points", len(boundary_points))
+
+    
