@@ -67,6 +67,7 @@ val_loader = DataLoader(val_dataset, batch_size=1, shuffle=True)
 
 
 def train():
+    load_models()
     # Training and validation loop
     best_val_loss = float('inf')
     epochs = 30
@@ -99,8 +100,54 @@ def train():
             target_op_index = len(program[0]) - 1
             op_to_index_matrix = operations_order_matrix
             kth_operation = Models.sketch_arguments.face_aggregate.get_kth_operation(op_to_index_matrix, target_op_index).to(device)
-            print("kth_operation", kth_operation.shape)
-            print("output", output.shape)
+            
+            loss = loss_function(output, kth_operation)
+            loss.backward()
+            optimizer.step()
+            optimizer.zero_grad()
+            
+            total_train_loss += loss.item()
+        
+        # Validation loop
+        graph_encoder.eval()
+        graph_decoder.eval()
+        total_val_loss = 0.0
+        
+        with torch.no_grad():
+            for batch in tqdm(val_loader, desc=f"Epoch {epoch+1}/{epochs} - Validation"):
+                node_features, operations_matrix, intersection_matrix, operations_order_matrix, _, program, face_boundary_points, face_feature_gnn_list, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
+
+                if edge_features.shape[1] != 0:
+                    continue
+                
+                # Move to device
+                node_features = node_features.to(torch.float32).to(device).squeeze(0)
+                operations_matrix = operations_matrix.to(torch.float32).to(device)
+                intersection_matrix = intersection_matrix.to(torch.float32).to(device)
+                operations_order_matrix = operations_order_matrix.to(torch.float32).to(device)
+                edge_features = edge_features.to(torch.float32).to(device).squeeze(0)
+
+                gnn_graph = Preprocessing.gnn_graph_full.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
+                gnn_graph.set_brep_connection(edge_features, face_feature_gnn_list)
+
+                x_dict = graph_encoder(gnn_graph.x_dict, gnn_graph.edge_index_dict)
+                output = graph_decoder(x_dict)
+
+                target_op_index = len(program[0]) - 1
+                op_to_index_matrix = operations_order_matrix
+                kth_operation = Models.sketch_arguments.face_aggregate.get_kth_operation(op_to_index_matrix, target_op_index).to(device)
+                
+                val_loss = loss_function(output, kth_operation)
+                total_val_loss += val_loss.item()
+
+        avg_train_loss = total_train_loss / len(train_loader)
+        avg_val_loss = total_val_loss / len(val_loader)
+
+        print(f"Epoch {epoch+1}/{epochs}, Training Loss: {avg_train_loss:.4f}, Validation Loss: {avg_val_loss:.4f}")
+
+        if avg_val_loss < best_val_loss:
+            best_val_loss = avg_val_loss
+            save_models()
 
 
 
