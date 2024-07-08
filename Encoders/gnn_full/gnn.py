@@ -34,9 +34,9 @@ class SemanticModule(nn.Module):
 
 
 
-class sketch_prediction(nn.Module):
-    def __init__(self, in_channels=6, hidden_channels=128):
-        super(sketch_prediction, self).__init__()
+class sketch_brep_prediction(nn.Module):
+    def __init__(self, hidden_channels=128):
+        super(sketch_brep_prediction, self).__init__()
 
         self.local_head = nn.Linear(32, 64) 
 
@@ -53,7 +53,7 @@ class sketch_prediction(nn.Module):
 
 
 class empty_brep_prediction(nn.Module):
-    def __init__(self, in_channels=6, hidden_channels=128):
+    def __init__(self, hidden_channels=128):
         super(empty_brep_prediction, self).__init__()
 
         self.local_head = nn.Linear(32, 64) 

@@ -678,3 +678,28 @@ def node_features_to_plane(node_features):
     planes = x_planes + y_planes + z_planes
 
     return planes
+
+
+
+def integrate_brep_probs(brep_edges_weights, brep_stroke_connection_matrix, stroke_coplanar_matrix):
+    num_strokes = brep_stroke_connection_matrix.size(0)
+    num_brep = brep_stroke_connection_matrix.size(1)
+
+    # Initialize stroke weights to zero
+    stroke_weights = torch.zeros(num_strokes, dtype=torch.float32)
+
+    # Iterate over each brep edge
+    for j in range(num_brep):
+        connected_strokes = (brep_stroke_connection_matrix[:, j] == 1).nonzero().squeeze()
+        connected_strokes = connected_strokes.unsqueeze(0)
+
+        if connected_strokes.numel() == 0:  
+            continue
+        if len(connected_strokes.shape) > 1:
+            connected_strokes = connected_strokes[0]
+        for stroke in connected_strokes:
+            for i in range(num_strokes):
+                if stroke_coplanar_matrix[stroke, i] ==  1:
+                    stroke_weights[i] += brep_edges_weights[j].item()
+
+    return stroke_weights.view(-1, 1)

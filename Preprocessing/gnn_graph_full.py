@@ -42,14 +42,15 @@ class SketchHeteroData(HeteroData):
         temporal_edge_tensor = torch.tensor(temporal_edge_index, dtype=torch.long).contiguous()
         self['stroke', 'temp_previous', 'stroke'].edge_index = temporal_edge_tensor
 
-        self.stroke_coplanar()
 
         self.intersection_matrix = intersection_matrix
 
     def set_brep_connection(self, brep_edge_features, face_feature_gnn_list):
         self['brep'].x = brep_edge_features
-        self.brep_stroke_cloud_connect(self['stroke'].x, brep_edge_features)
+        brep_stroke_connection_matrix = self.brep_stroke_cloud_connect(self['stroke'].x, brep_edge_features)
         self.brep_coplanar(face_feature_gnn_list)
+        stroke_coplanar_matrix = self.stroke_coplanar()
+        return brep_stroke_connection_matrix, stroke_coplanar_matrix
 
 
     
@@ -69,6 +70,8 @@ class SketchHeteroData(HeteroData):
         
         edge_indices = torch.nonzero(connection_matrix == 1).t()
         self['stroke', 'represented_by', 'brep'].edge_index = edge_indices.long()
+
+        return connection_matrix
 
     
     def brep_coplanar(self, face_feature_gnn_list):
@@ -171,8 +174,11 @@ class SketchHeteroData(HeteroData):
                 for j in range(i + 1, len(sublist)):
                     coplanar_matrix[sublist[i], sublist[j]] = 1
                     coplanar_matrix[sublist[j], sublist[i]] = 1
+
         edge_indices = torch.nonzero(coplanar_matrix == 1).t()
         self['stroke', 'strokecoplanar', 'stroke'].edge_index = edge_indices.long()
+
+        return coplanar_matrix
 
 
 
