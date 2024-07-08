@@ -383,15 +383,18 @@ def find_coplanar_axis(tensor):
         return None, None
 
 
-def chosen_edge_id(boundary_points, edge_features):
+def chosen_edge_id(boundary_points_tensor, edge_features):
 
     # Convert boundary_points to a tensor
-    boundary_points_tensor = torch.tensor(boundary_points, dtype=torch.float32)
     plane, value = find_coplanar_axis(boundary_points_tensor)
     
     # Initialize the output matrix
     num_edges = edge_features.shape[0]
     gt_matrix = torch.zeros((num_edges, 1), dtype=torch.float32)
+
+    if plane is None:
+        return None
+     
     plane_idx = {'x': 0, 'y': 1, 'z': 2}[plane]
 
     # Loop through each edge

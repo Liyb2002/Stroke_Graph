@@ -40,7 +40,7 @@ def save_models():
 
 
 # Define optimizer and loss function
-optimizer = optim.Adam(graph_model.parameters(), lr=0.0005)
+optimizer = optim.Adam(graph_model.parameters(), lr=0.0004)
 loss_function = nn.BCELoss()
 
 # Load the dataset
@@ -62,7 +62,7 @@ val_loader = DataLoader(val_dataset, batch_size=1, shuffle=True)
 def train():
     # Training and validation loop
     best_val_loss = float('inf')
-    epochs = 10
+    epochs = 30
 
     for epoch in range(epochs):
         # Training loop
@@ -88,9 +88,18 @@ def train():
             
             # Forward pass
             output = graph_model(gnn_graph.x_dict, gnn_graph.edge_index_dict)
-            gt = Models.sketch_model_helper.chosen_edge_id(face_boundary_points[len(program[0])-1], edge_features)
+            
+            # prepare gt
+            target_op_index = len(program[0]) - 1
+            op_to_index_matrix = operations_order_matrix
+            kth_operation = Models.sketch_arguments.face_aggregate.get_kth_operation(op_to_index_matrix, target_op_index).to(device)
+            chosen_mask = kth_operation.flatten() == 1
+            chosen_node_matrix = node_features[chosen_mask]
+            gt = Models.sketch_model_helper.chosen_edge_id(chosen_node_matrix, edge_features)
 
-
+            if gt is None:
+                continue
+            
             loss = loss_function(output, gt)
             loss.backward()
             optimizer.step()
@@ -122,9 +131,16 @@ def train():
                 
                 # Forward pass
                 output = graph_model(gnn_graph.x_dict, gnn_graph.edge_index_dict)
-                gt = Models.sketch_model_helper.chosen_edge_id(face_boundary_points[len(program[0])-1], edge_features)
+                target_op_index = len(program[0]) - 1
+                op_to_index_matrix = operations_order_matrix
+                kth_operation = Models.sketch_arguments.face_aggregate.get_kth_operation(op_to_index_matrix, target_op_index).to(device)
+                chosen_mask = kth_operation.flatten() == 1
+                chosen_node_matrix = node_features[chosen_mask]
+                gt = Models.sketch_model_helper.chosen_edge_id(chosen_node_matrix, edge_features)
 
-                            
+                if gt is None:
+                    continue
+         
                 # Compute loss
                 loss = loss_function(output, gt)
                 total_val_loss += loss.item()
@@ -167,16 +183,24 @@ def eval():
             
             # Perform a forward pass through the model to get the output
             output = graph_model(gnn_graph.x_dict, gnn_graph.edge_index_dict)
-            gt = Models.sketch_model_helper.chosen_edge_id(face_boundary_points[len(program[0])-1], edge_features)
+            # prepare gt
+            target_op_index = len(program[0]) - 1
+            op_to_index_matrix = operations_order_matrix
+            kth_operation = Models.sketch_arguments.face_aggregate.get_kth_operation(op_to_index_matrix, target_op_index).to(device)
+            chosen_mask = kth_operation.flatten() == 1
+            chosen_node_matrix = node_features[chosen_mask]
+            gt = Models.sketch_model_helper.chosen_edge_id(chosen_node_matrix, edge_features)
+
+            if gt is None:
+                continue
             
+            # Vis
             gt_mask = (gt > 0).float()
             pred_mask = (output > 0.3).float()
             # Update total edges and correct predictions
             total_edges += 1
 
-            print("-----")
             if not torch.all(pred_mask == gt_mask):
-                print(face_boundary_points[len(program[0])-1])
                 Models.sketch_model_helper.vis_stroke_cloud(node_features)
                 Models.sketch_model_helper.vis_gt_strokes(edge_features, gt)
                 Models.sketch_model_helper.vis_gt_strokes(edge_features, output)
@@ -196,4 +220,4 @@ def eval():
 
 #---------------------------------- Public Functions ----------------------------------#
 
-train()
+eval()

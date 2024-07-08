@@ -21,8 +21,6 @@ class SemanticModule(nn.Module):
         ])
 
 
-        self.linear_layer = nn.Linear(32, 64) 
-
     def forward(self, x_dict, edge_index_dict):
 
         x_dict = self.local_head(x_dict, edge_index_dict)
@@ -31,15 +29,16 @@ class SemanticModule(nn.Module):
             x_dict = layer(x_dict, edge_index_dict)
         
         x_dict = {key: x.relu() for key, x in x_dict.items()}
-        x = self.linear_layer(x_dict['brep'])
 
-        return x
-
+        return x_dict
 
 
-class InstanceModule(nn.Module):
+
+class sketch_prediction(nn.Module):
     def __init__(self, in_channels=6, hidden_channels=128):
-        super(InstanceModule, self).__init__()
+        super(sketch_prediction, self).__init__()
+
+        self.local_head = nn.Linear(32, 64) 
 
         self.encoder = SemanticModule()
         self.decoder = nn.Sequential(
@@ -48,6 +47,24 @@ class InstanceModule(nn.Module):
             nn.Linear(hidden_channels, 1),
         )
 
-    def forward(self, x_dict, edge_index_dict):
-        features = self.encoder(x_dict, edge_index_dict)
+    def forward(self, x_dict):
+        features = self.local_head(x_dict['brep'])
+        return torch.sigmoid(self.decoder(features))
+
+
+class empty_brep_prediction(nn.Module):
+    def __init__(self, in_channels=6, hidden_channels=128):
+        super(empty_brep_prediction, self).__init__()
+
+        self.local_head = nn.Linear(32, 64) 
+
+        self.encoder = SemanticModule()
+        self.decoder = nn.Sequential(
+            nn.Linear(64, hidden_channels),
+            nn.ReLU(inplace=True),
+            nn.Linear(hidden_channels, 1),
+        )
+
+    def forward(self, x_dict):
+        features = self.local_head(x_dict['stroke'])
         return torch.sigmoid(self.decoder(features))

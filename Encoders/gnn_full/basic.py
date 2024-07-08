@@ -110,16 +110,20 @@ class GeneralHeteroConv(torch.nn.Module):
         return heteroConv_dict
             
     
-    def forward(self, x_dict, edge_index_dict, edge_attr_dict = None, data=None):
-        """
-        x: (BxN) x F
-        """
+    def forward(self, x_dict, edge_index_dict, edge_attr_dict=None, data=None):
         if edge_attr_dict is None:
-            res = self.gconv(x_dict, edge_index_dict)
+            edge_attr_dict = {}
+
+        if 'brep' in x_dict and x_dict['brep'].size(0) == 0:
+            x_dict_no_brep = {key: value for key, value in x_dict.items() if key != 'brep'}
+            edge_index_dict_no_brep = {key: value for key, value in edge_index_dict.items() if 'brep' not in key}
+
+            # Perform convolution without brep nodes and edges
+            res = self.gconv(x_dict_no_brep, edge_index_dict_no_brep, edge_attr_dict)
         else:
             res = self.gconv(x_dict, edge_index_dict, edge_attr_dict)
-        
-        return res   
+                
+        return res
     
 class ResidualGeneralHeteroConvBlock(torch.nn.Module):
     def __init__(self, gcn_types, in_channels, out_channels, is_instance_net=False):
@@ -131,17 +135,26 @@ class ResidualGeneralHeteroConvBlock(torch.nn.Module):
             self.projection = nn.Linear(in_channels, out_channels)
 
     def forward(self, x_dict, edge_index_dict, edge_attr_dict=None, data=None):
+
         residual_stroke = x_dict['stroke']
-        residual_brep = x_dict['brep']
-        out = self.mlp_edge_conv(x_dict, edge_index_dict, edge_attr_dict, data)
+        if 'brep' in x_dict:
+            residual_brep = x_dict['brep']
+            out = self.mlp_edge_conv(x_dict, edge_index_dict, edge_attr_dict, data)
+        else:
+            x_dict_no_brep = {key: value for key, value in x_dict.items() if key != 'brep'}
+            edge_index_dict_no_brep = {key: value for key, value in edge_index_dict.items() if 'brep' not in key}
+            out = self.mlp_edge_conv(x_dict_no_brep, edge_index_dict_no_brep, edge_attr_dict, data)
+
 
         if self.residual:
             out['stroke'] += residual_stroke
-            out['brep'] += residual_brep
+            if 'brep' in x_dict:
+                out['brep'] += residual_brep
 
         else:
             out['stroke'] += self.projection(residual_stroke)
-            out['brep'] += self.projection(residual_brep)
+            if 'brep' in x_dict:
+                out['brep'] += self.projection(residual_brep)
 
         return out
     
