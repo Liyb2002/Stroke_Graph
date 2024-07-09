@@ -1,6 +1,7 @@
 import numpy as np
 from itertools import permutations, combinations
 import torch
+import itertools
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -115,3 +116,37 @@ def vis_planar(plane_chosen, plane_to_node, node_features):
 
     plt.show()
     
+
+
+def face_aggregate_withMask(stroke_matrix, mask):
+
+    threshold = 0.5
+    chosen_indices = (mask.squeeze() > threshold).nonzero(as_tuple=True)[0]
+
+    group = satisfy(chosen_indices, stroke_matrix)
+
+    selected_indices = torch.zeros((stroke_matrix.shape[0], 1), dtype=torch.float32)
+    selected_indices[torch.tensor(group)] = 1.0
+    return selected_indices
+
+
+    
+
+
+def satisfy(chosen_indices, stroke_matrix):
+    def all_points_repeated_twice(strokes):
+        points = strokes.reshape(-1, 3)
+        unique_points, counts = torch.unique(points, return_counts=True, dim=0)
+        return torch.all(counts == 2)
+
+    possible_groups = list(itertools.chain(
+        itertools.combinations(chosen_indices.tolist(), 3),
+        itertools.combinations(chosen_indices.tolist(), 4)
+    ))
+
+    for group in possible_groups:
+        strokes = stroke_matrix[list(group)]
+        if all_points_repeated_twice(strokes):
+            return group
+
+    return []

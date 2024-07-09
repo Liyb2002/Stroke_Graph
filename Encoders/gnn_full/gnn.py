@@ -17,7 +17,6 @@ class SemanticModule(nn.Module):
             Encoders.gnn_full.basic.ResidualGeneralHeteroConvBlock(['intersects_mean','temp_previous_add',  'represented_by_mean', 'brepcoplanar_max', 'strokecoplanar_max'], 32, 32),
             Encoders.gnn_full.basic.ResidualGeneralHeteroConvBlock(['intersects_mean','temp_previous_add',  'represented_by_mean', 'brepcoplanar_max', 'strokecoplanar_max'], 32, 32),
             Encoders.gnn_full.basic.ResidualGeneralHeteroConvBlock(['intersects_mean','temp_previous_add','represented_by_mean', 'brepcoplanar_max', 'strokecoplanar_max'], 32, 32),
-
         ])
 
 
@@ -70,7 +69,7 @@ class Final_stroke_finding(nn.Module):
     def __init__(self, hidden_channels=128):
         super(Final_stroke_finding, self).__init__()
 
-        self.edge_conv = Encoders.gnn_full.basic.ResidualGeneralHeteroConvBlock(['intersects_mean','temp_previous_add',  'represented_by_mean', 'brepcoplanar_max', 'strokecoplanar_max'], 32, 64)
+        self.edge_conv = Encoders.gnn_full.basic.ResidualGeneralHeteroConvBlock(['intersects_mean','temp_previous_add',  'represented_by_mean', 'brepcoplanar_max', 'strokecoplanar_max'], 32, 32)
 
         self.local_head = nn.Linear(32, 64) 
         self.decoder = nn.Sequential(
@@ -80,8 +79,7 @@ class Final_stroke_finding(nn.Module):
         )
 
     def forward(self, x_dict, edge_index_dict, stroke_weights):
-        x_dict['stroke'] = x_dict['stroke'] * stroke_weights.unsqueeze(1)
-
+        x_dict['stroke'] = x_dict['stroke'] * stroke_weights
         x_dict = self.edge_conv(x_dict, edge_index_dict)
         features = self.local_head(x_dict['stroke'])
         return torch.sigmoid(self.decoder(features))

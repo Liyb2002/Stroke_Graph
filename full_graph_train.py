@@ -266,4 +266,4 @@ def predict_brep_edges(graph_encoder, graph_decoder, batch):
 
 #---------------------------------- Public Functions ----------------------------------#
 
-train()
+# train()
