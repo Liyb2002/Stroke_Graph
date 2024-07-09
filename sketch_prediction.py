@@ -22,8 +22,8 @@ from mpl_toolkits.mplot3d import Axes3D
 
 
 brep_graph_encoder = Encoders.gnn_full.gnn.SemanticModule()
-brep_graph_decoder = Encoders.gnn_full.gnn.sketch_brep_prediction()
-
+brep_graph_decoder = Encoders.gnn_full.gnn.Sketch_brep_prediction()
+strokes_decoder = Encoders.gnn_full.gnn.Final_stroke_finding()
 
 current_dir = os.getcwd()
 save_dir = os.path.join(current_dir, 'checkpoints', 'stroke_choosing')
@@ -97,6 +97,9 @@ def train():
 
             stroke_weights = Models.sketch_model_helper.integrate_brep_probs(brep_edges_weights, brep_stroke_connection_matrix, stroke_coplanar_matrix)
 
+            x_dict = brep_graph_encoder(gnn_graph.x_dict, gnn_graph.edge_index_dict)
+            output = strokes_decoder(x_dict, gnn_graph.edge_index_dict, stroke_weights)
+            print("output", output.shape)
             print("------")
 #---------------------------------- Public Functions ----------------------------------#
 

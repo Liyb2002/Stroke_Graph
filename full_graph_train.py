@@ -22,7 +22,7 @@ from mpl_toolkits.mplot3d import Axes3D
 
 # Initialize your model and move it to the device
 graph_encoder = Encoders.gnn_full.gnn.SemanticModule()
-graph_decoder = Encoders.gnn_full.gnn.sketch_brep_prediction()
+graph_decoder = Encoders.gnn_full.gnn.Sketch_brep_prediction()
 
 graph_encoder.to(device)
 graph_decoder.to(device)
@@ -266,4 +266,4 @@ def predict_brep_edges(graph_encoder, graph_decoder, batch):
 
 #---------------------------------- Public Functions ----------------------------------#
 
-# eval()
+train()
