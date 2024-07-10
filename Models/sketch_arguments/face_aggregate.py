@@ -118,18 +118,24 @@ def vis_planar(plane_chosen, plane_to_node, node_features):
     
 
 
-def face_aggregate_withMask(stroke_matrix, mask):
+def face_aggregate_withMask(stroke_matrix, mask, min_threshold = 0.3):
 
     threshold = 0.5
-    chosen_indices = (mask.squeeze() > threshold).nonzero(as_tuple=True)[0]
-
-    group = satisfy(chosen_indices, stroke_matrix)
-
     selected_indices = torch.zeros((stroke_matrix.shape[0], 1), dtype=torch.float32)
-    if len(group) == 0:
+
+    while True:
+        if threshold < min_threshold:
+            return selected_indices
+
+        chosen_indices = (mask.squeeze() > threshold).nonzero(as_tuple=True)[0]
+        group = satisfy(chosen_indices, stroke_matrix)
+
+        if len(group) == 0:
+            threshold -= 0.1
+            continue
+        
+        selected_indices[torch.tensor(group)] = 1
         return selected_indices
-    selected_indices[torch.tensor(group)] = 1
-    return selected_indices
 
 
     
