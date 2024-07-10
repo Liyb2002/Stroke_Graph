@@ -126,7 +126,9 @@ def face_aggregate_withMask(stroke_matrix, mask):
     group = satisfy(chosen_indices, stroke_matrix)
 
     selected_indices = torch.zeros((stroke_matrix.shape[0], 1), dtype=torch.float32)
-    selected_indices[torch.tensor(group)] = 1.0
+    if len(group) == 0:
+        return selected_indices
+    selected_indices[torch.tensor(group)] = 1
     return selected_indices
 
 

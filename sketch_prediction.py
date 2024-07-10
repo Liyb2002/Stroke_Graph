@@ -208,15 +208,15 @@ def eval():
         # Find the exact sketch
         sketch_strokes = Models.sketch_arguments.face_aggregate.face_aggregate_withMask(node_features, output)
 
-        Models.sketch_model_helper.vis_gt_strokes(node_features, kth_operation)
-        Models.sketch_model_helper.vis_gt_strokes(node_features, sketch_strokes)
-        
+        # Models.sketch_model_helper.vis_gt_strokes(node_features, kth_operation)
+        # Models.sketch_model_helper.vis_gt_strokes(node_features, sketch_strokes)
+
         # Vis
         total_predictions +=1 
         gt_mask = (kth_operation > 0).float()
-        pred_mask = (output > 0.2).float()
+        pred_mask = (sketch_strokes > 0.2).float()
 
-        # if not torch.all(pred_mask == gt_mask):
+        if not torch.all(pred_mask == gt_mask):
         #     Models.sketch_model_helper.vis_stroke_cloud(node_features)
         #     Models.sketch_model_helper.vis_stroke_cloud(edge_features)
         #     Models.sketch_model_helper.vis_gt_strokes(node_features, kth_operation)
@@ -227,9 +227,9 @@ def eval():
         #     Models.sketch_model_helper.vis_gt_strokes(node_features, kth_operation)
         #     Models.sketch_model_helper.vis_gt_strokes(node_features, output)
 
-        #     pass
-        # else:
-        #     correct_predictions += 1
+            pass
+        else:
+            correct_predictions += 1
 
     # Compute the accuracy
     accuracy = correct_predictions / total_predictions
