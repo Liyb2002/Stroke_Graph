@@ -6,7 +6,6 @@ from torch_geometric.data import HeteroData
 
 import Encoders.gnn_full.basic
 
-
 class SemanticModule(nn.Module):
     def __init__(self, in_channels=6, mlp_channels=16):
         super(SemanticModule, self).__init__()
@@ -32,6 +31,37 @@ class SemanticModule(nn.Module):
         return x_dict
 
 
+class Program_prediction(nn.Module):
+    def __init__(self, embed_dim=32, num_heads=4, ff_dim=128, num_classes=10, dropout=0.1):
+        super(Program_prediction, self).__init__()
+        self.cross_attn = nn.MultiheadAttention(embed_dim, num_heads, dropout=dropout)
+        self.ff = nn.Sequential(
+            nn.Linear(embed_dim, ff_dim),
+            nn.ReLU(),
+            nn.Linear(ff_dim, embed_dim)
+        )
+        self.norm = nn.LayerNorm(embed_dim)
+        self.dropout = nn.Dropout(dropout)
+        self.classifier = nn.Linear(embed_dim, num_classes)
+
+        self.program_encoder = ProgramEncoder()
+    
+    def forward(self, x_dict, program_tokens):
+
+        if len(program_tokens) == 0:
+            program_embedding = torch.zeros(1, 32)
+        else:
+            program_embedding = self.program_encoder(program_tokens)
+        
+        attn_output, _ = self.cross_attn(program_embedding, x_dict['stroke'], x_dict['stroke'])
+        out = self.norm(program_embedding + attn_output)
+
+        ff_output = self.ff(out)        
+        out_mean = ff_output.mean(dim=0)
+        
+        logits = self.classifier(out_mean)
+        return logits
+    
 
 class Sketch_brep_prediction(nn.Module):
     def __init__(self, hidden_channels=128):
@@ -49,6 +79,7 @@ class Sketch_brep_prediction(nn.Module):
         return torch.sigmoid(self.decoder(features))
 
 
+
 class Empty_brep_prediction(nn.Module):
     def __init__(self, hidden_channels=128):
         super(Empty_brep_prediction, self).__init__()
@@ -63,6 +94,7 @@ class Empty_brep_prediction(nn.Module):
     def forward(self, x_dict):
         features = self.local_head(x_dict['stroke'])
         return torch.sigmoid(self.decoder(features))
+
 
 
 class Final_stroke_finding(nn.Module):
@@ -101,17 +133,25 @@ class ExtrudingStrokePrediction(nn.Module):
 
     def forward(self, x_dict, edge_index_dict, sketch_strokes_id):
 
-        connected_strokes_mask = torch.zeros_like(sketch_strokes_id, dtype=torch.float32)
-        
-        for edge in edge_index_dict[('stroke', 'intersects', 'stroke')].t():
-            src, dst = edge
-            if sketch_strokes_id[src] == 1:
-                connected_strokes_mask[dst] = 1
-            if sketch_strokes_id[dst] == 1:
-                connected_strokes_mask[src] = 1
 
         x_dict['stroke'] = x_dict['stroke'] + x_dict['stroke'] * (sketch_strokes_id)
 
         x_dict = self.edge_conv(x_dict, edge_index_dict)
         features = self.local_head(x_dict['stroke'])
         return torch.sigmoid(self.decoder(features))
+
+
+
+# ----------------------------------- Other Models ----------------------------------- #
+
+class ProgramEncoder(nn.Module):
+    def __init__(self, vocab_size=10, embedding_dim=8, hidden_dim=32):
+        super(ProgramEncoder, self).__init__()
+        self.embedding = nn.Embedding(vocab_size, embedding_dim)
+        self.lstm = nn.LSTM(embedding_dim, hidden_dim, batch_first=True)
+        self.fc = nn.Linear(hidden_dim, hidden_dim)
+        
+    def forward(self, x):
+        embedded = self.embedding(x)
+        lstm_out, _ = self.lstm(embedded)
+        return lstm_out
