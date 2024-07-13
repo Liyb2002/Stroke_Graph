@@ -83,3 +83,35 @@ class Final_stroke_finding(nn.Module):
         x_dict = self.edge_conv(x_dict, edge_index_dict)
         features = self.local_head(x_dict['stroke'])
         return torch.sigmoid(self.decoder(features))
+
+
+
+class ExtrudingStrokePrediction(nn.Module):
+    def __init__(self, in_channels=32, hidden_channels=64):
+        super(ExtrudingStrokePrediction, self).__init__()
+
+        self.edge_conv = Encoders.gnn_full.basic.ResidualGeneralHeteroConvBlock(['intersects_mean','temp_previous_add',  'represented_by_mean', 'brepcoplanar_max', 'strokecoplanar_max'], 32, 32)
+
+        self.local_head = nn.Linear(32, 64) 
+        self.decoder = nn.Sequential(
+            nn.Linear(64, hidden_channels),
+            nn.ReLU(inplace=True),
+            nn.Linear(hidden_channels, 1),
+        )
+
+    def forward(self, x_dict, edge_index_dict, sketch_strokes_id):
+
+        connected_strokes_mask = torch.zeros_like(sketch_strokes_id, dtype=torch.float32)
+        
+        for edge in edge_index_dict[('stroke', 'intersects', 'stroke')].t():
+            src, dst = edge
+            if sketch_strokes_id[src] == 1:
+                connected_strokes_mask[dst] = 1
+            if sketch_strokes_id[dst] == 1:
+                connected_strokes_mask[src] = 1
+
+        x_dict['stroke'] = x_dict['stroke'] + x_dict['stroke'] * (sketch_strokes_id)
+
+        x_dict = self.edge_conv(x_dict, edge_index_dict)
+        features = self.local_head(x_dict['stroke'])
+        return torch.sigmoid(self.decoder(features))
