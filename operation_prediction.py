@@ -215,11 +215,9 @@ def eval():
     print(f"Evaluation Loss: {avg_eval_loss:.4f}")
 
     # Compute and display confusion matrix
-    cm = confusion_matrix(all_labels, all_preds)
-    disp = ConfusionMatrixDisplay(confusion_matrix=cm)
-    disp.plot()
-    plt.show()
-
+    conf_matrix = confusion_matrix(all_labels, all_preds)
+    print("conf_matrix")
+    print(conf_matrix)
 #---------------------------------- Public Functions ----------------------------------#
 
 eval()
