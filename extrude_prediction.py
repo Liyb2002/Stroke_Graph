@@ -81,6 +81,9 @@ def train():
             # Forward pass
             x_dict = graph_encoder(gnn_graph.x_dict, gnn_graph.edge_index_dict)
             output = graph_decoder(x_dict, gnn_graph.edge_index_dict, sketch_strokes)
+            
+            Models.sketch_model_helper.vis_gt_strokes(node_features, sketch_strokes)
+            Models.sketch_model_helper.vis_gt_strokes(node_features, extrude_strokes)
 
 
             loss = loss_function(output, extrude_strokes)

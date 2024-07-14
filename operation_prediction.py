@@ -20,6 +20,7 @@ from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
 
 # Define the neural networks
+
 graph_encoder = Encoders.gnn_full.gnn.SemanticModule()
 graph_decoder = Encoders.gnn_full.gnn.Program_prediction()
 

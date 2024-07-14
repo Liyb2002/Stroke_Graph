@@ -21,7 +21,7 @@ from mpl_toolkits.mplot3d import Axes3D
 
 # Initialize your model and move it to the device
 graph_encoder = Encoders.gnn_full.gnn.SemanticModule()
-graph_decoder = Encoders.gnn_full.gnn.empty_brep_prediction()
+graph_decoder = Encoders.gnn_full.gnn.Empty_brep_prediction()
 
 graph_encoder.to(device)
 graph_decoder.to(device)
@@ -67,7 +67,7 @@ val_loader = DataLoader(val_dataset, batch_size=1, shuffle=True)
 
 
 def train():
-    load_models()
+    # load_models()
     # Training and validation loop
     best_val_loss = float('inf')
     epochs = 30
@@ -93,7 +93,7 @@ def train():
 
             gnn_graph = Preprocessing.gnn_graph_full.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
             gnn_graph.set_brep_connection(edge_features, face_feature_gnn_list)
-
+            
             x_dict = graph_encoder(gnn_graph.x_dict, gnn_graph.edge_index_dict)
             output = graph_decoder(x_dict)
             
@@ -153,4 +153,4 @@ def train():
 
 #---------------------------------- Public Functions ----------------------------------#
 
-# train()
+train()
