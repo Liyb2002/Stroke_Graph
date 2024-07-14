@@ -41,6 +41,33 @@ def Op_predict(gnn_graph, current_program):
     return predicted_class
 
 
+# Sketch with brep Prediction
+Sketch_with_brep_dir = os.path.join(current_dir, 'checkpoints', 'full_graph_sketch')
+Sketch_with_brep_encoder = Encoders.gnn_full.gnn.SemanticModule()
+Sketch_with_brep_decoder = Encoders.gnn_full.gnn.Sketch_brep_prediction()
+Sketch_with_brep_encoder.load_state_dict(torch.load(os.path.join(Op_dir, 'graph_encoder.pth')))
+Sketch_with_brep_decoder.load_state_dict(torch.load(os.path.join(Op_dir, 'graph_decoder.pth')))
+
+Sketch_choosing_dir = os.path.join(current_dir, 'checkpoints', 'empty_brep_sketch')
+Sketch_choosing_decoder = Encoders.gnn_full.gnn.Final_stroke_finding()
+Sketch_choosing_decoder.load_state_dict(torch.load(os.path.join(Op_dir, 'strokes_decoder.pth')))
+
+Sketch_empty_brep_dir = os.path.join(current_dir, 'checkpoints', 'empty_brep_sketch')
+Sketch_empty_decoder = Encoders.gnn_full.gnn.Empty_brep_prediction()
+Sketch_empty_decoder.load_state_dict(torch.load(os.path.join(Op_dir, 'graph_decoder.pth')))
+
+
+def sketch_predict(gnn_graph, current_program):
+    if len(current_program) == 0:
+        x_dict = Sketch_empty_decoder(gnn_graph.x_dict, gnn_graph.edge_index_dict)
+        output = Sketch_empty_decoder(x_dict)
+    else:
+        x_dict = Sketch_with_brep_encoder(gnn_graph.x_dict, gnn_graph.edge_index_dict)
+        stroke_weights = Sketch_with_brep_decoder(x_dict)
+        output = Sketch_choosing_decoder(x_dict, gnn_graph.edge_index_dict, stroke_weights)
+    
+    return output
+
 
 
 # --------------------- Main Code --------------------- #
@@ -68,5 +95,12 @@ for batch in tqdm(data_loader):
 
     while next_op != 0:
         print("next_op", next_op)
+        
+        if next_op == 1:
+            sketches_prob = sketch_predict(gnn_graph, current_program)
+            print("sketches_prob", sketches_prob.shape)
 
+        # Predict next Operation
+        current_program.append(next_op)
+        next_op = Op_predict(gnn_graph, current_program)
     break
