@@ -1,8 +1,11 @@
 import Preprocessing.dataloader
 import Preprocessing.gnn_graph_full
 
+import Preprocessing.proc_CAD.generate_program
 
 import Encoders.gnn_full.gnn
+
+import Models.sketch_arguments.face_aggregate
 
 from torch.utils.data import DataLoader, random_split, Subset
 from tqdm import tqdm
@@ -68,7 +71,12 @@ def sketch_predict(gnn_graph, current_program):
         stroke_weights = Sketch_with_brep_decoder(x_dict)
         output = Sketch_choosing_decoder(x_dict, gnn_graph.edge_index_dict, stroke_weights)
     
-    return output
+    selected_indices = Models.sketch_arguments.face_aggregate.face_aggregate_withMask(node_features, output)
+    selected_indices = selected_indices.bool().squeeze()
+    selected_node_features = node_features[selected_indices]
+    normal = Models.sketch_arguments.face_aggregate.sketch_to_normal(selected_node_features)
+
+    return selected_node_features, normal
 
 
 
@@ -85,22 +93,24 @@ for batch in tqdm(data_loader):
 
 
     # Program State init
-    current_brep = torch.empty((1, 0))
-    current_brep = current_brep.to(torch.float32).to(device).squeeze(0)
+    current_brep_embedding = torch.empty((1, 0))
+    current_brep_embedding = current_brep_embedding.to(torch.float32).to(device).squeeze(0)
+    current__brep_class = Preprocessing.proc_CAD.generate_program.Brep()
+
     current_face_feature_gnn_list = torch.empty((1, 0))
     current_program = torch.tensor([], dtype=torch.int64)
 
     # Graph init
     gnn_graph = Preprocessing.gnn_graph_full.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
-    gnn_graph.set_brep_connection(current_brep, current_face_feature_gnn_list)
+    gnn_graph.set_brep_connection(current_brep_embedding, current_face_feature_gnn_list)
     next_op = Op_predict(gnn_graph, current_program)
 
     while next_op != 0:
         print("Op Executing", next_op)
         
         if next_op == 1:
-            sketches_prob = sketch_predict(gnn_graph, current_program)
-            print("sketches_prob", sketches_prob.shape)
+            sketch_strokes, normal= sketch_predict(gnn_graph, current_program)
+            current__brep_class._sketch_op(sketch_strokes, normal, sketch_strokes)
 
         # Predict next Operation
         current_program = torch.cat((current_program, torch.tensor([next_op], dtype=torch.int64)))

@@ -158,3 +158,22 @@ def satisfy(chosen_indices, stroke_matrix):
             return group
 
     return []
+
+
+
+def sketch_to_normal(sketch):
+    # Extract all the points from the sketch
+    points = sketch.view(-1, 3)
+    
+    # Check for coplanarity by finding the axis with the same value for all points
+    unique_x = torch.unique(points[:, 0])
+    unique_y = torch.unique(points[:, 1])
+    unique_z = torch.unique(points[:, 2])
+
+    if unique_x.size(0) == 1:
+        return torch.tensor([1, 0, 0], dtype=torch.float32)
+    elif unique_y.size(0) == 1:
+        return torch.tensor([0, 1, 0], dtype=torch.float32)
+    
+    return torch.tensor([0, 0, 1], dtype=torch.float32)
+    
