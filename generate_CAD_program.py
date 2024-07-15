@@ -26,7 +26,7 @@ data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
 
 # --------------------- Directory --------------------- #
 current_dir = os.getcwd()
-
+output_dir = os.path.join(current_dir, 'program_output')
 
 # --------------------- Networks --------------------- #
 
@@ -74,9 +74,9 @@ def sketch_predict(gnn_graph, current_program):
     selected_indices = Models.sketch_arguments.face_aggregate.face_aggregate_withMask(node_features, output)
     selected_indices = selected_indices.bool().squeeze()
     selected_node_features = node_features[selected_indices]
-    normal = Models.sketch_arguments.face_aggregate.sketch_to_normal(selected_node_features)
-
-    return selected_node_features, normal
+    normal = Models.sketch_arguments.face_aggregate.sketch_to_normal(selected_node_features.tolist())
+    sketch_points = Models.sketch_arguments.face_aggregate.extract_unique_points(selected_node_features)
+    return sketch_points, normal
 
 
 
@@ -109,8 +109,11 @@ for batch in tqdm(data_loader):
         print("Op Executing", next_op)
         
         if next_op == 1:
-            sketch_strokes, normal= sketch_predict(gnn_graph, current_program)
-            current__brep_class._sketch_op(sketch_strokes, normal, sketch_strokes)
+            sketch_points, normal= sketch_predict(gnn_graph, current_program)
+            current__brep_class._sketch_op(sketch_points, normal, sketch_points.tolist())
+
+        # Write the Program
+        current__brep_class.write_to_json(output_dir)
 
         # Predict next Operation
         current_program = torch.cat((current_program, torch.tensor([next_op], dtype=torch.int64)))

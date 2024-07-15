@@ -162,8 +162,11 @@ def satisfy(chosen_indices, stroke_matrix):
 
 
 def sketch_to_normal(sketch):
+
+    sketch_tensor = torch.tensor(sketch, dtype=torch.float32)
+    
     # Extract all the points from the sketch
-    points = sketch.view(-1, 3)
+    points = sketch_tensor.view(-1, 3)
     
     # Check for coplanarity by finding the axis with the same value for all points
     unique_x = torch.unique(points[:, 0])
@@ -171,9 +174,22 @@ def sketch_to_normal(sketch):
     unique_z = torch.unique(points[:, 2])
 
     if unique_x.size(0) == 1:
-        return torch.tensor([1, 0, 0], dtype=torch.float32)
+        return [1, 0, 0]
     elif unique_y.size(0) == 1:
-        return torch.tensor([0, 1, 0], dtype=torch.float32)
+        return [0, 1, 0]
     
-    return torch.tensor([0, 0, 1], dtype=torch.float32)
+    return [0, 0, 1]
+
+
+def extract_unique_points(sketch):
+    # Extract all the points from the sketch (tensor of shape (num_chosen_strokes, 6))
+    points = sketch.view(-1, 3)
+    
+    # Remove duplicate points
+    unique_points = torch.unique(points, dim=0)
+    
+    # Convert the result to a numpy array
+    unique_points_np = unique_points.numpy()
+    
+    return unique_points_np
     
