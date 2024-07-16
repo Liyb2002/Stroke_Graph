@@ -182,14 +182,31 @@ def sketch_to_normal(sketch):
 
 
 def extract_unique_points(sketch):
-    # Extract all the points from the sketch (tensor of shape (num_chosen_strokes, 6))
-    points = sketch.view(-1, 3)
-    
-    # Remove duplicate points
-    unique_points = torch.unique(points, dim=0)
-    
-    # Convert the result to a numpy array
-    unique_points_np = unique_points.numpy()
-    
+    # Convert sketch to a list of tuples for easier manipulation
+    strokes = [((stroke[:3].tolist(), stroke[3:].tolist())) for stroke in sketch]
+
+    # Start with the first stroke
+    current_stroke = strokes.pop(0)
+    points_list = [current_stroke[1]]
+    # Find the next stroke and continue until a loop is formed
+    while strokes:
+        end_point = points_list[-1]
+        found = False
+        for i, (start_point, next_point) in enumerate(strokes):
+            if start_point == end_point:
+                points_list.append(next_point)
+                strokes.pop(i)
+                found = True
+                break
+            elif next_point == end_point:
+                points_list.append(start_point)
+                strokes.pop(i)
+                found = True
+                break
+        if not found:
+            raise ValueError("Cannot find a continuous path with the given strokes")
+
+    # Convert the list of points to a numpy array
+    unique_points_np = np.array(points_list)
+
     return unique_points_np
-    

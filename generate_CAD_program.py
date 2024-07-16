@@ -2,6 +2,7 @@ import Preprocessing.dataloader
 import Preprocessing.gnn_graph_full
 
 import Preprocessing.proc_CAD.generate_program
+import Preprocessing.proc_CAD.Program_to_STL
 
 import Encoders.gnn_full.gnn
 
@@ -100,6 +101,10 @@ for batch in tqdm(data_loader):
     current_face_feature_gnn_list = torch.empty((1, 0))
     current_program = torch.tensor([], dtype=torch.int64)
 
+    # Parser Init
+    file_path = os.path.join(output_dir, 'Program.json')
+    parsed_program_class = Preprocessing.proc_CAD.Program_to_STL.parsed_program(file_path, output_dir)
+
     # Graph init
     gnn_graph = Preprocessing.gnn_graph_full.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
     gnn_graph.set_brep_connection(current_brep_embedding, current_face_feature_gnn_list)
@@ -115,10 +120,13 @@ for batch in tqdm(data_loader):
         # Write the Program
         current__brep_class.write_to_json(output_dir)
 
+        # Read the Program and produce brep
+        parsed_program_class.read_json_file()
+
         # Predict next Operation
         current_program = torch.cat((current_program, torch.tensor([next_op], dtype=torch.int64)))
         next_op = Op_predict(gnn_graph, current_program)
         print("Next Op", next_op)
         print("------------")
 
-    break
+        break
