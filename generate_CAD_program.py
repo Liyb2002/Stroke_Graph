@@ -3,6 +3,7 @@ import Preprocessing.gnn_graph_full
 
 import Preprocessing.proc_CAD.generate_program
 import Preprocessing.proc_CAD.Program_to_STL
+import Preprocessing.proc_CAD.brep_read
 
 import Encoders.gnn_full.gnn
 
@@ -28,6 +29,7 @@ data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
 # --------------------- Directory --------------------- #
 current_dir = os.getcwd()
 output_dir = os.path.join(current_dir, 'program_output')
+output_relative_dir = ('program_output/canvas')
 
 # --------------------- Networks --------------------- #
 
@@ -118,10 +120,20 @@ for batch in tqdm(data_loader):
             current__brep_class._sketch_op(sketch_points, normal, sketch_points.tolist())
 
         # Write the Program
-        current__brep_class.write_to_json(output_dir)
+        # current__brep_class.write_to_json(output_dir)
 
-        # Read the Program and produce brep
+        # Read the Program and produce brep file
         parsed_program_class.read_json_file()
+
+        # Read brep file
+        brep_files = [file_name for file_name in os.listdir(os.path.join(output_dir, 'canvas'))
+                if file_name.startswith('brep_') and file_name.endswith('.step')]
+        brep_files.sort(key=lambda x: int(x.split('_')[1].split('.')[0]))
+        brep_file_path = brep_files[-1]
+        brep_file_path = os.path.join(output_relative_dir, brep_file_path)
+        face_feature_gnn_list, face_features_list, edge_features_list, vertex_features_list, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id= Preprocessing.SBGCN.brep_read.create_graph_from_step_file(brep_file_path)
+        print("edge_features_list", edge_features_list)
+
 
         # Predict next Operation
         current_program = torch.cat((current_program, torch.tensor([next_op], dtype=torch.int64)))

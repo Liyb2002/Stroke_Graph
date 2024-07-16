@@ -43,7 +43,7 @@ def plot_edges_3d(edge_features):
 def read_step_file(filename):
     step_reader = STEPControl_Reader()
     status = step_reader.ReadFile(filename)
-    
+
     if status == 1:  # Check if the read was successful
         step_reader.TransferRoot()  # Transfers the whole STEP file
         shape = step_reader.Shape()  # Retrieves the translated shape

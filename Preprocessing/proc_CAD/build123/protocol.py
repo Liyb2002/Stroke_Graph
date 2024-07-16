@@ -7,7 +7,6 @@ import numpy as np
 def build_sketch(count, canvas, Points_list, output, data_dir):
     brep_dir = os.path.join(data_dir, "canvas", f"brep_{count}.step")
     stl_dir = os.path.join(data_dir, "canvas", f"vis_{count}.stl")
-    print("Points_list", Points_list)
 
     if count == 0:
         with BuildSketch():

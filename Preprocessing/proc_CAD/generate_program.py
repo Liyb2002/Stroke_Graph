@@ -31,7 +31,6 @@ class Brep:
         elif axis == 'z':
             boundary_points = ([0, 0, 1])
 
-        print("points", points)
         self._sketch_op(points, normal, boundary_points)
 
 
