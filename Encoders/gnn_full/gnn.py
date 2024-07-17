@@ -133,7 +133,8 @@ class ExtrudingStrokePrediction(nn.Module):
 
     def forward(self, x_dict, edge_index_dict, sketch_strokes_id):
 
-
+        print("x_dict['stroke']", x_dict['stroke'].shape)
+        print("sketch_strokes_id", sketch_strokes_id.shape)
         x_dict['stroke'] = x_dict['stroke'] + x_dict['stroke'] * (sketch_strokes_id)
 
         x_dict = self.edge_conv(x_dict, edge_index_dict)

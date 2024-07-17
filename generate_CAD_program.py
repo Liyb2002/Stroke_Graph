@@ -16,6 +16,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import os
+import shutil
 
 import random
 
@@ -47,7 +48,7 @@ def Op_predict(gnn_graph, current_program):
     return predicted_class
 
 
-# Sketch with brep Prediction
+# Sketch Prediction
 Sketch_with_brep_dir = os.path.join(current_dir, 'checkpoints', 'full_graph_sketch')
 Sketch_with_brep_encoder = Encoders.gnn_full.gnn.SemanticModule()
 Sketch_with_brep_decoder = Encoders.gnn_full.gnn.Sketch_brep_prediction()
@@ -74,15 +75,27 @@ def sketch_predict(gnn_graph, current_program):
         stroke_weights = Sketch_with_brep_decoder(x_dict)
         output = Sketch_choosing_decoder(x_dict, gnn_graph.edge_index_dict, stroke_weights)
     
-    selected_indices = Models.sketch_arguments.face_aggregate.face_aggregate_withMask(node_features, output)
-    selected_indices = selected_indices.bool().squeeze()
+    selected_indices_raw = Models.sketch_arguments.face_aggregate.face_aggregate_withMask(node_features, output)
+    selected_indices = selected_indices_raw.bool().squeeze()
     selected_node_features = node_features[selected_indices]
     normal = Models.sketch_arguments.face_aggregate.sketch_to_normal(selected_node_features.tolist())
     sketch_points = Models.sketch_arguments.face_aggregate.extract_unique_points(selected_node_features)
-    return sketch_points, normal
+    return selected_indices_raw, sketch_points, normal
 
 
+# Extrude Prediction
+Extrude_dir = os.path.join(current_dir, 'checkpoints', 'extrude')
+Extrude_encoder = Encoders.gnn_full.gnn.SemanticModule()
+Extrude_decoder = Encoders.gnn_full.gnn.ExtrudingStrokePrediction()
+Extrude_encoder.load_state_dict(torch.load(os.path.join(Extrude_dir, 'graph_encoder.pth')))
+Extrude_decoder.load_state_dict(torch.load(os.path.join(Extrude_dir, 'graph_decoder.pth')))
 
+
+def extrude_predict(gnn_graph, sketch_strokes):
+    x_dict = Extrude_encoder(gnn_graph.x_dict, gnn_graph.edge_index_dict)
+    strokes_indices = Extrude_decoder(x_dict, gnn_graph.edge_index_dict, sketch_strokes)
+    print("strokes_indices", strokes_indices.shape)
+            
 # --------------------- Main Code --------------------- #
 
 for batch in tqdm(data_loader):
@@ -115,14 +128,28 @@ for batch in tqdm(data_loader):
     while next_op != 0:
         print("Op Executing", next_op)
         
+        # Terminate
+        if next_op == 0 or next_op == 3:
+            break
+        
+        # Sketch
         if next_op == 1:
-            sketch_points, normal= sketch_predict(gnn_graph, current_program)
+            prev_sketch_index, sketch_points, normal= sketch_predict(gnn_graph, current_program)
             current__brep_class._sketch_op(sketch_points, normal, sketch_points.tolist())
 
+        # Extrude
+        if next_op == 2:
+            extrude_predict(gnn_graph, prev_sketch_index)
+
+
         # Write the Program
-        # current__brep_class.write_to_json(output_dir)
+        current__brep_class.write_to_json(output_dir)
 
         # Read the Program and produce brep file
+        if os.path.exists(output_relative_dir):
+            shutil.rmtree(output_relative_dir)
+        os.makedirs(output_relative_dir, exist_ok=True)
+
         parsed_program_class.read_json_file()
 
         # Read brep file
@@ -132,7 +159,11 @@ for batch in tqdm(data_loader):
         brep_file_path = brep_files[-1]
         brep_file_path = os.path.join(output_relative_dir, brep_file_path)
         face_feature_gnn_list, face_features_list, edge_features_list, vertex_features_list, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id= Preprocessing.SBGCN.brep_read.create_graph_from_step_file(brep_file_path)
-        print("edge_features_list", edge_features_list)
+
+
+        # Update the graph
+        gnn_graph = Preprocessing.gnn_graph_full.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
+        gnn_graph.set_brep_connection(current_brep_embedding, current_face_feature_gnn_list)
 
 
         # Predict next Operation
@@ -141,4 +172,4 @@ for batch in tqdm(data_loader):
         print("Next Op", next_op)
         print("------------")
 
-        break
+    break

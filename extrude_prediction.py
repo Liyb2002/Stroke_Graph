@@ -7,8 +7,6 @@ import Models.sketch_model_helper
 import Encoders.gnn_full.gnn
 import Models.sketch_arguments.face_aggregate
 
-import full_graph_train
-
 from torch.utils.data import DataLoader, random_split, Subset
 from tqdm import tqdm
 from config import device
@@ -23,6 +21,16 @@ from mpl_toolkits.mplot3d import Axes3D
 
 graph_encoder = Encoders.gnn_full.gnn.SemanticModule()
 graph_decoder = Encoders.gnn_full.gnn.ExtrudingStrokePrediction()
+
+current_dir = os.getcwd()
+save_dir = os.path.join(current_dir, 'checkpoints', 'extrude')
+os.makedirs(save_dir, exist_ok=True)
+
+def save_models():
+    torch.save(graph_encoder.state_dict(), os.path.join(save_dir, 'graph_encoder.pth'))
+    torch.save(graph_decoder.state_dict(), os.path.join(save_dir, 'graph_decoder.pth'))
+    print("Saved models.")
+
 
 # Define optimizer and loss function
 optimizer = optim.Adam( list(graph_encoder.parameters()) + list(graph_decoder.parameters()), lr=0.0005)
@@ -82,8 +90,8 @@ def train():
             x_dict = graph_encoder(gnn_graph.x_dict, gnn_graph.edge_index_dict)
             output = graph_decoder(x_dict, gnn_graph.edge_index_dict, sketch_strokes)
             
-            Models.sketch_model_helper.vis_gt_strokes(node_features, sketch_strokes)
-            Models.sketch_model_helper.vis_gt_strokes(node_features, extrude_strokes)
+            # Models.sketch_model_helper.vis_gt_strokes(node_features, sketch_strokes)
+            # Models.sketch_model_helper.vis_gt_strokes(node_features, extrude_strokes)
 
 
             loss = loss_function(output, extrude_strokes)
@@ -135,6 +143,9 @@ def train():
                 total_val_loss += loss.item()
 
         avg_val_loss = total_val_loss / len(val_loader)
+        if best_val_loss > total_val_loss:
+            best_val_loss =  total_val_loss
+            save_models()
 
         print(f"Epoch {epoch+1}/{epochs}: Avg Train Loss: {avg_train_loss:.4f}, Avg Val Loss: {avg_val_loss:.4f}")
 
