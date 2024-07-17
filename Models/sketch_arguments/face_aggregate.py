@@ -210,3 +210,48 @@ def extract_unique_points(sketch):
     unique_points_np = np.array(points_list)
 
     return unique_points_np
+
+
+
+def get_extrude_amount(stroke_features, chosen_matrix, sketch_strokes):
+    # Ensure chosen_matrix and sketch_strokes are boolean tensors for indexing
+    chosen_mask = chosen_matrix > 0.5
+    sketch_mask = sketch_strokes > 0.5
+    
+    # Use the mask to index into stroke_features and get the chosen strokes
+    chosen_stroke_features = stroke_features[chosen_mask.squeeze()]
+    
+    # Find any of the sketch strokes
+    sketch_stroke_features = stroke_features[sketch_mask.squeeze()]
+    sketch_point = sketch_stroke_features[0][:3]  # Use the first point of the first sketch stroke
+    
+    distances = []
+    direction = None
+    
+    # Calculate the distance for each chosen stroke and determine the direction
+    for stroke in chosen_stroke_features:
+        point1 = stroke[:3]
+        point2 = stroke[3:]
+        
+        # Determine the direction if not already determined
+        if direction is None and (torch.all(point1 == sketch_point) or torch.all(point2 == sketch_point)):
+            if torch.all(point1 == sketch_point):
+                direction = point2 - point1
+            else:
+                direction = point1 - point2
+        
+        # Calculate the absolute difference between the points
+        diff = torch.abs(point1 - point2)
+        
+        # Find the maximum difference which corresponds to the distance
+        distance = torch.max(diff)
+        distances.append(distance.item())
+    
+    # Find the maximum distance
+    max_distance = max(distances) if distances else 0
+    
+    # Normalize the direction
+    if direction is not None:
+        direction = direction / torch.norm(direction)
+    
+    return max_distance, direction

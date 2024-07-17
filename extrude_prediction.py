@@ -52,7 +52,6 @@ train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=1, shuffle=True)
 
 
-
 def train():
     # Training and validation loop
     best_val_loss = float('inf')

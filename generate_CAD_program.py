@@ -66,7 +66,7 @@ Sketch_empty_encoder.load_state_dict(torch.load(os.path.join(Sketch_empty_brep_d
 Sketch_empty_decoder.load_state_dict(torch.load(os.path.join(Sketch_empty_brep_dir, 'graph_decoder.pth')))
 
 
-def sketch_predict(gnn_graph, current_program):
+def sketch_predict(gnn_graph, current_program, node_features):
     if len(current_program) == 0:
         x_dict = Sketch_empty_encoder(gnn_graph.x_dict, gnn_graph.edge_index_dict)
         output = Sketch_empty_decoder(x_dict)
@@ -91,11 +91,11 @@ Extrude_encoder.load_state_dict(torch.load(os.path.join(Extrude_dir, 'graph_enco
 Extrude_decoder.load_state_dict(torch.load(os.path.join(Extrude_dir, 'graph_decoder.pth')))
 
 
-def extrude_predict(gnn_graph, sketch_strokes):
+def extrude_predict(gnn_graph, sketch_strokes, node_features):
     x_dict = Extrude_encoder(gnn_graph.x_dict, gnn_graph.edge_index_dict)
     strokes_indices = Extrude_decoder(x_dict, gnn_graph.edge_index_dict, sketch_strokes)
-    print("strokes_indices", strokes_indices.shape)
-            
+    extrude_amount, direction = Models.sketch_arguments.face_aggregate.get_extrude_amount(node_features, strokes_indices, sketch_strokes)
+    return extrude_amount, direction
 # --------------------- Main Code --------------------- #
 
 for batch in tqdm(data_loader):
@@ -134,12 +134,13 @@ for batch in tqdm(data_loader):
         
         # Sketch
         if next_op == 1:
-            prev_sketch_index, sketch_points, normal= sketch_predict(gnn_graph, current_program)
+            prev_sketch_index, sketch_points, normal= sketch_predict(gnn_graph, current_program, node_features)
             current__brep_class._sketch_op(sketch_points, normal, sketch_points.tolist())
 
         # Extrude
         if next_op == 2:
-            extrude_predict(gnn_graph, prev_sketch_index)
+            extrude_amount, direction= extrude_predict(gnn_graph, prev_sketch_index, node_features)
+            current__brep_class.extrude_op(extrude_amount, direction.tolist())
 
 
         # Write the Program

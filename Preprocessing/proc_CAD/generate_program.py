@@ -98,13 +98,16 @@ class Brep:
         self.op.append(['sketch'])
 
 
-    def extrude_op(self):
-        amount = Preprocessing.proc_CAD.random_gen.generate_random_extrude()
+    def extrude_op(self, amount = 0, sketch_face_opposite_normal = [0,0,0]):
+        
+        if amount == 0:
+            amount = Preprocessing.proc_CAD.random_gen.generate_random_extrude()
         if self.idx < 2:
             amount = abs(amount)
         
         sketch_face = self.Faces[-1]
-        sketch_face_opposite_normal = [-x for x in sketch_face.normal]
+        if sketch_face_opposite_normal == [0,0,0]:
+            sketch_face_opposite_normal = [-x for x in sketch_face.normal]
 
         new_vertices = []
         new_edges = []
