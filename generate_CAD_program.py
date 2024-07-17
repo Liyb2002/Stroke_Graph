@@ -118,7 +118,6 @@ for batch in tqdm(data_loader):
 
     # Parser Init
     file_path = os.path.join(output_dir, 'Program.json')
-    parsed_program_class = Preprocessing.proc_CAD.Program_to_STL.parsed_program(file_path, output_dir)
 
     # Graph init
     gnn_graph = Preprocessing.gnn_graph_full.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
@@ -151,6 +150,7 @@ for batch in tqdm(data_loader):
             shutil.rmtree(output_relative_dir)
         os.makedirs(output_relative_dir, exist_ok=True)
 
+        parsed_program_class = Preprocessing.proc_CAD.Program_to_STL.parsed_program(file_path, output_dir)
         parsed_program_class.read_json_file()
 
         # Read brep file
