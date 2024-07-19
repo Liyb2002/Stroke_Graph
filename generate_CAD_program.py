@@ -1,5 +1,5 @@
 import Preprocessing.dataloader
-import Preprocessing.gnn_graph_full
+import Preprocessing.gnn_graph_Gen
 
 import Preprocessing.proc_CAD.generate_program
 import Preprocessing.proc_CAD.Program_to_STL
@@ -120,7 +120,7 @@ for batch in tqdm(data_loader):
     file_path = os.path.join(output_dir, 'Program.json')
 
     # Graph init
-    gnn_graph = Preprocessing.gnn_graph_full.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
+    gnn_graph = Preprocessing.gnn_graph_Gen.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
     gnn_graph.set_brep_connection(current_brep_embedding, current_face_feature_gnn_list)
     next_op = Op_predict(gnn_graph, current_program)
 
@@ -138,8 +138,9 @@ for batch in tqdm(data_loader):
 
         # Extrude
         if next_op == 2:
-            extrude_amount, direction= extrude_predict(gnn_graph, prev_sketch_index, node_features)
-            current__brep_class.extrude_op(extrude_amount, direction.tolist())
+            pass
+            # extrude_amount, direction= extrude_predict(gnn_graph, prev_sketch_index, node_features)
+            # current__brep_class.extrude_op(extrude_amount, direction.tolist())
 
 
         # Write the Program
@@ -161,10 +162,10 @@ for batch in tqdm(data_loader):
         brep_file_path = os.path.join(output_relative_dir, brep_file_path)
         face_feature_gnn_list, face_features_list, edge_features_list, vertex_features_list, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id= Preprocessing.SBGCN.brep_read.create_graph_from_step_file(brep_file_path)
 
-
         # Update the graph
-        gnn_graph = Preprocessing.gnn_graph_full.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
-        gnn_graph.set_brep_connection(current_brep_embedding, current_face_feature_gnn_list)
+        gnn_graph = Preprocessing.gnn_graph_Gen.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
+
+        gnn_graph.set_brep_connection(edge_features_list, face_feature_gnn_list[0])
 
 
         # Predict next Operation

@@ -216,8 +216,6 @@ def eval():
             if gt is None:
                 continue
             
-            print("out", output)
-            print("gt", gt)
             # Vis
             gt_mask = (gt > 0).float()
             pred_mask = (output > 0.3).float()

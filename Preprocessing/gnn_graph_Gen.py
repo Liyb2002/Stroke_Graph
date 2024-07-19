@@ -48,6 +48,7 @@ class SketchHeteroData(HeteroData):
     def set_brep_connection(self, brep_edge_features, face_feature_gnn_list):
         self['brep'].x = brep_edge_features
         brep_stroke_connection_matrix = self.brep_stroke_cloud_connect(self['stroke'].x, brep_edge_features)
+
         self.brep_coplanar(face_feature_gnn_list)
         stroke_coplanar_matrix = self.stroke_coplanar()
         return brep_stroke_connection_matrix, stroke_coplanar_matrix
@@ -55,8 +56,9 @@ class SketchHeteroData(HeteroData):
     
 
     def brep_stroke_cloud_connect(self, node_features, edge_features):
+
         n = node_features.shape[0]
-        m = edge_features.shape[0]
+        m = len(edge_features)
         
         # Initialize the (n, m) matrix with zeros
         connection_matrix = torch.zeros((n, m), dtype=torch.float32)
@@ -64,7 +66,10 @@ class SketchHeteroData(HeteroData):
         # Compare each node feature with each edge feature
         for i in range(n):
             for j in range(m):
-                if torch.equal(node_features[i], edge_features[j]):
+                edge_feature = [round(value, 4) for value in edge_features[j][1]]
+                node_feature = [round(value, 4) for value in node_features[i].tolist()]
+
+                if node_feature == edge_feature:
                     connection_matrix[i, j] = 1
         
         edge_indices = torch.nonzero(connection_matrix == 1).t()

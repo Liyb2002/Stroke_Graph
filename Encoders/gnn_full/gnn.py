@@ -75,6 +75,7 @@ class Sketch_brep_prediction(nn.Module):
         )
 
     def forward(self, x_dict):
+
         features = self.local_head(x_dict['brep'])
         return torch.sigmoid(self.decoder(features))
 

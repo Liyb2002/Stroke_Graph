@@ -79,18 +79,19 @@ def train():
             target_op_index = len(program[0]) - 1
             kth_operation = Models.sketch_arguments.face_aggregate.get_kth_operation(operations_order_matrix, target_op_index).to(device)
             extrude_strokes = Models.sketch_model_helper.choose_extrude_strokes(sketch_strokes, kth_operation, node_features)
-
+            extrude_opposite_face = Models.sketch_model_helper.choose_extrude_opposite_face(sketch_strokes, kth_operation, node_features)
 
             # Create graph
             gnn_graph = Preprocessing.gnn_graph_full.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
             gnn_graph.set_brep_connection(edge_features, face_feature_gnn_list)
-            
+
             # Forward pass
             x_dict = graph_encoder(gnn_graph.x_dict, gnn_graph.edge_index_dict)
             output = graph_decoder(x_dict, gnn_graph.edge_index_dict, sketch_strokes)
             
-            # Models.sketch_model_helper.vis_gt_strokes(node_features, sketch_strokes)
-            # Models.sketch_model_helper.vis_gt_strokes(node_features, extrude_strokes)
+            Models.sketch_model_helper.vis_gt_strokes(node_features, sketch_strokes)
+            Models.sketch_model_helper.vis_gt_strokes(node_features, extrude_strokes)
+            Models.sketch_model_helper.vis_gt_strokes(node_features, extrude_opposite_face)
 
 
             loss = loss_function(output, extrude_strokes)

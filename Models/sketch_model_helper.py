@@ -734,3 +734,33 @@ def choose_extrude_strokes(sketch_strokes, extrude_strokes_raw, node_features):
     
     return extrude_strokes
     
+
+
+def choose_extrude_opposite_face(sketch_strokes, extrude_strokes_raw, node_features):
+    # Initialize the output matrix with zeros
+    num_strokes = extrude_strokes_raw.shape[0]
+    extrude_strokes = torch.zeros((num_strokes, 1), dtype=torch.float32)
+    
+    # Iterate through all strokes in extrude_strokes_raw
+    for i in range(num_strokes):
+        if extrude_strokes_raw[i] == 1 and sketch_strokes[i] == 0:
+            chosen_stroke_points = node_features[i]
+            chosen = False
+
+            # Check if any of the points of the chosen stroke match with any sketch stroke points
+            for j in range(num_strokes):
+                if sketch_strokes[j] == 1:
+                    sketch_stroke_points = node_features[j]
+
+                    # Compare points of the chosen stroke with the points of the sketch strokes
+                    if (chosen_stroke_points[:3].tolist() in [sketch_stroke_points[:3].tolist(), sketch_stroke_points[3:].tolist()] or
+                        chosen_stroke_points[3:].tolist() in [sketch_stroke_points[:3].tolist(), sketch_stroke_points[3:].tolist()]):
+                        chosen = True
+                        break
+
+            # If the chosen stroke has one of its points in any of the sketch strokes, mark it as chosen
+            if not chosen:
+                extrude_strokes[i] = 1
+    
+    return extrude_strokes
+    
