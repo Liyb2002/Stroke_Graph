@@ -45,8 +45,14 @@ class SketchHeteroData(HeteroData):
 
         self.intersection_matrix = intersection_matrix
 
+    def clean_brep_edge_features(self, brep_edge_features):
+        edge_features = []
+        for edge_feature in brep_edge_features:
+            edge_features.append(edge_feature[1])
+        self['brep'].x = torch.tensor(edge_features)
+
     def set_brep_connection(self, brep_edge_features, face_feature_gnn_list):
-        self['brep'].x = brep_edge_features
+        self.clean_brep_edge_features(brep_edge_features)
         brep_stroke_connection_matrix = self.brep_stroke_cloud_connect(self['stroke'].x, brep_edge_features)
 
         self.brep_coplanar(face_feature_gnn_list)
@@ -84,7 +90,7 @@ class SketchHeteroData(HeteroData):
 
         # Function to find index of an edge in self.brep['x']
         def find_edge_index(edge, brep_edges):
-            edge_points = [round(edge[i].item(), 3) for i in range(6)]
+            edge_points = [round(edge[i], 3) for i in range(6)]
             edge_point1 = edge_points[:3]
             edge_point2 = edge_points[3:]
 

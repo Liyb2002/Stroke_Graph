@@ -4,10 +4,10 @@ import Preprocessing.gnn_graph_Gen
 import Preprocessing.proc_CAD.generate_program
 import Preprocessing.proc_CAD.Program_to_STL
 import Preprocessing.proc_CAD.brep_read
-
 import Encoders.gnn_full.gnn
 
 import Models.sketch_arguments.face_aggregate
+import Models.sketch_model_helper
 
 from torch.utils.data import DataLoader, random_split, Subset
 from tqdm import tqdm
@@ -66,15 +66,22 @@ Sketch_empty_encoder.load_state_dict(torch.load(os.path.join(Sketch_empty_brep_d
 Sketch_empty_decoder.load_state_dict(torch.load(os.path.join(Sketch_empty_brep_dir, 'graph_decoder.pth')))
 
 
-def sketch_predict(gnn_graph, current_program, node_features):
+def sketch_predict(gnn_graph, current_program, node_features, brep_stroke_connection_matrix, stroke_coplanar_matrix):
     if len(current_program) == 0:
         x_dict = Sketch_empty_encoder(gnn_graph.x_dict, gnn_graph.edge_index_dict)
         output = Sketch_empty_decoder(x_dict)
     else:
         x_dict = Sketch_with_brep_encoder(gnn_graph.x_dict, gnn_graph.edge_index_dict)
-        stroke_weights = Sketch_with_brep_decoder(x_dict)
+        brep_edges_weights = Sketch_with_brep_decoder(x_dict)
+        stroke_weights = Models.sketch_model_helper.integrate_brep_probs(brep_edges_weights, brep_stroke_connection_matrix, stroke_coplanar_matrix)
         output = Sketch_choosing_decoder(x_dict, gnn_graph.edge_index_dict, stroke_weights)
-    
+        print("brep_edges_weights", brep_edges_weights)
+
+        # Models.sketch_model_helper.vis_stroke_cloud(node_features)
+        # Models.sketch_model_helper.vis_stroke_cloud(gnn_graph.x_dict['brep'])
+        # Models.sketch_model_helper.vis_gt_strokes(gnn_graph.x_dict['brep'], brep_edges_weights)
+        # Models.sketch_model_helper.vis_gt_strokes(node_features, output)
+
     selected_indices_raw = Models.sketch_arguments.face_aggregate.face_aggregate_withMask(node_features, output)
     selected_indices = selected_indices_raw.bool().squeeze()
     selected_node_features = node_features[selected_indices]
@@ -96,6 +103,7 @@ def extrude_predict(gnn_graph, sketch_strokes, node_features):
     strokes_indices = Extrude_decoder(x_dict, gnn_graph.edge_index_dict, sketch_strokes)
     extrude_amount, direction = Models.sketch_arguments.face_aggregate.get_extrude_amount(node_features, strokes_indices, sketch_strokes)
     return extrude_amount, direction
+
 # --------------------- Main Code --------------------- #
 
 for batch in tqdm(data_loader):
@@ -116,13 +124,19 @@ for batch in tqdm(data_loader):
     current_face_feature_gnn_list = torch.empty((1, 0))
     current_program = torch.tensor([], dtype=torch.int64)
 
+
     # Parser Init
     file_path = os.path.join(output_dir, 'Program.json')
+
 
     # Graph init
     gnn_graph = Preprocessing.gnn_graph_Gen.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
     gnn_graph.set_brep_connection(current_brep_embedding, current_face_feature_gnn_list)
     next_op = Op_predict(gnn_graph, current_program)
+
+    brep_stroke_connection_matrix = None
+    stroke_coplanar_matrix = None
+
 
     while next_op != 0:
         print("Op Executing", next_op)
@@ -133,16 +147,17 @@ for batch in tqdm(data_loader):
         
         # Sketch
         if next_op == 1:
-            prev_sketch_index, sketch_points, normal= sketch_predict(gnn_graph, current_program, node_features)
+            prev_sketch_index, sketch_points, normal= sketch_predict(gnn_graph, current_program, node_features, brep_stroke_connection_matrix, stroke_coplanar_matrix)
             current__brep_class._sketch_op(sketch_points, normal, sketch_points.tolist())
 
         # Extrude
         if next_op == 2:
-            pass
-            # extrude_amount, direction= extrude_predict(gnn_graph, prev_sketch_index, node_features)
-            # current__brep_class.extrude_op(extrude_amount, direction.tolist())
+            extrude_amount, direction= extrude_predict(gnn_graph, prev_sketch_index, node_features)
+            current__brep_class.extrude_op(extrude_amount, direction.tolist())
 
-
+        if len(current_program) == 2:
+            break
+        
         # Write the Program
         current__brep_class.write_to_json(output_dir)
 
@@ -164,8 +179,7 @@ for batch in tqdm(data_loader):
 
         # Update the graph
         gnn_graph = Preprocessing.gnn_graph_Gen.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
-
-        gnn_graph.set_brep_connection(edge_features_list, face_feature_gnn_list[0])
+        brep_stroke_connection_matrix, stroke_coplanar_matrix = gnn_graph.set_brep_connection(edge_features_list, face_feature_gnn_list)
 
 
         # Predict next Operation
@@ -174,4 +188,3 @@ for batch in tqdm(data_loader):
         print("Next Op", next_op)
         print("------------")
 
-    break
