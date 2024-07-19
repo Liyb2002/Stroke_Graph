@@ -21,7 +21,7 @@ import shutil
 import random
 
 # --------------------- Dataset --------------------- #
-dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/full_train_dataset')
+dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/train_dataset')
 good_data_indices = [i for i, data in enumerate(dataset) if data[5][-1] == 0]
 filtered_dataset = Subset(dataset, good_data_indices)
 data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
@@ -74,12 +74,13 @@ def sketch_predict(gnn_graph, current_program, node_features, brep_stroke_connec
         x_dict = Sketch_with_brep_encoder(gnn_graph.x_dict, gnn_graph.edge_index_dict)
         brep_edges_weights = Sketch_with_brep_decoder(x_dict)
         stroke_weights = Models.sketch_model_helper.integrate_brep_probs(brep_edges_weights, brep_stroke_connection_matrix, stroke_coplanar_matrix)
+        
+        x_dict = Sketch_with_brep_encoder(gnn_graph.x_dict, gnn_graph.edge_index_dict)
         output = Sketch_choosing_decoder(x_dict, gnn_graph.edge_index_dict, stroke_weights)
-        print("brep_edges_weights", brep_edges_weights)
-
         # Models.sketch_model_helper.vis_stroke_cloud(node_features)
         # Models.sketch_model_helper.vis_stroke_cloud(gnn_graph.x_dict['brep'])
         # Models.sketch_model_helper.vis_gt_strokes(gnn_graph.x_dict['brep'], brep_edges_weights)
+        print("output", output)
         # Models.sketch_model_helper.vis_gt_strokes(node_features, output)
 
     selected_indices_raw = Models.sketch_arguments.face_aggregate.face_aggregate_withMask(node_features, output)
@@ -154,9 +155,6 @@ for batch in tqdm(data_loader):
         if next_op == 2:
             extrude_amount, direction= extrude_predict(gnn_graph, prev_sketch_index, node_features)
             current__brep_class.extrude_op(extrude_amount, direction.tolist())
-
-        if len(current_program) == 2:
-            break
         
         # Write the Program
         current__brep_class.write_to_json(output_dir)
@@ -188,3 +186,4 @@ for batch in tqdm(data_loader):
         print("Next Op", next_op)
         print("------------")
 
+    break
