@@ -21,7 +21,7 @@ import shutil
 import random
 
 # --------------------- Dataset --------------------- #
-dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/train_dataset')
+dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/full_train_dataset')
 good_data_indices = [i for i, data in enumerate(dataset) if data[5][-1] == 0]
 filtered_dataset = Subset(dataset, good_data_indices)
 data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
@@ -77,16 +77,17 @@ def sketch_predict(gnn_graph, current_program, node_features, brep_stroke_connec
         
         x_dict = Sketch_with_brep_encoder(gnn_graph.x_dict, gnn_graph.edge_index_dict)
         output = Sketch_choosing_decoder(x_dict, gnn_graph.edge_index_dict, stroke_weights)
-        # Models.sketch_model_helper.vis_stroke_cloud(node_features)
-        # Models.sketch_model_helper.vis_stroke_cloud(gnn_graph.x_dict['brep'])
-        # Models.sketch_model_helper.vis_gt_strokes(gnn_graph.x_dict['brep'], brep_edges_weights)
-        print("output", output)
-        # Models.sketch_model_helper.vis_gt_strokes(node_features, output)
-
+    
     selected_indices_raw = Models.sketch_arguments.face_aggregate.face_aggregate_withMask(node_features, output)
     selected_indices = selected_indices_raw.bool().squeeze()
     selected_node_features = node_features[selected_indices]
     normal = Models.sketch_arguments.face_aggregate.sketch_to_normal(selected_node_features.tolist())
+    if selected_node_features.shape[0] == 0:
+        Models.sketch_model_helper.vis_stroke_cloud(node_features)
+        Models.sketch_model_helper.vis_stroke_cloud(gnn_graph.x_dict['brep'])
+        Models.sketch_model_helper.vis_gt_strokes(gnn_graph.x_dict['brep'], brep_edges_weights)
+        Models.sketch_model_helper.vis_gt_strokes(node_features, output)
+
     sketch_points = Models.sketch_arguments.face_aggregate.extract_unique_points(selected_node_features)
     return selected_indices_raw, sketch_points, normal
 
@@ -185,5 +186,6 @@ for batch in tqdm(data_loader):
         next_op = Op_predict(gnn_graph, current_program)
         print("Next Op", next_op)
         print("------------")
-
+    
+    Models.sketch_model_helper.vis_stroke_cloud(node_features)
     break

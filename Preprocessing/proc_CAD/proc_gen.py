@@ -17,9 +17,9 @@ def random_program(data_directory = None):
         canvas_class.regular_sketch_op()
         canvas_class.extrude_op()
 
-        fillet_times = random.randint(1, 2)
-        for _ in range(fillet_times):
-            canvas_class.random_fillet()
+        # fillet_times = random.randint(1, 2)
+        # for _ in range(fillet_times):
+        #     canvas_class.random_fillet()
 
     canvas_class.write_to_json(data_directory)
 

@@ -63,7 +63,7 @@ def train():
     epochs = 20
 
     # Create a DataLoader
-    dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/full_train_dataset')
+    dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/extrude_only')
 
     # Split dataset into training and validation
     train_size = int(0.8 * len(dataset))
@@ -221,4 +221,4 @@ def eval():
     print(conf_matrix)
 #---------------------------------- Public Functions ----------------------------------#
 
-eval()
+# train()

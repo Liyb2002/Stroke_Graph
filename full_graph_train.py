@@ -103,7 +103,7 @@ def train():
             
             # Forward pass
             x_dict = graph_encoder(gnn_graph.x_dict, gnn_graph.edge_index_dict)
-            output = graph_decoder(x_dict)
+            output = graph_decoder(x_dict, gnn_graph.edge_index_dict)
             
             # prepare gt
             target_op_index = len(program[0]) - 1
@@ -148,7 +148,7 @@ def train():
                 
                 # Forward pass
                 x_dict = graph_encoder(gnn_graph.x_dict, gnn_graph.edge_index_dict)
-                output = graph_decoder(x_dict)
+                output = graph_decoder(x_dict, gnn_graph.edge_index_dict)
                 target_op_index = len(program[0]) - 1
                 op_to_index_matrix = operations_order_matrix
                 kth_operation = Models.sketch_arguments.face_aggregate.get_kth_operation(op_to_index_matrix, target_op_index).to(device)
@@ -203,7 +203,7 @@ def eval():
             
             # Perform a forward pass through the model to get the output
             x_dict = graph_encoder(gnn_graph.x_dict, gnn_graph.edge_index_dict)
-            output = graph_decoder(x_dict)
+            output = graph_decoder(x_dict, gnn_graph.edge_index_dict)
 
             # prepare gt
             target_op_index = len(program[0]) - 1
@@ -257,7 +257,7 @@ def predict_brep_edges(graph_encoder, graph_decoder, batch):
     
     # Perform a forward pass through the model to get the output
     x_dict = graph_encoder(gnn_graph.x_dict, gnn_graph.edge_index_dict)
-    output = graph_decoder(x_dict)
+    output = graph_decoder(x_dict, gnn_graph.edge_index_dict)
 
     return output
 

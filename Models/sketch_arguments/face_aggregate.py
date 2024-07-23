@@ -118,7 +118,7 @@ def vis_planar(plane_chosen, plane_to_node, node_features):
     
 
 
-def face_aggregate_withMask(stroke_matrix, mask, min_threshold = 0.3):
+def face_aggregate_withMask(stroke_matrix, mask, min_threshold = 0.2):
 
     threshold = 0.5
     selected_indices = torch.zeros((stroke_matrix.shape[0], 1), dtype=torch.float32)
