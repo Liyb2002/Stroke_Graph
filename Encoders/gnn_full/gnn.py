@@ -120,6 +120,10 @@ class Final_stroke_finding(nn.Module):
         )
 
     def forward(self, x_dict, edge_index_dict, stroke_weights):
+        brep_stroke_edges = edge_index_dict[('stroke', 'represented_by', 'brep')]
+        stroke_indices = brep_stroke_edges[0]
+        stroke_weights[stroke_indices] = 0
+        
         x_dict['stroke'] = torch.cat((x_dict['stroke'], stroke_weights), dim=-1)
         
         zero_column = torch.zeros(x_dict['brep'].size(0), 1)

@@ -72,22 +72,25 @@ def sketch_predict(gnn_graph, current_program, node_features, brep_stroke_connec
         output = Sketch_empty_decoder(x_dict)
     else:
         x_dict = Sketch_with_brep_encoder(gnn_graph.x_dict, gnn_graph.edge_index_dict)
-        brep_edges_weights = Sketch_with_brep_decoder(x_dict)
+        brep_edges_weights = Sketch_with_brep_decoder(x_dict, gnn_graph.edge_index_dict)
         stroke_weights = Models.sketch_model_helper.integrate_brep_probs(brep_edges_weights, brep_stroke_connection_matrix, stroke_coplanar_matrix)
         
         x_dict = Sketch_with_brep_encoder(gnn_graph.x_dict, gnn_graph.edge_index_dict)
         output = Sketch_choosing_decoder(x_dict, gnn_graph.edge_index_dict, stroke_weights)
     
-    selected_indices_raw = Models.sketch_arguments.face_aggregate.face_aggregate_withMask(node_features, output)
-    selected_indices = selected_indices_raw.bool().squeeze()
-    selected_node_features = node_features[selected_indices]
-    normal = Models.sketch_arguments.face_aggregate.sketch_to_normal(selected_node_features.tolist())
-    if selected_node_features.shape[0] == 0:
         Models.sketch_model_helper.vis_stroke_cloud(node_features)
         Models.sketch_model_helper.vis_stroke_cloud(gnn_graph.x_dict['brep'])
         Models.sketch_model_helper.vis_gt_strokes(gnn_graph.x_dict['brep'], brep_edges_weights)
         Models.sketch_model_helper.vis_gt_strokes(node_features, output)
 
+    selected_indices_raw = Models.sketch_arguments.face_aggregate.face_aggregate_withMask(node_features, output)
+    selected_indices = selected_indices_raw.bool().squeeze()
+    selected_node_features = node_features[selected_indices]
+    normal = Models.sketch_arguments.face_aggregate.sketch_to_normal(selected_node_features.tolist())
+    
+    if selected_node_features.shape[0] == 0:
+        print("failed to produce sketch")
+        
     sketch_points = Models.sketch_arguments.face_aggregate.extract_unique_points(selected_node_features)
     return selected_indices_raw, sketch_points, normal
 

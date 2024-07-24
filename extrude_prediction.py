@@ -37,7 +37,7 @@ optimizer = optim.Adam( list(graph_encoder.parameters()) + list(graph_decoder.pa
 loss_function = nn.BCELoss()
 
 # Load the dataset
-dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/full_train_dataset')
+dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/extrude_only')
 good_data_indices = [i for i, data in enumerate(dataset) if data[5][-1] == 2]
 filtered_dataset = Subset(dataset, good_data_indices)
 print(f"Total number of extrude data: {len(filtered_dataset)}")
