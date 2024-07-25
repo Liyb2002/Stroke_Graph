@@ -77,11 +77,11 @@ def sketch_predict(gnn_graph, current_program, node_features, brep_stroke_connec
         
         x_dict = Sketch_with_brep_encoder(gnn_graph.x_dict, gnn_graph.edge_index_dict)
         output = Sketch_choosing_decoder(x_dict, gnn_graph.edge_index_dict, stroke_weights)
-    
-        Models.sketch_model_helper.vis_stroke_cloud(node_features)
-        Models.sketch_model_helper.vis_stroke_cloud(gnn_graph.x_dict['brep'])
-        Models.sketch_model_helper.vis_gt_strokes(gnn_graph.x_dict['brep'], brep_edges_weights)
-        Models.sketch_model_helper.vis_gt_strokes(node_features, output)
+
+        # Models.sketch_model_helper.vis_stroke_cloud(node_features)
+        # Models.sketch_model_helper.vis_stroke_cloud(gnn_graph.x_dict['brep'])
+        # Models.sketch_model_helper.vis_gt_strokes(gnn_graph.x_dict['brep'], brep_edges_weights)
+        # Models.sketch_model_helper.vis_gt_strokes(node_features, output)
 
     selected_indices_raw = Models.sketch_arguments.face_aggregate.face_aggregate_withMask(node_features, output)
     selected_indices = selected_indices_raw.bool().squeeze()
@@ -152,11 +152,15 @@ for batch in tqdm(data_loader):
         
         # Sketch
         if next_op == 1:
+            print("brep", gnn_graph.x_dict['brep'])
             prev_sketch_index, sketch_points, normal= sketch_predict(gnn_graph, current_program, node_features, brep_stroke_connection_matrix, stroke_coplanar_matrix)
+            print("sketch_points", sketch_points)
             current__brep_class._sketch_op(sketch_points, normal, sketch_points.tolist())
 
         # Extrude
         if next_op == 2:
+            # print("brep", gnn_graph.x_dict['brep'])
+            # print("sketch_points", sketch_points)
             extrude_amount, direction= extrude_predict(gnn_graph, prev_sketch_index, node_features)
             current__brep_class.extrude_op(extrude_amount, direction.tolist())
         

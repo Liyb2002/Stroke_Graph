@@ -175,7 +175,7 @@ def eval():
 
     correct_predictions = 0
     total_predictions = 0
-    for batch in tqdm(train_loader):
+    for batch in tqdm(val_loader):
         node_features, operations_matrix, intersection_matrix, operations_order_matrix, _, program, face_boundary_points, face_feature_gnn_list, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
 
         if edge_features.shape[1] == 0:
@@ -239,6 +239,6 @@ def eval():
 
 #---------------------------------- Public Functions ----------------------------------#
 
-train()
+eval()
 
 

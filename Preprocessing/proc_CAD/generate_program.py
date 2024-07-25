@@ -106,8 +106,14 @@ class Brep:
             amount = abs(amount)
         
         sketch_face = self.Faces[-1]
+        print("sketch_face")
+        for vert in sketch_face.vertices:
+            print("pos", vert.position)
+            
         if sketch_face_opposite_normal == [0,0,0]:
             sketch_face_opposite_normal = [-x for x in sketch_face.normal]
+        else:
+            sketch_face.normal = [-x for x in sketch_face_opposite_normal]
 
         new_vertices = []
         new_edges = []

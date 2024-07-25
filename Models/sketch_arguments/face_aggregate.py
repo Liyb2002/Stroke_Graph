@@ -255,3 +255,14 @@ def get_extrude_amount(stroke_features, chosen_matrix, sketch_strokes):
         direction = direction / torch.norm(direction)
     
     return max_distance, direction
+
+
+def brep_all_covered(brep_features, stroke_features):
+    print("stroke_features", stroke_features)
+    stroke_set = {tuple(round(val, 3) for val in row.tolist()) for row in stroke_features}
+
+    # Check if all brep features are covered by stroke features
+    for brep in brep_features:
+        if tuple(round(val, 3) for val in brep[1]) not in stroke_set:
+            print(f"Feature not contained: {brep}")
+
