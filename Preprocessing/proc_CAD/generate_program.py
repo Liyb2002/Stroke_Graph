@@ -63,6 +63,7 @@ class Brep:
         if not faces_with_future_sketch:
             return False
         target_face = random.choice(faces_with_future_sketch)
+        target_face.face_fixed()
 
         boundary_points = [vert.position for vert in target_face.vertices]
         normal = [ 0 - normal for normal in target_face.normal]
@@ -106,9 +107,6 @@ class Brep:
             amount = abs(amount)
         
         sketch_face = self.Faces[-1]
-        print("sketch_face")
-        for vert in sketch_face.vertices:
-            print("pos", vert.position)
             
         if sketch_face_opposite_normal == [0,0,0]:
             sketch_face_opposite_normal = [-x for x in sketch_face.normal]

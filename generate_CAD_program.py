@@ -21,7 +21,7 @@ import shutil
 import random
 
 # --------------------- Dataset --------------------- #
-dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/full_train_dataset')
+dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/extrude_only_eval')
 good_data_indices = [i for i, data in enumerate(dataset) if data[5][-1] == 0]
 filtered_dataset = Subset(dataset, good_data_indices)
 data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
@@ -70,6 +70,10 @@ def sketch_predict(gnn_graph, current_program, node_features, brep_stroke_connec
     if len(current_program) == 0:
         x_dict = Sketch_empty_encoder(gnn_graph.x_dict, gnn_graph.edge_index_dict)
         output = Sketch_empty_decoder(x_dict)
+
+        Models.sketch_model_helper.vis_stroke_cloud(node_features)
+        Models.sketch_model_helper.vis_stroke_cloud(gnn_graph.x_dict['brep'])
+
     else:
         x_dict = Sketch_with_brep_encoder(gnn_graph.x_dict, gnn_graph.edge_index_dict)
         brep_edges_weights = Sketch_with_brep_decoder(x_dict, gnn_graph.edge_index_dict)
@@ -78,16 +82,17 @@ def sketch_predict(gnn_graph, current_program, node_features, brep_stroke_connec
         x_dict = Sketch_with_brep_encoder(gnn_graph.x_dict, gnn_graph.edge_index_dict)
         output = Sketch_choosing_decoder(x_dict, gnn_graph.edge_index_dict, stroke_weights)
 
-        # Models.sketch_model_helper.vis_stroke_cloud(node_features)
-        # Models.sketch_model_helper.vis_stroke_cloud(gnn_graph.x_dict['brep'])
-        # Models.sketch_model_helper.vis_gt_strokes(gnn_graph.x_dict['brep'], brep_edges_weights)
-        # Models.sketch_model_helper.vis_gt_strokes(node_features, output)
+        Models.sketch_model_helper.vis_stroke_cloud(node_features)
+        Models.sketch_model_helper.vis_stroke_cloud(gnn_graph.x_dict['brep'])
+        Models.sketch_model_helper.vis_gt_strokes(gnn_graph.x_dict['brep'], brep_edges_weights)
 
     selected_indices_raw = Models.sketch_arguments.face_aggregate.face_aggregate_withMask(node_features, output)
     selected_indices = selected_indices_raw.bool().squeeze()
     selected_node_features = node_features[selected_indices]
     normal = Models.sketch_arguments.face_aggregate.sketch_to_normal(selected_node_features.tolist())
     
+    Models.sketch_model_helper.vis_gt_strokes(node_features, selected_indices_raw)
+
     if selected_node_features.shape[0] == 0:
         print("failed to produce sketch")
         
@@ -106,7 +111,7 @@ Extrude_decoder.load_state_dict(torch.load(os.path.join(Extrude_dir, 'graph_deco
 def extrude_predict(gnn_graph, sketch_strokes, node_features):
     x_dict = Extrude_encoder(gnn_graph.x_dict, gnn_graph.edge_index_dict)
     strokes_indices = Extrude_decoder(x_dict, gnn_graph.edge_index_dict, sketch_strokes)
-    extrude_amount, direction = Models.sketch_arguments.face_aggregate.get_extrude_amount(node_features, strokes_indices, sketch_strokes)
+    extrude_amount, direction = Models.sketch_arguments.face_aggregate.get_extrude_amount(node_features, strokes_indices, sketch_strokes, gnn_graph.x_dict['brep'])
     return extrude_amount, direction
 
 # --------------------- Main Code --------------------- #
@@ -149,18 +154,14 @@ for batch in tqdm(data_loader):
         # Terminate
         if next_op == 0 or next_op == 3:
             break
-        
+                    
         # Sketch
         if next_op == 1:
-            print("brep", gnn_graph.x_dict['brep'])
             prev_sketch_index, sketch_points, normal= sketch_predict(gnn_graph, current_program, node_features, brep_stroke_connection_matrix, stroke_coplanar_matrix)
-            print("sketch_points", sketch_points)
             current__brep_class._sketch_op(sketch_points, normal, sketch_points.tolist())
 
         # Extrude
         if next_op == 2:
-            # print("brep", gnn_graph.x_dict['brep'])
-            # print("sketch_points", sketch_points)
             extrude_amount, direction= extrude_predict(gnn_graph, prev_sketch_index, node_features)
             current__brep_class.extrude_op(extrude_amount, direction.tolist())
         

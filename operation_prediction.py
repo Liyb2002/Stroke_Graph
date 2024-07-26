@@ -2,6 +2,7 @@ import Preprocessing.dataloader
 import Preprocessing.gnn_graph_full
 import Preprocessing.SBGCN.SBGCN_graph
 import Preprocessing.SBGCN.SBGCN_network
+import Models.sketch_model_helper
 
 import Encoders.gnn_full.gnn
 
@@ -63,7 +64,7 @@ def train():
     epochs = 20
 
     # Create a DataLoader
-    dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/extrude_only')
+    dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/full_train_dataset')
 
     # Split dataset into training and validation
     train_size = int(0.8 * len(dataset))
@@ -95,7 +96,7 @@ def train():
 
             # Create graph
             gnn_graph = Preprocessing.gnn_graph_full.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
-            gnn_graph.set_brep_connection(edge_features, face_feature_gnn_list)
+            _, _ = gnn_graph.set_brep_connection(edge_features, face_feature_gnn_list)
 
             # program embedding
             gt_next_token = program[0][-1]
@@ -103,6 +104,7 @@ def train():
 
             x_dict = graph_encoder(gnn_graph.x_dict, gnn_graph.edge_index_dict)
             output = graph_decoder(x_dict, current_program)
+
 
             # Forward pass through cross attention model
             loss = criterion(output, gt_next_token)
@@ -138,14 +140,16 @@ def train():
 
                 # Create graph
                 gnn_graph = Preprocessing.gnn_graph_full.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
-                gnn_graph.set_brep_connection(edge_features, face_feature_gnn_list)
+                _, _ = gnn_graph.set_brep_connection(edge_features, face_feature_gnn_list)
 
                 # program embedding
                 gt_next_token = program[0][-1]
                 current_program = program[0][:-1]
-
                 x_dict = graph_encoder(gnn_graph.x_dict, gnn_graph.edge_index_dict)
                 output = graph_decoder(x_dict, current_program)
+
+                if gt_next_token == 0:
+                    print("output", output)
 
                 # Forward pass through cross attention model
                 loss = criterion(output, gt_next_token)
@@ -174,8 +178,8 @@ def eval():
     criterion = nn.CrossEntropyLoss()
 
     # Create a DataLoader for the evaluation dataset
-    dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/full_eval_dataset')
-    eval_loader = DataLoader(dataset, batch_size=1, shuffle=False)
+    dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/extrude_only_eval')
+    eval_loader = DataLoader(dataset, batch_size=1, shuffle=True)
 
     total_eval_loss = 0.0
     all_preds = []
@@ -207,6 +211,8 @@ def eval():
             loss = criterion(output, gt_next_token)
             total_eval_loss += loss.item()
 
+            Models.sketch_model_helper.vis_stroke_cloud(node_features)
+
             # Predictions and labels for confusion matrix
             _, predicted_class = torch.max(output, 0)  # Use dim=0 if output is a single-dimensional tensor
             all_preds.append(predicted_class.item())
@@ -221,4 +227,4 @@ def eval():
     print(conf_matrix)
 #---------------------------------- Public Functions ----------------------------------#
 
-# train()
+eval()

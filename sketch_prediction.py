@@ -65,7 +65,7 @@ filtered_dataset = Subset(dataset, good_data_indices)
 print(f"Total number of sketch data: {len(filtered_dataset)}")
 
 # Split the dataset into training and validation sets
-train_size = int(0.8 * len(filtered_dataset))
+train_size = int(0.95 * len(filtered_dataset))
 val_size = len(filtered_dataset) - train_size
 train_dataset, val_dataset = random_split(filtered_dataset, [train_size, val_size])
 
@@ -175,6 +175,10 @@ def eval():
 
     correct_predictions = 0
     total_predictions = 0
+    
+    sub_correct_predictions = 0
+    sub_total_predictions = 0
+
     for batch in tqdm(val_loader):
         node_features, operations_matrix, intersection_matrix, operations_order_matrix, _, program, face_boundary_points, face_feature_gnn_list, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
 
@@ -216,19 +220,30 @@ def eval():
         gt_mask = (kth_operation > 0).float()
         pred_mask = (sketch_strokes > 0.2).float()
 
-        if not torch.all(pred_mask == gt_mask):
-        #     Models.sketch_model_helper.vis_stroke_cloud(node_features)
-        #     Models.sketch_model_helper.vis_stroke_cloud(edge_features)
-        #     Models.sketch_model_helper.vis_gt_strokes(node_features, kth_operation)
-        #     Models.sketch_model_helper.vis_gt_strokes(node_features, output)
-        
-        #     Models.sketch_model_helper.vis_stroke_cloud(node_features)
-        #     Models.sketch_model_helper.vis_stroke_cloud(edge_features)
-        #     Models.sketch_model_helper.vis_gt_strokes(node_features, kth_operation)
-        #     Models.sketch_model_helper.vis_gt_strokes(node_features, output)
+        if len(program[0]) == 7:
+            sub_total_predictions += 1
 
+        # if len(program[0]) == 3:
+        #     Models.sketch_model_helper.vis_stroke_cloud(node_features)
+        #     Models.sketch_model_helper.vis_stroke_cloud(edge_features)
+        #     Models.sketch_model_helper.vis_gt_strokes(node_features, kth_operation)
+        #     Models.sketch_model_helper.vis_gt_strokes(node_features, sketch_strokes)
+
+        if not torch.all(pred_mask == gt_mask):
+            # if len(program[0]) == 7:
+            #     Models.sketch_model_helper.vis_stroke_cloud(node_features)
+            #     Models.sketch_model_helper.vis_stroke_cloud(edge_features)
+            #     Models.sketch_model_helper.vis_gt_strokes(node_features, kth_operation)
+            #     Models.sketch_model_helper.vis_gt_strokes(node_features, sketch_strokes)
+        
+            #     Models.sketch_model_helper.vis_stroke_cloud(node_features)
+            #     Models.sketch_model_helper.vis_stroke_cloud(edge_features)
+            #     Models.sketch_model_helper.vis_gt_strokes(node_features, kth_operation)
+            #     Models.sketch_model_helper.vis_gt_strokes(node_features, sketch_strokes)
             pass
         else:
+            if len(program[0]) == 7:
+                sub_correct_predictions += 1
             correct_predictions += 1
 
     # Compute the accuracy
@@ -236,6 +251,9 @@ def eval():
 
     # Print the accuracy
     print(f"Correct Predictions {correct_predictions} out of total {total_predictions}, Accuracy: {accuracy * 100:.2f}%")
+
+    subaccuracy = sub_correct_predictions / sub_total_predictions
+    print(f"subaccuracy : {subaccuracy * 100:.2f}%")
 
 #---------------------------------- Public Functions ----------------------------------#
 

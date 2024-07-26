@@ -81,9 +81,8 @@ class SketchHeteroData(HeteroData):
         edge_indices = torch.nonzero(connection_matrix == 1).t()
         self['stroke', 'represented_by', 'brep'].edge_index = edge_indices.long()
 
-        edge_connected = torch.sum(connection_matrix, dim=0) > 0
-
-        print("edge_connected?", edge_connected)
+        # edge_connected = torch.sum(connection_matrix, dim=0) > 0
+        # print("edge_connected?", edge_connected)
 
         return connection_matrix
 

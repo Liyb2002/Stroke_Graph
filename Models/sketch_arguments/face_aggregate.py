@@ -131,7 +131,7 @@ def face_aggregate_withMask(stroke_matrix, mask, min_threshold = 0.2):
         group = satisfy(chosen_indices, stroke_matrix)
 
         if len(group) == 0:
-            threshold -= 0.1
+            threshold -= 0.05
             continue
         
         selected_indices[torch.tensor(group)] = 1
@@ -213,7 +213,7 @@ def extract_unique_points(sketch):
 
 
 
-def get_extrude_amount(stroke_features, chosen_matrix, sketch_strokes):
+def get_extrude_amount(stroke_features, chosen_matrix, sketch_strokes, brep_features):
     # Ensure chosen_matrix and sketch_strokes are boolean tensors for indexing
     chosen_mask = chosen_matrix > 0.5
     sketch_mask = sketch_strokes > 0.5
@@ -248,21 +248,73 @@ def get_extrude_amount(stroke_features, chosen_matrix, sketch_strokes):
         distances.append(distance.item())
     
     # Find the maximum distance
-    max_distance = max(distances) if distances else 0
+    extrude_amount = max(distances) if distances else 0
     
     # Normalize the direction
     if direction is not None:
         direction = direction / torch.norm(direction)
     
-    return max_distance, direction
+    extrude_amount = subtract_or_extrude(sketch_stroke_features, brep_features, direction, extrude_amount)
+
+    return extrude_amount, direction
 
 
-def brep_all_covered(brep_features, stroke_features):
-    print("stroke_features", stroke_features)
-    stroke_set = {tuple(round(val, 3) for val in row.tolist()) for row in stroke_features}
 
-    # Check if all brep features are covered by stroke features
-    for brep in brep_features:
-        if tuple(round(val, 3) for val in brep[1]) not in stroke_set:
-            print(f"Feature not contained: {brep}")
+def subtract_or_extrude(sketch_stroke_features, brep_features, extrude_direction, extrude_amount):
 
+    def find_shared_axis_and_value(sketch_points):
+        unique_x = np.unique(sketch_points[:, [0, 3]])
+        unique_y = np.unique(sketch_points[:, [1, 4]])
+        unique_z = np.unique(sketch_points[:, [2, 5]])
+        
+        if len(unique_x) == 1:
+            return 'x', unique_x[0]
+        elif len(unique_y) == 1:
+            return 'y', unique_y[0]
+        elif len(unique_z) == 1:
+            return 'z', unique_z[0]
+        else:
+            raise ValueError("No common axis found in sketch_points")
+
+    def find_brep_sketch_point(brep_features, axis, shared_value):
+        for brep_line in brep_features:
+            point1 = brep_line[:3]
+            point2 = brep_line[3:]
+            if (axis == 'x' and (point1[0] == shared_value or point2[0] == shared_value)) or \
+               (axis == 'y' and (point1[1] == shared_value or point2[1] == shared_value)) or \
+               (axis == 'z' and (point1[2] == shared_value or point2[2] == shared_value)):
+                return point1 if point1[axis_index] == shared_value else point2
+        raise ValueError("No matching brep point found")
+
+
+    # First, we want to find the direction of the sketch_point in the brep 
+    def find_brep_line_with_point(brep_features, brep_sketch_point):
+        brep_sketch_point = np.array(brep_sketch_point)
+        directions = []
+        for brep_line in brep_features:
+            point1 = brep_line[:3]
+            point2 = brep_line[3:]
+            if np.allclose(point1, brep_sketch_point) or np.allclose(point2, brep_sketch_point):
+                direction = point2 - point1 if np.allclose(point1, brep_sketch_point) else point1 - point2
+                direction_normalized = direction / np.linalg.norm(direction)
+                directions.append(direction_normalized)
+
+        return directions
+
+    # Now, if the target extrude is the same direction as the brep, adjust the extrude_amount to negative
+    def adjust_extrude_amount(directions, extrude_direction, extrude_amount):
+        extrude_direction = np.array(extrude_direction) / np.linalg.norm(extrude_direction)
+        for direction in directions:
+            if np.allclose(direction, extrude_direction):
+                return -extrude_amount
+            elif np.allclose(direction, -extrude_direction):
+                return extrude_amount
+        return extrude_amount
+    
+    axis, shared_value = find_shared_axis_and_value(sketch_stroke_features)
+    axis_index = {'x': 0, 'y': 1, 'z': 2}[axis]
+    brep_sketch_point = find_brep_sketch_point(brep_features, axis, shared_value)
+    directions = find_brep_line_with_point(brep_features, brep_sketch_point)
+    adjusted_extrude_amount = adjust_extrude_amount(directions, extrude_direction, extrude_amount)
+    
+    return adjusted_extrude_amount
