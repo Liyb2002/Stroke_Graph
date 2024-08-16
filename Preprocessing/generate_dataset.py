@@ -14,6 +14,8 @@ import os
 import pickle
 import torch
 
+import numpy as np
+
 class dataset_generator():
 
     def __init__(self):
@@ -26,7 +28,7 @@ class dataset_generator():
         self.generate_dataset('dataset/full_train_dataset', number_data = 0, start = 1400)
         self.generate_dataset('dataset/full_eval_dataset', number_data = 0, start = 0)
         self.generate_dataset('dataset/extrude_only', number_data = 0, start = 0)
-        self.generate_dataset('dataset/extrude_only_eval', number_data = 200, start = 0)
+        self.generate_dataset('dataset/extrude_only_test', number_data = 1, start = 0)
 
 
     def generate_dataset(self, dir, number_data, start):
@@ -84,37 +86,97 @@ class dataset_generator():
         brep_files = [file_name for file_name in os.listdir(brep_directory)
               if file_name.startswith('brep_') and file_name.endswith('.step')]
         brep_files.sort(key=lambda x: int(x.split('_')[1].split('.')[0]))
-
-        for file_name in brep_files:
                 
-            brep_file_path = os.path.join(brep_directory, file_name)
-            face_feature_gnn_list, face_features_list, edge_features_list, vertex_features_list, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id= Preprocessing.SBGCN.brep_read.create_graph_from_step_file(brep_file_path)
+        for i in range(1, len(brep_files) + 1):
+            sublist = brep_files[:i]
+            print("---------")
+            final_brep_edges = []
+            prev_brep_edges = []
+            for file_name in sublist:
+                brep_file_path = os.path.join(brep_directory, file_name)
+                edge_features_list = Preprocessing.SBGCN.brep_read.create_graph_from_step_file(brep_file_path)
 
-            face_features = Preprocessing.proc_CAD.helper.preprocess_features(face_features_list)
-            edge_features = Preprocessing.proc_CAD.helper.preprocess_features(edge_features_list)
-            vertex_features = Preprocessing.proc_CAD.helper.preprocess_features(vertex_features_list)
+                # If this is the first brep
+                if len(prev_brep_edges) == 0:
+                    final_brep_edges = edge_features_list
+                    prev_brep_edges = edge_features_list
+                else:
+                    # We already have brep
+                    new_features = find_new_features(final_brep_edges, edge_features_list) 
 
-            # extract index i
-            index = file_name.split('_')[1].split('.')[0]
-            os.makedirs(os.path.join(data_directory, 'brep_embedding'), exist_ok=True)
-            embeddings_file_path = os.path.join(data_directory, 'brep_embedding', f'brep_info_{index}.pkl')
-            with open(embeddings_file_path, 'wb') as f:
-                pickle.dump({
-                    'face_feature_gnn_list': face_feature_gnn_list, 
-                    'face_features': face_features,
-                    'edge_features': edge_features,
-                    'vertex_features': vertex_features,
+
+
+
+
+        #     face_features = Preprocessing.proc_CAD.helper.preprocess_features(face_features_list)
+        #     vertex_features = Preprocessing.proc_CAD.helper.preprocess_features(vertex_features_list)
+
+        #     # extract index i
+        #     index = file_name.split('_')[1].split('.')[0]
+        #     os.makedirs(os.path.join(data_directory, 'brep_embedding'), exist_ok=True)
+        #     embeddings_file_path = os.path.join(data_directory, 'brep_embedding', f'brep_info_{index}.pkl')
+        #     with open(embeddings_file_path, 'wb') as f:
+        #         pickle.dump({
+        #             'face_feature_gnn_list': face_feature_gnn_list, 
+        #             'face_features': face_features,
+        #             'edge_features': edge_features,
+        #             'vertex_features': vertex_features,
                     
-                    'edge_index_face_edge_list': edge_index_face_edge_list,
-                    'edge_index_edge_vertex_list': edge_index_edge_vertex_list,
-                    'edge_index_face_face_list': edge_index_face_face_list,
+        #             'edge_index_face_edge_list': edge_index_face_edge_list,
+        #             'edge_index_edge_vertex_list': edge_index_edge_vertex_list,
+        #             'edge_index_face_face_list': edge_index_face_face_list,
 
-                    'index_id': torch.tensor(index_id, dtype=torch.int64)
+        #             'index_id': torch.tensor(index_id, dtype=torch.int64)
 
-                }, f)
+        #         }, f)
 
-        # 4) Save rendered 2D image
-        Preprocessing.proc_CAD.render_images.run_render_images(data_directory)
+        # # 4) Save rendered 2D image
+        # Preprocessing.proc_CAD.render_images.run_render_images(data_directory)
 
 
         return True
+
+
+
+def find_new_features(final_brep_edges, edge_features_list):
+    def is_same_direction(line1, line2):
+        """Check if two lines have the same direction."""
+        vector1 = np.array(line1[3:]) - np.array(line1[:3])
+        vector2 = np.array(line2[3:]) - np.array(line2[:3])
+        return np.allclose(vector1 / np.linalg.norm(vector1), vector2 / np.linalg.norm(vector2))
+
+    def is_point_on_line(point, line):
+        """Check if a point lies on a given line."""
+        start, end = np.array(line[:3]), np.array(line[3:])
+        return np.allclose(np.cross(end - start, point - start), 0)
+
+    def is_line_contained(line1, line2):
+        """Check if line1 is contained within line2."""
+        return is_point_on_line(np.array(line1[:3]), line2) and is_point_on_line(np.array(line1[3:]), line2)
+
+    new_features = []
+
+    for edge_line in edge_features_list:
+        relation_found = False
+
+        for brep_line in final_brep_edges:
+            if np.allclose(edge_line, brep_line):
+                # Relation 1: The two lines are exactly the same
+                relation_found = True
+                break
+            
+            elif is_same_direction(edge_line, brep_line) and is_line_contained(brep_line, edge_line):
+                # Relation 2: edge_features_list line contains final_brep_edges line
+                relation_found = True
+                break
+            
+            elif is_same_direction(edge_line, brep_line) and is_line_contained(edge_line, brep_line):
+                # Relation 3: final_brep_edges line contains edge_features_list line
+                relation_found = True
+                break
+        
+        if not relation_found:
+            # Relation 4: None of the relations apply
+            new_features.append(edge_line)
+
+    return new_features

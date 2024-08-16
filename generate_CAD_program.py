@@ -118,7 +118,7 @@ def extrude_predict(gnn_graph, sketch_strokes, node_features):
 
 for batch in tqdm(data_loader):
     node_features, operations_matrix, intersection_matrix, operations_order_matrix, _, program, face_boundary_points, face_feature_gnn_list, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
-
+    
     # Stroke Cloud data process
     node_features = node_features.to(torch.float32).to(device).squeeze(0)
     operations_matrix = operations_matrix.to(torch.float32).to(device)
@@ -159,6 +159,7 @@ for batch in tqdm(data_loader):
         if next_op == 1:
             prev_sketch_index, sketch_points, normal= sketch_predict(gnn_graph, current_program, node_features, brep_stroke_connection_matrix, stroke_coplanar_matrix)
             current__brep_class._sketch_op(sketch_points, normal, sketch_points.tolist())
+            print("sketch_points", sketch_points)
 
         # Extrude
         if next_op == 2:
