@@ -73,6 +73,7 @@ class Program_Graph_Dataset(Dataset):
         # 3) Load Brep embedding
         if int(index) == -1:
             final_brep_edges = torch.empty(0, dtype=torch.float32)
+            new_features = torch.empty(0, dtype=torch.float32)
 
         else:
             embedding_path = os.path.join(self.data_path, data_dir, 'brep_embedding', f'brep_info_{index}.pkl')
@@ -80,8 +81,9 @@ class Program_Graph_Dataset(Dataset):
                 embedding_data = pickle.load(f)
             
             final_brep_edges = embedding_data['final_brep_edges']
+            new_features = embedding_data['new_features']
             
-        return node_features, operations_matrix, intersection_matrix, operations_order_matrix, face_to_stroke, program, final_brep_edges
+        return node_features, operations_matrix, intersection_matrix, operations_order_matrix, face_to_stroke, program, final_brep_edges, new_features
 
     
 

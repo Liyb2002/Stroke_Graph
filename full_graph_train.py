@@ -186,15 +186,16 @@ def eval():
 
     with torch.no_grad():
         for batch in tqdm(full_loader, desc="Evaluating"):
-            node_features, operations_matrix, intersection_matrix, operations_order_matrix, _, program, edge_features = batch
+            node_features, operations_matrix, intersection_matrix, operations_order_matrix, _, program, edge_features, new_features= batch
 
             edge_features = torch.tensor(edge_features, dtype=torch.float32)
+            new_features = torch.tensor(new_features, dtype=torch.float32)
 
             if edge_features.shape[1] == 0:
                 continue
 
             Models.sketch_model_helper.vis_stroke_cloud(node_features.squeeze(0))
-            Models.sketch_model_helper.vis_stroke_cloud(edge_features)
+            Models.sketch_model_helper.vis_stroke_cloud(new_features)
 
             # Skip batches with no edge features
 

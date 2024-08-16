@@ -89,7 +89,6 @@ class dataset_generator():
                 
         for i in range(1, len(brep_files) + 1):
             sublist = brep_files[:i]
-            print("------------------------------------------------------")
             final_brep_edges = []
             final_brep_coplanar = []
 
@@ -98,15 +97,19 @@ class dataset_generator():
             # Run the cascade brep features algorithm
             for file_name in sublist:
                 brep_file_path = os.path.join(brep_directory, file_name)
+                
+                # len(edge_coplanar_list) = num_faces
                 edge_features_list, edge_coplanar_list= Preprocessing.SBGCN.brep_read.create_graph_from_step_file(brep_file_path)
 
                 # If this is the first brep
                 if len(prev_brep_edges) == 0:
                     final_brep_edges = edge_features_list
                     prev_brep_edges = edge_features_list
+                    new_features = edge_features_list
+                    final_brep_coplanar = edge_coplanar_list
                 else:
                     # We already have brep
-                    new_features = find_new_features(prev_brep_edges, edge_features_list) 
+                    new_features = find_new_features(prev_brep_edges, edge_features_list, edge_coplanar_list) 
                     final_brep_edges += new_features
                     prev_brep_edges = edge_features_list
 
@@ -116,7 +119,8 @@ class dataset_generator():
             embeddings_file_path = os.path.join(data_directory, 'brep_embedding', f'brep_info_{index}.pkl')
             with open(embeddings_file_path, 'wb') as f:
                 pickle.dump({
-                    'final_brep_edges': final_brep_edges
+                    'final_brep_edges': final_brep_edges,
+                    'new_features': new_features
                 }, f)
 
 
@@ -128,7 +132,7 @@ class dataset_generator():
 
 
 
-def find_new_features(final_brep_edges, edge_features_list):
+def find_new_features(final_brep_edges, edge_features_list, edge_coplanar_list):
     def is_same_direction(line1, line2):
         """Check if two lines have the same direction."""
         vector1 = np.array(line1[3:]) - np.array(line1[:3])
@@ -145,16 +149,15 @@ def find_new_features(final_brep_edges, edge_features_list):
         return is_point_on_line(np.array(line1[:3]), line2) and is_point_on_line(np.array(line1[3:]), line2)
 
     new_features = []
+    new_planes = []
 
     for edge_line in edge_features_list:
         relation_found = False
 
-        print("----------")
         for brep_line in final_brep_edges:
             if np.allclose(edge_line, brep_line):
                 # Relation 1: The two lines are exactly the same
                 relation_found = True
-                print("Relation 1")
                 break
             
             elif is_same_direction(edge_line, brep_line) and is_line_contained(brep_line, edge_line):
@@ -184,6 +187,5 @@ def find_new_features(final_brep_edges, edge_features_list):
         if not relation_found:
             # Relation 4: None of the relations apply
             new_features.append(edge_line)
-            print("not relation_found")
 
     return new_features
