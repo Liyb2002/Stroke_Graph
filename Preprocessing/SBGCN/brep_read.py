@@ -151,14 +151,20 @@ def count_type(index_to_type_dict):
 def create_graph_from_step_file(step_path):
     shape = read_step_file(step_path)
 
+    # each sublist in edge_coplanar_list is a face that has multiple edges
+    # each sublist in edge_features_list is a edge with 6 values
+    edge_coplanar_list = []
     edge_features_list = []
 
     face_explorer = TopExp_Explorer(shape, TopAbs_FACE)
     while face_explorer.More():
         face = topods.Face(face_explorer.Current())
+        face_feature_gnn = create_face_node_gnn(face)
+        edge_coplanar_list.append(face_feature_gnn)
 
         # Explore edges of the face
         edge_explorer = TopExp_Explorer(face, TopAbs_EDGE)
+
         while edge_explorer.More():
             edge = topods.Edge(edge_explorer.Current())
             edge_features = create_edge_node(edge)
@@ -172,11 +178,10 @@ def create_graph_from_step_file(step_path):
             
             edge_explorer.Next()
         
-        
         face_explorer.Next()
 
     
-    return edge_features_list
+    return edge_features_list, edge_coplanar_list
 
 
 class BRep_Dataset(Dataset):

@@ -72,31 +72,16 @@ class Program_Graph_Dataset(Dataset):
 
         # 3) Load Brep embedding
         if int(index) == -1:
-            face_feature_gnn_list = torch.empty(0, dtype=torch.float32)
-            face_features = torch.empty(0, dtype=torch.float32)
-            edge_features = torch.empty(0, dtype=torch.float32)
-            vertex_features = torch.empty(0, dtype=torch.float32)
-            edge_index_face_edge_list = torch.empty((2, 0), dtype=torch.long)
-            edge_index_edge_vertex_list = torch.empty((2, 0), dtype=torch.long)
-            edge_index_face_face_list = torch.empty((2, 0), dtype=torch.long)
-            index_id = torch.empty(0, dtype=torch.long)
+            final_brep_edges = torch.empty(0, dtype=torch.float32)
 
         else:
             embedding_path = os.path.join(self.data_path, data_dir, 'brep_embedding', f'brep_info_{index}.pkl')
             with open(embedding_path, 'rb') as f:
                 embedding_data = pickle.load(f)
             
-            face_feature_gnn_list = embedding_data['face_feature_gnn_list']
-            face_features = embedding_data['face_features']
-            edge_features = embedding_data['edge_features']
-            vertex_features = embedding_data['vertex_features']
-            edge_index_face_edge_list = embedding_data['edge_index_face_edge_list']
-            edge_index_edge_vertex_list = embedding_data['edge_index_edge_vertex_list']
-            edge_index_face_face_list = embedding_data['edge_index_face_face_list']
-            index_id = embedding_data['index_id']
-
+            final_brep_edges = embedding_data['final_brep_edges']
             
-        return node_features, operations_matrix, intersection_matrix, operations_order_matrix, face_to_stroke, program, face_boundary_points, face_feature_gnn_list, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id
+        return node_features, operations_matrix, intersection_matrix, operations_order_matrix, face_to_stroke, program, final_brep_edges
 
     
 

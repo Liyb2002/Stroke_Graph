@@ -299,8 +299,6 @@ def vis_stroke_cloud(node_features):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
-    node_features = node_features.squeeze(0)
-
     # Plot all strokes in blue
     for stroke in node_features:
         start = stroke[:3].numpy()
