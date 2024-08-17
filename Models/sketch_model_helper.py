@@ -316,20 +316,44 @@ def vis_stroke_cloud(node_features):
 
 
 def vis_gt_strokes(brep_edge_features, gt_matrix):
+    # print("gt_matrix", gt_matrix)
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
     num_edges = brep_edge_features.shape[0]
 
+    # Initialize min and max limits
+    x_min, x_max = float('inf'), float('-inf')
+    y_min, y_max = float('inf'), float('-inf')
+    z_min, z_max = float('inf'), float('-inf')
+
     for i in range(num_edges):
-        start_point = brep_edge_features[ i, :3]
+        start_point = brep_edge_features[i, :3]
         end_point = brep_edge_features[i, 3:]
 
         col = 'blue'
-        if gt_matrix[i] > 0.5:
+        if gt_matrix[i] > 0.5:  
             col = 'red'
 
+        # Update the min and max limits for each axis
+        x_min, x_max = min(x_min, start_point[0], end_point[0]), max(x_max, start_point[0], end_point[0])
+        y_min, y_max = min(y_min, start_point[1], end_point[1]), max(y_max, start_point[1], end_point[1])
+        z_min, z_max = min(z_min, start_point[2], end_point[2]), max(z_max, start_point[2], end_point[2])
+
         ax.plot([start_point[0], end_point[0]], [start_point[1], end_point[1]], [start_point[2], end_point[2]], color=col)
+
+    # Compute the center of the shape
+    x_center = (x_min + x_max) / 2
+    y_center = (y_min + y_max) / 2
+    z_center = (z_min + z_max) / 2
+
+    # Compute the maximum difference across x, y, z directions
+    max_diff = max(x_max - x_min, y_max - y_min, z_max - z_min)
+
+    # Set the same limits for x, y, and z axes centered around the computed center
+    ax.set_xlim([x_center - max_diff / 2, x_center + max_diff / 2])
+    ax.set_ylim([y_center - max_diff / 2, y_center + max_diff / 2])
+    ax.set_zlim([z_center - max_diff / 2, z_center + max_diff / 2])
 
     ax.set_xlabel('X')
     ax.set_ylabel('Y')

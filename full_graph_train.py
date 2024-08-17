@@ -66,11 +66,10 @@ def load_dataset():
     train_dataset, val_dataset = random_split(filtered_dataset, [train_size, val_size])
 
     # Create DataLoaders for training and validation
-    train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=1, shuffle=True)
-    full_loader = DataLoader(filtered_dataset, batch_size=1, shuffle=True)
+    train_loader = DataLoader(filtered_dataset, batch_size=1, shuffle=True)
+    val_loader = DataLoader(filtered_dataset, batch_size=1, shuffle=True)
 
-    return train_loader, val_loader, full_loader
+    return train_loader, val_loader
 
 
 def train():
@@ -86,22 +85,19 @@ def train():
         total_train_loss = 0.0
         
         for batch in tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs} - Training"):
-            node_features, operations_matrix, intersection_matrix, operations_order_matrix, _, program, final_brep_edges = batch
+            node_features, operations_matrix, intersection_matrix, operations_order_matrix, _, program, edge_features, brep_coplanar, new_features= batch
+        
+            node_features = node_features.to(torch.float32).to(device).squeeze(0)
+            edge_features = torch.tensor(edge_features, dtype=torch.float32)
+            new_features = torch.tensor(new_features, dtype=torch.float32)
 
             if edge_features.shape[1] == 0:
                 continue
-            
-            # Move to device
-            node_features = node_features.to(torch.float32).to(device).squeeze(0)
-            operations_matrix = operations_matrix.to(torch.float32).to(device)
-            intersection_matrix = intersection_matrix.to(torch.float32).to(device)
-            operations_order_matrix = operations_order_matrix.to(torch.float32).to(device)
-            edge_features = edge_features.to(torch.float32).to(device).squeeze(0)
-            
-            # Create graph
+
+            # Now build graph
             gnn_graph = Preprocessing.gnn_graph_full.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
-            gnn_graph.set_brep_connection(edge_features, face_feature_gnn_list)
-            
+            gnn_graph.set_brep_connection(edge_features, brep_coplanar)
+
             # Forward pass
             x_dict = graph_encoder(gnn_graph.x_dict, gnn_graph.edge_index_dict)
             output = graph_decoder(x_dict, gnn_graph.edge_index_dict)
@@ -113,6 +109,8 @@ def train():
             chosen_mask = kth_operation.flatten() == 1
             chosen_node_matrix = node_features[chosen_mask]
             gt = Models.sketch_model_helper.chosen_edge_id(chosen_node_matrix, edge_features)
+
+            Models.sketch_model_helper.vis_gt_strokes(node_features, gt)
 
             if gt is None:
                 continue
@@ -186,18 +184,19 @@ def eval():
 
     with torch.no_grad():
         for batch in tqdm(full_loader, desc="Evaluating"):
-            node_features, operations_matrix, intersection_matrix, operations_order_matrix, _, program, edge_features, new_features= batch
-
+            node_features, operations_matrix, intersection_matrix, operations_order_matrix, _, program, edge_features, brep_coplanar, new_features= batch
+        
+            node_features = node_features.to(torch.float32).to(device).squeeze(0)
             edge_features = torch.tensor(edge_features, dtype=torch.float32)
             new_features = torch.tensor(new_features, dtype=torch.float32)
 
             if edge_features.shape[1] == 0:
                 continue
 
-            Models.sketch_model_helper.vis_stroke_cloud(node_features.squeeze(0))
-            Models.sketch_model_helper.vis_stroke_cloud(new_features)
+            # Now build graph
+            gnn_graph = Preprocessing.gnn_graph_full.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
+            gnn_graph.set_brep_connection(edge_features, brep_coplanar)
 
-            # Skip batches with no edge features
 
 
 
@@ -228,4 +227,4 @@ def predict_brep_edges(graph_encoder, graph_decoder, batch):
 
 #---------------------------------- Public Functions ----------------------------------#
 
-eval()
+train()

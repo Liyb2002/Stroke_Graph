@@ -28,7 +28,7 @@ class dataset_generator():
         self.generate_dataset('dataset/full_train_dataset', number_data = 0, start = 1400)
         self.generate_dataset('dataset/full_eval_dataset', number_data = 0, start = 0)
         self.generate_dataset('dataset/extrude_only', number_data = 0, start = 0)
-        self.generate_dataset('dataset/extrude_only_test', number_data = 1, start = 0)
+        self.generate_dataset('dataset/extrude_only_test', number_data = 10, start = 0)
 
 
     def generate_dataset(self, dir, number_data, start):
@@ -109,8 +109,9 @@ class dataset_generator():
                     final_brep_coplanar = edge_coplanar_list
                 else:
                     # We already have brep
-                    new_features = find_new_features(prev_brep_edges, edge_features_list, edge_coplanar_list) 
+                    new_features, new_planes= find_new_features(prev_brep_edges, edge_features_list, edge_coplanar_list) 
                     final_brep_edges += new_features
+                    final_brep_coplanar += new_planes
                     prev_brep_edges = edge_features_list
 
             # Now write the brep features
@@ -120,6 +121,7 @@ class dataset_generator():
             with open(embeddings_file_path, 'wb') as f:
                 pickle.dump({
                     'final_brep_edges': final_brep_edges,
+                    'final_brep_coplanar': final_brep_coplanar, 
                     'new_features': new_features
                 }, f)
 
@@ -148,8 +150,14 @@ def find_new_features(final_brep_edges, edge_features_list, edge_coplanar_list):
         """Check if line1 is contained within line2."""
         return is_point_on_line(np.array(line1[:3]), line2) and is_point_on_line(np.array(line1[3:]), line2)
 
+    def replace_line_in_faces(faces, old_line, new_line):
+        """Replace the old line with the new line in all faces."""
+        for face in faces:
+            for i in range(len(face)):
+                if np.allclose(face[i], old_line):
+                    face[i] = new_line
+
     new_features = []
-    new_planes = []
 
     for edge_line in edge_features_list:
         relation_found = False
@@ -169,6 +177,7 @@ def find_new_features(final_brep_edges, edge_features_list, edge_coplanar_list):
                 else:
                     new_line = brep_line[:3] + edge_line[3:]
 
+                replace_line_in_faces(edge_coplanar_list, brep_line, new_line)
                 new_features.append(new_line)
                 break
             
@@ -181,6 +190,7 @@ def find_new_features(final_brep_edges, edge_features_list, edge_coplanar_list):
                 else:
                     new_line = edge_line[:3] + brep_line[3:]
 
+                replace_line_in_faces(edge_coplanar_list, brep_line, new_line)
                 new_features.append(new_line)
                 break
         
@@ -188,4 +198,11 @@ def find_new_features(final_brep_edges, edge_features_list, edge_coplanar_list):
             # Relation 4: None of the relations apply
             new_features.append(edge_line)
 
-    return new_features
+    new_planes = []
+    for face in edge_coplanar_list:
+        for line in face:
+            if any(np.allclose(line, new_feature) for new_feature in new_features):
+                new_planes.append(face)
+                break
+
+    return new_features, new_planes

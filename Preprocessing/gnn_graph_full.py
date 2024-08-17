@@ -45,16 +45,18 @@ class SketchHeteroData(HeteroData):
 
         self.intersection_matrix = intersection_matrix
 
-    def set_brep_connection(self, brep_edge_features, face_feature_gnn_list):
+    def set_brep_connection(self, brep_edge_features, brep_coplanar):
         self['brep'].x = brep_edge_features
         brep_stroke_connection_matrix = self.brep_stroke_cloud_connect(self['stroke'].x, brep_edge_features)
-        self.brep_coplanar(face_feature_gnn_list)
+        self.brep_coplanar(brep_coplanar)
         stroke_coplanar_matrix = self.stroke_coplanar()
         return brep_stroke_connection_matrix, stroke_coplanar_matrix
   
     
 
     def brep_stroke_cloud_connect(self, node_features, edge_features):
+
+
         n = node_features.shape[0]
         m = edge_features.shape[0]
         
@@ -68,12 +70,11 @@ class SketchHeteroData(HeteroData):
                     connection_matrix[i, j] = 1
         
         edge_indices = torch.nonzero(connection_matrix == 1).t()
-        self['stroke', 'represented_by', 'brep'].edge_index = edge_indices.long()
-
+        self['stroke', 'represented_by', 'brep'].edge_index = edge_indices.long()        
         return connection_matrix
 
     
-    def brep_coplanar(self, face_feature_gnn_list):
+    def brep_coplanar(self, brep_coplanar):
         num_nodes = self['brep'].x.shape[0]
         connectivity_matrix = torch.zeros((num_nodes, num_nodes), dtype=torch.float32)
 
@@ -94,7 +95,7 @@ class SketchHeteroData(HeteroData):
             return -1
 
         # Iterate over each face
-        for face in face_feature_gnn_list:
+        for face in brep_coplanar:
             face_edge_indices = []
             for edge in face:
                 edge_index = find_edge_index(edge, self['brep'].x)
