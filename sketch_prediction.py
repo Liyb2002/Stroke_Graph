@@ -1,3 +1,4 @@
+
 import Preprocessing.dataloader
 import Preprocessing.gnn_graph_full
 import Preprocessing.SBGCN.SBGCN_graph
@@ -6,8 +7,6 @@ import Preprocessing.SBGCN.SBGCN_network
 import Models.sketch_model_helper
 import Encoders.gnn_full.gnn
 import Models.sketch_arguments.face_aggregate
-
-import full_graph_train
 
 from torch.utils.data import DataLoader, random_split, Subset
 from tqdm import tqdm
@@ -21,146 +20,139 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 
-brep_graph_encoder = Encoders.gnn_full.gnn.SemanticModule()
-brep_graph_decoder = Encoders.gnn_full.gnn.Sketch_brep_prediction()
-strokes_decoder = Encoders.gnn_full.gnn.Final_stroke_finding()
+# Initialize your model and move it to the device
+graph_encoder = Encoders.gnn_full.gnn.SemanticModule()
+graph_decoder = Encoders.gnn_full.gnn.Sketch_prediction()
+
+graph_encoder.to(device)
+graph_decoder.to(device)
 
 current_dir = os.getcwd()
-save_dir = os.path.join(current_dir, 'checkpoints', 'stroke_choosing')
+save_dir = os.path.join(current_dir, 'checkpoints', 'sketch_prediction')
 os.makedirs(save_dir, exist_ok=True)
-
-def load_brep_models():
-    # Load models if they exist
-    brep_model_dir = os.path.join(current_dir, 'checkpoints', 'full_graph_sketch')
-
-    if os.path.exists(os.path.join(brep_model_dir, 'graph_encoder.pth')):
-        brep_graph_encoder.load_state_dict(torch.load(os.path.join(brep_model_dir, 'graph_encoder.pth')))
-        print("Loaded graph_encoder")
-
-    if os.path.exists(os.path.join(brep_model_dir, 'graph_decoder.pth')):
-        brep_graph_decoder.load_state_dict(torch.load(os.path.join(brep_model_dir, 'graph_decoder.pth')))
-        print("Loaded graph_decoder")
 
 
 def load_models():
     # Load models if they exist
-    if os.path.exists(os.path.join(save_dir, 'strokes_decoder.pth')):
-        strokes_decoder.load_state_dict(torch.load(os.path.join(save_dir, 'strokes_decoder.pth')))
-        print("Loaded strokes_decoder")
+    if os.path.exists(os.path.join(save_dir, 'graph_encoder.pth')):
+        graph_encoder.load_state_dict(torch.load(os.path.join(save_dir, 'graph_encoder.pth')))
+        print("Loaded graph_encoder")
+
+    if os.path.exists(os.path.join(save_dir, 'graph_decoder.pth')):
+        graph_decoder.load_state_dict(torch.load(os.path.join(save_dir, 'graph_decoder.pth')))
+        print("Loaded graph_decoder")
 
 def save_models():
-    torch.save(strokes_decoder.state_dict(), os.path.join(save_dir, 'strokes_decoder.pth'))
+    torch.save(graph_encoder.state_dict(), os.path.join(save_dir, 'graph_encoder.pth'))
+    torch.save(graph_decoder.state_dict(), os.path.join(save_dir, 'graph_decoder.pth'))
     print("Saved models.")
 
 
 
 # Define optimizer and loss function
-optimizer = optim.Adam( strokes_decoder.parameters(), lr=0.0004)
+optimizer = optim.Adam( list(graph_encoder.parameters()) + list(graph_decoder.parameters()), lr=0.0004)
 loss_function = nn.BCELoss()
 
-# Load the dataset
-dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/extrude_only')
-good_data_indices = [i for i, data in enumerate(dataset) if data[5][-1] == 1]
-filtered_dataset = Subset(dataset, good_data_indices)
-print(f"Total number of sketch data: {len(filtered_dataset)}")
+def load_dataset():
+    # Load the dataset
+    dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/extrude_only_test')
+    good_data_indices = [i for i, data in enumerate(dataset) if data[5][-1] == 1]
+    filtered_dataset = Subset(dataset, good_data_indices)
+    print(f"Total number of sketch data: {len(filtered_dataset)}")
 
-# Split the dataset into training and validation sets
-train_size = int(0.95 * len(filtered_dataset))
-val_size = len(filtered_dataset) - train_size
-train_dataset, val_dataset = random_split(filtered_dataset, [train_size, val_size])
+    # Split the dataset into training and validation sets
+    train_size = int(0.8 * len(filtered_dataset))
+    val_size = len(filtered_dataset) - train_size
+    train_dataset, val_dataset = random_split(filtered_dataset, [train_size, val_size])
 
-# Create DataLoaders for training and validation
-train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True)
-val_loader = DataLoader(val_dataset, batch_size=1, shuffle=True)
+    # Create DataLoaders for training and validation
+    train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=1, shuffle=True)
+
+    return train_loader, val_loader
 
 
+def load_eval_dataset():
+    # Load the dataset
+    dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/extrude_only_simple')
+    good_data_indices = [i for i, data in enumerate(dataset) if data[5][-1] == 1]
+    filtered_dataset = Subset(dataset, good_data_indices)
+    print(f"Total number of sketch data: {len(filtered_dataset)}")
+
+    eval_loader = DataLoader(filtered_dataset, batch_size=1, shuffle=False)
+
+    return eval_loader
 
 
 def train():
-    load_brep_models()
+    train_loader, val_loader = load_dataset()
     # Training and validation loop
     best_val_loss = float('inf')
     epochs = 30
 
     for epoch in range(epochs):
         # Training loop
-        strokes_decoder.train()
+        graph_encoder.train()
+        graph_decoder.train()
         total_train_loss = 0.0
         
         for batch in tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs} - Training"):
-            node_features, operations_matrix, intersection_matrix, operations_order_matrix, _, program, face_boundary_points, face_feature_gnn_list, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
-
-            if edge_features.shape[1] == 0:
-                continue
-            
-            # get the predictions 
-            brep_edges_weights = full_graph_train.predict_brep_edges(brep_graph_encoder, brep_graph_decoder, batch)
-
-            # move tp device
+            node_features, operations_matrix, intersection_matrix, operations_order_matrix, _, program, edge_features, brep_coplanar, new_features= batch
+        
             node_features = node_features.to(torch.float32).to(device).squeeze(0)
-            operations_matrix = operations_matrix.to(torch.float32).to(device)
-            intersection_matrix = intersection_matrix.to(torch.float32).to(device)
-            operations_order_matrix = operations_order_matrix.to(torch.float32).to(device)
-            edge_features = edge_features.to(torch.float32).to(device).squeeze(0)
+            edge_features = torch.tensor(edge_features, dtype=torch.float32)
 
-
+            # Now build graph
             gnn_graph = Preprocessing.gnn_graph_full.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
-            brep_stroke_connection_matrix, stroke_coplanar_matrix = gnn_graph.set_brep_connection(edge_features, face_feature_gnn_list)
+            gnn_graph.set_brep_connection(edge_features)
 
-            stroke_weights = Models.sketch_model_helper.integrate_brep_probs(brep_edges_weights, brep_stroke_connection_matrix, stroke_coplanar_matrix)
-
-            x_dict = brep_graph_encoder(gnn_graph.x_dict, gnn_graph.edge_index_dict)
-            output = strokes_decoder(x_dict, gnn_graph.edge_index_dict, stroke_weights)
+            # Forward pass
+            x_dict = graph_encoder(gnn_graph.x_dict, gnn_graph.edge_index_dict)
+            output = graph_decoder(x_dict)
             
-            # Prepare gt
+            # prepare gt
             target_op_index = len(program[0]) - 1
             op_to_index_matrix = operations_order_matrix
-            kth_operation = Models.sketch_arguments.face_aggregate.get_kth_operation(op_to_index_matrix, target_op_index).to(device)
-            
+            kth_operation = Models.sketch_arguments.face_aggregate.get_kth_operation(op_to_index_matrix, target_op_index).to(device).to(torch.float32)
+
+            # Models.sketch_model_helper.vis_gt_strokes(node_features, kth_operation)
+                
             loss = loss_function(output, kth_operation)
             loss.backward()
             optimizer.step()
             optimizer.zero_grad()
             
             total_train_loss += loss.item()
-
-
-        strokes_decoder.eval()
+        
+        # Validation loop
+        graph_encoder.eval()
+        graph_decoder.eval()
         total_val_loss = 0.0
+        
         with torch.no_grad():
-            for batch in tqdm(val_loader, desc=f"Epoch {epoch+1}/{epochs} - Training"):
-                node_features, operations_matrix, intersection_matrix, operations_order_matrix, _, program, face_boundary_points, face_feature_gnn_list, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
-
-                if edge_features.shape[1] == 0:
-                    continue
-                
-                # get the predictions 
-                brep_edges_weights = full_graph_train.predict_brep_edges(brep_graph_encoder, brep_graph_decoder, batch)
-
-                # move tp device
+            for batch in tqdm(val_loader, desc=f"Epoch {epoch+1}/{epochs} - Validation"):
+                node_features, operations_matrix, intersection_matrix, operations_order_matrix, _, program, edge_features, brep_coplanar, new_features= batch
+            
                 node_features = node_features.to(torch.float32).to(device).squeeze(0)
-                operations_matrix = operations_matrix.to(torch.float32).to(device)
-                intersection_matrix = intersection_matrix.to(torch.float32).to(device)
-                operations_order_matrix = operations_order_matrix.to(torch.float32).to(device)
-                edge_features = edge_features.to(torch.float32).to(device).squeeze(0)
+                edge_features = torch.tensor(edge_features, dtype=torch.float32)
 
-
+                # Now build graph
                 gnn_graph = Preprocessing.gnn_graph_full.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
-                brep_stroke_connection_matrix, stroke_coplanar_matrix = gnn_graph.set_brep_connection(edge_features, face_feature_gnn_list)
+                gnn_graph.set_brep_connection(edge_features)
 
-                stroke_weights = Models.sketch_model_helper.integrate_brep_probs(brep_edges_weights, brep_stroke_connection_matrix, stroke_coplanar_matrix)
-
-                x_dict = brep_graph_encoder(gnn_graph.x_dict, gnn_graph.edge_index_dict)
-                output = strokes_decoder(x_dict, gnn_graph.edge_index_dict, stroke_weights)
+                # Forward pass
+                x_dict = graph_encoder(gnn_graph.x_dict, gnn_graph.edge_index_dict)
+                output = graph_decoder(x_dict)
                 
-                # Prepare gt
+                # prepare gt
                 target_op_index = len(program[0]) - 1
                 op_to_index_matrix = operations_order_matrix
-                kth_operation = Models.sketch_arguments.face_aggregate.get_kth_operation(op_to_index_matrix, target_op_index).to(device)
-                
+                kth_operation = Models.sketch_arguments.face_aggregate.get_kth_operation(op_to_index_matrix, target_op_index).to(device).to(torch.float32)
+            
+                # Compute loss
                 loss = loss_function(output, kth_operation)
                 total_val_loss += loss.item()
-
+        
         if best_val_loss > total_val_loss:
             best_val_loss =  total_val_loss
             save_models()
@@ -169,94 +161,80 @@ def train():
         print(f"Epoch {epoch+1}: Train Loss = {total_train_loss/len(train_loader)}, Val Loss = {total_val_loss/len(val_loader)}")
 
 
+
 def eval():
-    load_brep_models()
     load_models()
+    eval_loader = load_eval_dataset()
 
-    correct_predictions = 0
-    total_predictions = 0
+    graph_encoder.eval()
+    graph_decoder.eval()
+    total_val_loss = 0.0
     
-    sub_correct_predictions = 0
-    sub_total_predictions = 0
+    total_predictions = 0
+    correct_predictions = 0
 
-    for batch in tqdm(val_loader):
-        node_features, operations_matrix, intersection_matrix, operations_order_matrix, _, program, face_boundary_points, face_feature_gnn_list, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
-
-        if edge_features.shape[1] == 0:
-            continue
+    with torch.no_grad():
+        for batch in tqdm(eval_loader, desc="Evaluating"):
+            node_features, operations_matrix, intersection_matrix, operations_order_matrix, _, program, edge_features, brep_coplanar, new_features= batch
         
-        # get the predictions 
-        brep_edges_weights = full_graph_train.predict_brep_edges(brep_graph_encoder, brep_graph_decoder, batch)
+            node_features = node_features.to(torch.float32).to(device).squeeze(0)
+            edge_features = torch.tensor(edge_features, dtype=torch.float32)
 
-        # move tp device
-        node_features = node_features.to(torch.float32).to(device).squeeze(0)
-        operations_matrix = operations_matrix.to(torch.float32).to(device)
-        intersection_matrix = intersection_matrix.to(torch.float32).to(device)
-        operations_order_matrix = operations_order_matrix.to(torch.float32).to(device)
-        edge_features = edge_features.to(torch.float32).to(device).squeeze(0)
+            # Now build graph
+            gnn_graph = Preprocessing.gnn_graph_full.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
+            gnn_graph.set_brep_connection(edge_features)
+
+            # Forward pass
+            x_dict = graph_encoder(gnn_graph.x_dict, gnn_graph.edge_index_dict)
+            output = graph_decoder(x_dict)
+            
+            # prepare gt
+            target_op_index = len(program[0]) - 1
+            op_to_index_matrix = operations_order_matrix
+            kth_operation = Models.sketch_arguments.face_aggregate.get_kth_operation(op_to_index_matrix, target_op_index).to(device).to(torch.float32)
+            
+            if len(program[0]) > 3:
+                output_binary = (output > 0.5).float()
+
+                # Ensure gt and output are the same shape
+                kth_operation = kth_operation.view(-1, 1)
+                output_binary = output_binary.view(-1, 1)
+                if torch.equal(output_binary, kth_operation):
+                    correct_predictions += 1
+                # else:
+                #     Models.sketch_model_helper.vis_stroke_cloud(node_features)
+                #     Models.sketch_model_helper.vis_stroke_cloud(edge_features)
+                #     Models.sketch_model_helper.vis_gt_strokes(node_features, kth_operation)
+                    # Models.sketch_model_helper.vis_gt_strokes(node_features, output)
+
+                total_predictions += 1
 
 
-        gnn_graph = Preprocessing.gnn_graph_full.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
-        brep_stroke_connection_matrix, stroke_coplanar_matrix = gnn_graph.set_brep_connection(edge_features, face_feature_gnn_list)
+    # Calculate accuracy
+    accuracy = correct_predictions / total_predictions if total_predictions > 0 else 0
+    print(f"Number Predictions: {total_predictions:.4f}")
+    print(f"Evaluation Accuracy: {accuracy:.4f}")
 
-        stroke_weights = Models.sketch_model_helper.integrate_brep_probs(brep_edges_weights, brep_stroke_connection_matrix, stroke_coplanar_matrix)
 
-        x_dict = brep_graph_encoder(gnn_graph.x_dict, gnn_graph.edge_index_dict)
-        output = strokes_decoder(x_dict, gnn_graph.edge_index_dict, stroke_weights)
-        
-        # Prepare gt
-        target_op_index = len(program[0]) - 1
-        op_to_index_matrix = operations_order_matrix
-        kth_operation = Models.sketch_arguments.face_aggregate.get_kth_operation(op_to_index_matrix, target_op_index).to(device)
-        
-        # Find the exact sketch
-        sketch_strokes = Models.sketch_arguments.face_aggregate.face_aggregate_withMask(node_features, output)
 
-        # Models.sketch_model_helper.vis_gt_strokes(node_features, kth_operation)
-        # Models.sketch_model_helper.vis_gt_strokes(node_features, sketch_strokes)
+def predict_brep_edges(graph_encoder, graph_decoder, batch):
 
-        # Vis
-        total_predictions +=1 
-        gt_mask = (kth_operation > 0).float()
-        pred_mask = (sketch_strokes > 0.2).float()
+    node_features, operations_matrix, intersection_matrix, operations_order_matrix, _, program, edge_features, brep_coplanar, new_features= batch
 
-        if len(program[0]) == 7:
-            sub_total_predictions += 1
+    node_features = node_features.to(torch.float32).to(device).squeeze(0)
+    edge_features = torch.tensor(edge_features, dtype=torch.float32)
 
-        # if len(program[0]) == 3:
-        #     Models.sketch_model_helper.vis_stroke_cloud(node_features)
-        #     Models.sketch_model_helper.vis_stroke_cloud(edge_features)
-        #     Models.sketch_model_helper.vis_gt_strokes(node_features, kth_operation)
-        #     Models.sketch_model_helper.vis_gt_strokes(node_features, sketch_strokes)
+    # Now build graph
+    gnn_graph = Preprocessing.gnn_graph_full.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
+    gnn_graph.set_brep_connection(edge_features, brep_coplanar)
 
-        if not torch.all(pred_mask == gt_mask):
-            # if len(program[0]) == 7:
-            #     Models.sketch_model_helper.vis_stroke_cloud(node_features)
-            #     Models.sketch_model_helper.vis_stroke_cloud(edge_features)
-            #     Models.sketch_model_helper.vis_gt_strokes(node_features, kth_operation)
-            #     Models.sketch_model_helper.vis_gt_strokes(node_features, sketch_strokes)
-        
-            #     Models.sketch_model_helper.vis_stroke_cloud(node_features)
-            #     Models.sketch_model_helper.vis_stroke_cloud(edge_features)
-            #     Models.sketch_model_helper.vis_gt_strokes(node_features, kth_operation)
-            #     Models.sketch_model_helper.vis_gt_strokes(node_features, sketch_strokes)
-            pass
-        else:
-            if len(program[0]) == 7:
-                sub_correct_predictions += 1
-            correct_predictions += 1
+    # Forward pass
+    x_dict = graph_encoder(gnn_graph.x_dict, gnn_graph.edge_index_dict)
+    output = graph_decoder(x_dict, gnn_graph.edge_index_dict)
 
-    # Compute the accuracy
-    accuracy = correct_predictions / total_predictions
+    return output
 
-    # Print the accuracy
-    print(f"Correct Predictions {correct_predictions} out of total {total_predictions}, Accuracy: {accuracy * 100:.2f}%")
-
-    subaccuracy = sub_correct_predictions / sub_total_predictions
-    print(f"subaccuracy : {subaccuracy * 100:.2f}%")
 
 #---------------------------------- Public Functions ----------------------------------#
 
 eval()
-
-

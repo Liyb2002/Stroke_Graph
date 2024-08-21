@@ -299,13 +299,36 @@ def vis_stroke_cloud(node_features):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
-    # Plot all strokes in blue
+    # Initialize min and max limits
+    x_min, x_max = float('inf'), float('-inf')
+    y_min, y_max = float('inf'), float('-inf')
+    z_min, z_max = float('inf'), float('-inf')
+
+    # Plot all strokes in blue and compute limits
     for stroke in node_features:
         start = stroke[:3].numpy()
         end = stroke[3:].numpy()
         
+        # Update the min and max limits for each axis
+        x_min, x_max = min(x_min, start[0], end[0]), max(x_max, start[0], end[0])
+        y_min, y_max = min(y_min, start[1], end[1]), max(y_max, start[1], end[1])
+        z_min, z_max = min(z_min, start[2], end[2]), max(z_max, start[2], end[2])
+
         # Plot the line segment for the stroke in blue
         ax.plot([start[0], end[0]], [start[1], end[1]], [start[2], end[2]], marker='o', color='blue')
+
+    # Compute the center of the shape
+    x_center = (x_min + x_max) / 2
+    y_center = (y_min + y_max) / 2
+    z_center = (z_min + z_max) / 2
+
+    # Compute the maximum difference across x, y, z directions
+    max_diff = max(x_max - x_min, y_max - y_min, z_max - z_min)
+
+    # Set the same limits for x, y, and z axes centered around the computed center
+    ax.set_xlim([x_center - max_diff / 2, x_center + max_diff / 2])
+    ax.set_ylim([y_center - max_diff / 2, y_center + max_diff / 2])
+    ax.set_zlim([z_center - max_diff / 2, z_center + max_diff / 2])
 
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
@@ -383,6 +406,123 @@ def vis_predicted_strokes(brep_edge_features, predicted_matrix):
             col = 'red'
 
         ax.plot([start_point[0], end_point[0]], [start_point[1], end_point[1]], [start_point[2], end_point[2]], color=col)
+
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+
+    plt.show()
+
+
+
+def vis_left_stroke(node_features, edge_features, gt_matrix):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Initialize min and max limits
+    x_min, x_max = float('inf'), float('-inf')
+    y_min, y_max = float('inf'), float('-inf')
+    z_min, z_max = float('inf'), float('-inf')
+
+    # Plot node_features in blue
+    for stroke in node_features:
+        start = stroke[:3].numpy()
+        end = stroke[3:].numpy()
+
+        # Update the min and max limits for each axis
+        x_min, x_max = min(x_min, start[0], end[0]), max(x_max, start[0], end[0])
+        y_min, y_max = min(y_min, start[1], end[1]), max(y_max, start[1], end[1])
+        z_min, z_max = min(z_min, start[2], end[2]), max(z_max, start[2], end[2])
+
+        ax.plot([start[0], end[0]], [start[1], end[1]], [start[2], end[2]], marker='o', color='blue')
+
+    # Plot edge_features in green
+    for stroke in edge_features:
+        start = stroke[:3].numpy()
+        end = stroke[3:].numpy()
+
+        # Update the min and max limits for each axis
+        x_min, x_max = min(x_min, start[0], end[0]), max(x_max, start[0], end[0])
+        y_min, y_max = min(y_min, start[1], end[1]), max(y_max, start[1], end[1])
+        z_min, z_max = min(z_min, start[2], end[2]), max(z_max, start[2], end[2])
+
+        ax.plot([start[0], end[0]], [start[1], end[1]], [start[2], end[2]], color='green')
+
+    # Lastly, color specific strokes based on gt_matrix
+    for i, stroke in enumerate(edge_features):
+        if gt_matrix[i] > 0.5:
+            start = stroke[:3].numpy()
+            end = stroke[3:].numpy()
+            ax.plot([start[0], end[0]], [start[1], end[1]], [start[2], end[2]], color='red')
+
+    # Compute the center of the shape
+    x_center = (x_min + x_max) / 2
+    y_center = (y_min + y_max) / 2
+    z_center = (z_min + z_max) / 2
+
+    # Compute the maximum difference across x, y, z directions
+    max_diff = max(x_max - x_min, y_max - y_min, z_max - z_min)
+
+    # Set the same limits for x, y, and z axes centered around the computed center
+    ax.set_xlim([x_center - max_diff / 2, x_center + max_diff / 2])
+    ax.set_ylim([y_center - max_diff / 2, y_center + max_diff / 2])
+    ax.set_zlim([z_center - max_diff / 2, z_center + max_diff / 2])
+
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+
+    plt.show()
+
+
+
+def vis_compare(node_features, edge_features):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Initialize min and max limits
+    x_min, x_max = float('inf'), float('-inf')
+    y_min, y_max = float('inf'), float('-inf')
+    z_min, z_max = float('inf'), float('-inf')
+
+    # Plot node_features in blue and compute limits
+    for stroke in node_features:
+        start = stroke[:3].numpy()  # Start point of the stroke (x1, y1, z1)
+        end = stroke[3:].numpy()    # End point of the stroke (x2, y2, z2)
+        
+        # Update the min and max limits for each axis
+        x_min, x_max = min(x_min, start[0], end[0]), max(x_max, start[0], end[0])
+        y_min, y_max = min(y_min, start[1], end[1]), max(y_max, start[1], end[1])
+        z_min, z_max = min(z_min, start[2], end[2]), max(z_max, start[2], end[2])
+
+        # Plot the line segment for the stroke in blue
+        ax.plot([start[0], end[0]], [start[1], end[1]], [start[2], end[2]], marker='o', color='blue')
+
+    # Plot edge_features in green and update limits
+    for edge in edge_features:
+        start = edge[:3].numpy()  # Start point of the edge (x1, y1, z1)
+        end = edge[3:].numpy()    # End point of the edge (x2, y2, z2)
+        
+        # Update the min and max limits for each axis
+        x_min, x_max = min(x_min, start[0], end[0]), max(x_max, start[0], end[0])
+        y_min, y_max = min(y_min, start[1], end[1]), max(y_max, start[1], end[1])
+        z_min, z_max = min(z_min, start[2], end[2]), max(z_max, start[2], end[2])
+
+        # Plot the line segment for the edge in green
+        ax.plot([start[0], end[0]], [start[1], end[1]], [start[2], end[2]], marker='o', color='green')
+
+    # Compute the center of the shape
+    x_center = (x_min + x_max) / 2
+    y_center = (y_min + y_max) / 2
+    z_center = (z_min + z_max) / 2
+
+    # Compute the maximum difference across x, y, z directions
+    max_diff = max(x_max - x_min, y_max - y_min, z_max - z_min)
+
+    # Set the same limits for x, y, and z axes centered around the computed center
+    ax.set_xlim([x_center - max_diff / 2, x_center + max_diff / 2])
+    ax.set_ylim([y_center - max_diff / 2, y_center + max_diff / 2])
+    ax.set_zlim([z_center - max_diff / 2, z_center + max_diff / 2])
 
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
@@ -785,4 +925,8 @@ def choose_extrude_opposite_face(sketch_strokes, extrude_strokes_raw, node_featu
                 extrude_strokes[i] = 1
     
     return extrude_strokes
+
+
+def all_stroke_represented(node_features):
+    return torch.all(node_features[:, -1] == 1).item()
     

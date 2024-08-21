@@ -14,6 +14,9 @@ import os
 import pickle
 import torch
 
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
 import numpy as np
 
 class dataset_generator():
@@ -23,12 +26,9 @@ class dataset_generator():
         #     shutil.rmtree('dataset')
         # os.makedirs('dataset', exist_ok=True)
 
-        self.generate_dataset('dataset/train_dataset', number_data = 0, start = 0)
-        self.generate_dataset('dataset/eval_dataset', number_data = 0, start = 0)
-        self.generate_dataset('dataset/full_train_dataset', number_data = 0, start = 1400)
-        self.generate_dataset('dataset/full_eval_dataset', number_data = 0, start = 0)
-        self.generate_dataset('dataset/extrude_only', number_data = 0, start = 0)
-        self.generate_dataset('dataset/extrude_only_test', number_data = 10, start = 0)
+        self.generate_dataset('dataset/extrude_only_simple', number_data = 300, start = 0)
+        self.generate_dataset('dataset/extrude_only_test', number_data = 0, start = 0)
+        self.generate_dataset('dataset/extrude_only_eval', number_data = 0, start = 0)
 
 
     def generate_dataset(self, dir, number_data, start):
@@ -86,7 +86,6 @@ class dataset_generator():
         brep_files = [file_name for file_name in os.listdir(brep_directory)
               if file_name.startswith('brep_') and file_name.endswith('.step')]
         brep_files.sort(key=lambda x: int(x.split('_')[1].split('.')[0]))
-                
         for i in range(1, len(brep_files) + 1):
             sublist = brep_files[:i]
             final_brep_edges = []
@@ -115,6 +114,7 @@ class dataset_generator():
                     prev_brep_edges = edge_features_list
 
             # Now write the brep features
+            
             index = sublist[-1].split('_')[1].split('.')[0]
             os.makedirs(os.path.join(data_directory, 'brep_embedding'), exist_ok=True)
             embeddings_file_path = os.path.join(data_directory, 'brep_embedding', f'brep_info_{index}.pkl')
@@ -206,3 +206,61 @@ def find_new_features(final_brep_edges, edge_features_list, edge_coplanar_list):
                 break
 
     return new_features, new_planes
+
+
+
+
+
+def vis_compare(node_features, edge_features):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Initialize min and max limits
+    x_min, x_max = float('inf'), float('-inf')
+    y_min, y_max = float('inf'), float('-inf')
+    z_min, z_max = float('inf'), float('-inf')
+
+    # Plot node_features in blue and compute limits
+    for stroke in node_features:
+        start = stroke[:3].numpy()  # Start point of the stroke (x1, y1, z1)
+        end = stroke[3:].numpy()    # End point of the stroke (x2, y2, z2)
+        
+        # Update the min and max limits for each axis
+        x_min, x_max = min(x_min, start[0], end[0]), max(x_max, start[0], end[0])
+        y_min, y_max = min(y_min, start[1], end[1]), max(y_max, start[1], end[1])
+        z_min, z_max = min(z_min, start[2], end[2]), max(z_max, start[2], end[2])
+
+        # Plot the line segment for the stroke in blue
+        ax.plot([start[0], end[0]], [start[1], end[1]], [start[2], end[2]], marker='o', color='blue')
+
+    # Plot edge_features in green and update limits
+    for edge in edge_features:
+        start = edge[:3].numpy()  # Start point of the edge (x1, y1, z1)
+        end = edge[3:].numpy()    # End point of the edge (x2, y2, z2)
+        
+        # Update the min and max limits for each axis
+        x_min, x_max = min(x_min, start[0], end[0]), max(x_max, start[0], end[0])
+        y_min, y_max = min(y_min, start[1], end[1]), max(y_max, start[1], end[1])
+        z_min, z_max = min(z_min, start[2], end[2]), max(z_max, start[2], end[2])
+
+        # Plot the line segment for the edge in green
+        ax.plot([start[0], end[0]], [start[1], end[1]], [start[2], end[2]], marker='o', color='green')
+
+    # Compute the center of the shape
+    x_center = (x_min + x_max) / 2
+    y_center = (y_min + y_max) / 2
+    z_center = (z_min + z_max) / 2
+
+    # Compute the maximum difference across x, y, z directions
+    max_diff = max(x_max - x_min, y_max - y_min, z_max - z_min)
+
+    # Set the same limits for x, y, and z axes centered around the computed center
+    ax.set_xlim([x_center - max_diff / 2, x_center + max_diff / 2])
+    ax.set_ylim([y_center - max_diff / 2, y_center + max_diff / 2])
+    ax.set_zlim([z_center - max_diff / 2, z_center + max_diff / 2])
+
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+
+    plt.show()

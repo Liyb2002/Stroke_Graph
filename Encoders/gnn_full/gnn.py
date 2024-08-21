@@ -7,15 +7,15 @@ from torch_geometric.data import HeteroData
 import Encoders.gnn_full.basic
 
 class SemanticModule(nn.Module):
-    def __init__(self, in_channels=6, mlp_channels=16):
+    def __init__(self, in_channels=7, mlp_channels=16):
         super(SemanticModule, self).__init__()
-        self.local_head = Encoders.gnn_full.basic.GeneralHeteroConv(['intersects_mean', 'temp_previous_add',  'represented_by_mean', 'brepcoplanar_max', 'strokecoplanar_max'], in_channels, 32)
+        self.local_head = Encoders.gnn_full.basic.GeneralHeteroConv(['intersects_mean', 'temp_previous_add', 'strokecoplanar_max'], in_channels, 32)
 
         self.layers = nn.ModuleList([
-            Encoders.gnn_full.basic.ResidualGeneralHeteroConvBlock(['intersects_mean','temp_previous_add',  'represented_by_mean', 'brepcoplanar_max', 'strokecoplanar_max'], 32, 32),
-            Encoders.gnn_full.basic.ResidualGeneralHeteroConvBlock(['intersects_mean','temp_previous_add',  'represented_by_mean', 'brepcoplanar_max', 'strokecoplanar_max'], 32, 32),
-            Encoders.gnn_full.basic.ResidualGeneralHeteroConvBlock(['intersects_mean','temp_previous_add',  'represented_by_mean', 'brepcoplanar_max', 'strokecoplanar_max'], 32, 32),
-            Encoders.gnn_full.basic.ResidualGeneralHeteroConvBlock(['intersects_mean','temp_previous_add','represented_by_mean', 'brepcoplanar_max', 'strokecoplanar_max'], 32, 32),
+            Encoders.gnn_full.basic.ResidualGeneralHeteroConvBlock(['intersects_mean', 'temp_previous_add', 'strokecoplanar_max'], 32, 32),
+            Encoders.gnn_full.basic.ResidualGeneralHeteroConvBlock(['intersects_mean', 'temp_previous_add', 'strokecoplanar_max'], 32, 32),
+            Encoders.gnn_full.basic.ResidualGeneralHeteroConvBlock(['intersects_mean', 'temp_previous_add', 'strokecoplanar_max'], 32, 32),
+            Encoders.gnn_full.basic.ResidualGeneralHeteroConvBlock(['intersects_mean', 'temp_previous_add', 'strokecoplanar_max'], 32, 32)
         ])
 
 
@@ -63,35 +63,10 @@ class Program_prediction(nn.Module):
         return logits
     
 
-class Sketch_brep_prediction(nn.Module):
+
+class Sketch_prediction(nn.Module):
     def __init__(self, hidden_channels=128):
-        super(Sketch_brep_prediction, self).__init__()
-
-        self.local_head = nn.Linear(64, 64) 
-        self.decoder = nn.Sequential(
-            nn.Linear(64, hidden_channels),
-            nn.ReLU(inplace=True),
-            nn.Linear(hidden_channels, 1),
-        )
-
-    def forward(self, x_dict, edge_index_dict):
-
-        brep_embeddings_clone = torch.zeros((x_dict['brep'].shape[0], 64))
- 
-        brep_stroke_edges = edge_index_dict[('stroke', 'represented_by', 'brep')]
-        stroke_indices = brep_stroke_edges[0]
-        brep_indices = brep_stroke_edges[1]
-
-        brep_embeddings_clone[brep_indices] = torch.cat( (x_dict['stroke'][stroke_indices] , x_dict['brep'][brep_indices]), dim=-1)
-
-        features = self.local_head(brep_embeddings_clone)
-        return torch.sigmoid(self.decoder(features))
-
-
-
-class Empty_brep_prediction(nn.Module):
-    def __init__(self, hidden_channels=128):
-        super(Empty_brep_prediction, self).__init__()
+        super(Sketch_prediction, self).__init__()
 
         self.local_head = nn.Linear(32, 64) 
         self.decoder = nn.Sequential(
@@ -103,36 +78,6 @@ class Empty_brep_prediction(nn.Module):
     def forward(self, x_dict):
         features = self.local_head(x_dict['stroke'])
         return torch.sigmoid(self.decoder(features))
-
-
-
-class Final_stroke_finding(nn.Module):
-    def __init__(self, hidden_channels=128):
-        super(Final_stroke_finding, self).__init__()
-
-        self.edge_conv = Encoders.gnn_full.basic.ResidualGeneralHeteroConvBlock(['intersects_mean','temp_previous_add',  'represented_by_mean', 'brepcoplanar_max', 'strokecoplanar_max'], 33, 33)
-
-        self.local_head = nn.Linear(33, 64) 
-        self.decoder = nn.Sequential(
-            nn.Linear(64, hidden_channels),
-            nn.ReLU(inplace=True),
-            nn.Linear(hidden_channels, 1),
-        )
-
-    def forward(self, x_dict, edge_index_dict, stroke_weights):
-        brep_stroke_edges = edge_index_dict[('stroke', 'represented_by', 'brep')]
-        stroke_indices = brep_stroke_edges[0]
-        stroke_weights[stroke_indices] = 0
-        
-        x_dict['stroke'] = torch.cat((x_dict['stroke'], stroke_weights), dim=-1)
-        
-        zero_column = torch.zeros(x_dict['brep'].size(0), 1)
-        x_dict['brep'] = torch.cat((x_dict['brep'], zero_column), dim=-1)
-
-        x_dict = self.edge_conv(x_dict, edge_index_dict)
-        features = self.local_head(x_dict['stroke'])
-        return torch.sigmoid(self.decoder(features))
-
 
 
 class ExtrudingStrokePrediction(nn.Module):

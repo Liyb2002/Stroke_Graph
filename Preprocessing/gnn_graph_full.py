@@ -44,75 +44,26 @@ class SketchHeteroData(HeteroData):
 
 
         self.intersection_matrix = intersection_matrix
+        self.stroke_coplanar()
 
-    def set_brep_connection(self, brep_edge_features, brep_coplanar):
-        self['brep'].x = brep_edge_features
-        brep_stroke_connection_matrix = self.brep_stroke_cloud_connect(self['stroke'].x, brep_edge_features)
-        self.brep_coplanar(brep_coplanar)
-        stroke_coplanar_matrix = self.stroke_coplanar()
-        return brep_stroke_connection_matrix, stroke_coplanar_matrix
-  
-    
-
-    def brep_stroke_cloud_connect(self, node_features, edge_features):
-
-
-        n = node_features.shape[0]
-        m = edge_features.shape[0]
+    def set_brep_connection(self, brep_edge_features):
+        n = self['stroke'].x.shape[0]
+        m = brep_edge_features.shape[0]
         
-        # Initialize the (n, m) matrix with zeros
-        connection_matrix = torch.zeros((n, m), dtype=torch.float32)
+        # Initialize the (n, 1) matrix with zeros
+        connection_matrix = torch.zeros((n, 1), dtype=torch.float32)
         
         # Compare each node feature with each edge feature
         for i in range(n):
             for j in range(m):
-                if torch.equal(node_features[i], edge_features[j]):
-                    connection_matrix[i, j] = 1
-        
-        edge_indices = torch.nonzero(connection_matrix == 1).t()
-        self['stroke', 'represented_by', 'brep'].edge_index = edge_indices.long()        
-        return connection_matrix
+                if torch.equal(self['stroke'].x[i], brep_edge_features[j]):
+                    connection_matrix[i] = 1
+                    break  # No need to check further if a match is found
 
+        # Concatenate the connection_matrix with node_features
+        self['stroke'].x = torch.cat((self['stroke'].x, connection_matrix), dim=1)
+  
     
-    def brep_coplanar(self, brep_coplanar):
-        num_nodes = self['brep'].x.shape[0]
-        connectivity_matrix = torch.zeros((num_nodes, num_nodes), dtype=torch.float32)
-
-        # Function to find index of an edge in self.brep['x']
-        def find_edge_index(edge, brep_edges):
-            edge_points = [round(edge[i].item(), 3) for i in range(6)]
-            edge_point1 = edge_points[:3]
-            edge_point2 = edge_points[3:]
-
-            for idx, brep_edge in enumerate(brep_edges):
-                brep_edge_points = [round(brep_edge[i].item(), 3) for i in range(6)]
-                brep_edge_point1 = brep_edge_points[:3]
-                brep_edge_point2 = brep_edge_points[3:]
-
-                if (edge_point1 == brep_edge_point1 and edge_point2 == brep_edge_point2) or \
-                   (edge_point1 == brep_edge_point2 and edge_point2 == brep_edge_point1):
-                    return idx
-            return -1
-
-        # Iterate over each face
-        for face in brep_coplanar:
-            face_edge_indices = []
-            for edge in face:
-                edge_index = find_edge_index(edge, self['brep'].x)
-                if edge_index != -1:
-                    face_edge_indices.append(edge_index)
-
-            # Mark all edges in the same face as connected
-            for i in range(len(face_edge_indices)):
-                for j in range(i + 1, len(face_edge_indices)):
-                    idx1 = face_edge_indices[i]
-                    idx2 = face_edge_indices[j]
-                    connectivity_matrix[idx1, idx2] = 1
-                    connectivity_matrix[idx2, idx1] = 1
-
-        edge_indices = torch.nonzero(connectivity_matrix == 1).t()
-        self['brep', 'brepcoplanar', 'brep'].edge_index = edge_indices.long()
-
 
     def stroke_coplanar(self):
         node_features = self['stroke'].x

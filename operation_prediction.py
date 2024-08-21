@@ -6,7 +6,7 @@ import Models.sketch_model_helper
 
 import Encoders.gnn_full.gnn
 
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader, random_split, Subset
 from tqdm import tqdm
 from config import device
 import torch
@@ -49,32 +49,40 @@ def save_models():
     torch.save(graph_decoder.state_dict(), os.path.join(save_dir, 'graph_decoder.pth'))
     print("Saved models.")
 
+# Define optimizer and loss function
+optimizer = optim.Adam( list(graph_encoder.parameters()) + list(graph_decoder.parameters()), lr=0.0004)
+loss_function = nn.CrossEntropyLoss()
 
 
-def train():
+def load_dataset():
+    # Load the dataset
+    dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/extrude_only_test')
 
-    # Define training
-    criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(
-        list(graph_encoder.parameters()) + 
-        list(graph_decoder.parameters()),
-        lr=0.0005
-    )
-
-    epochs = 20
-
-    # Create a DataLoader
-    dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/full_train_dataset')
-
-    # Split dataset into training and validation
+    # Split the dataset into training and validation sets
     train_size = int(0.8 * len(dataset))
     val_size = len(dataset) - train_size
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
 
+    # Create DataLoaders for training and validation
     train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=1, shuffle=True)
 
+    return train_loader, val_loader
+
+
+def load_eval_dataset():
+    # Load the dataset
+    dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/extrude_only_eval')
+    eval_loader = DataLoader(dataset, batch_size=1, shuffle=False)
+
+    return eval_loader
+
+
+def train():
+    train_loader, val_loader = load_dataset()
+    # Training and validation loop
     best_val_loss = float('inf')
+    epochs = 30
 
     for epoch in range(epochs):
         # Training
@@ -84,19 +92,14 @@ def train():
         total_train_loss = 0.0
         
         for batch in tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs} - Training"):
-            node_features, operations_matrix, intersection_matrix, operations_order_matrix, _, program, face_boundary_points, face_feature_gnn_list, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
-
-
-            # to device 
+            node_features, operations_matrix, intersection_matrix, operations_order_matrix, _, program, edge_features, brep_coplanar, new_features= batch
+        
             node_features = node_features.to(torch.float32).to(device).squeeze(0)
-            operations_matrix = operations_matrix.to(torch.float32).to(device)
-            intersection_matrix = intersection_matrix.to(torch.float32).to(device)
-            operations_order_matrix = operations_order_matrix.to(torch.float32).to(device)
-            edge_features = edge_features.to(torch.float32).to(device).squeeze(0)
+            edge_features = torch.tensor(edge_features, dtype=torch.float32)
 
-            # Create graph
+            # Now build graph
             gnn_graph = Preprocessing.gnn_graph_full.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
-            _, _ = gnn_graph.set_brep_connection(edge_features, face_feature_gnn_list)
+            gnn_graph.set_brep_connection(edge_features)
 
             # program embedding
             gt_next_token = program[0][-1]
@@ -105,9 +108,8 @@ def train():
             x_dict = graph_encoder(gnn_graph.x_dict, gnn_graph.edge_index_dict)
             output = graph_decoder(x_dict, current_program)
 
-
             # Forward pass through cross attention model
-            loss = criterion(output, gt_next_token)
+            loss = loss_function(output, gt_next_token)
 
             # Backpropagation and optimization
             optimizer.zero_grad()
@@ -129,30 +131,24 @@ def train():
         
         with torch.no_grad():
             for batch in tqdm(val_loader, desc=f"Epoch {epoch+1}/{epochs} - Validation"):
-                node_features, operations_matrix, intersection_matrix, operations_order_matrix, _, program, face_boundary_points, face_feature_gnn_list, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
-
-                # to device 
+                node_features, operations_matrix, intersection_matrix, operations_order_matrix, _, program, edge_features, brep_coplanar, new_features= batch
+            
                 node_features = node_features.to(torch.float32).to(device).squeeze(0)
-                operations_matrix = operations_matrix.to(torch.float32).to(device)
-                intersection_matrix = intersection_matrix.to(torch.float32).to(device)
-                operations_order_matrix = operations_order_matrix.to(torch.float32).to(device)
-                edge_features = edge_features.to(torch.float32).to(device).squeeze(0)
+                edge_features = torch.tensor(edge_features, dtype=torch.float32)
 
-                # Create graph
+                # Now build graph
                 gnn_graph = Preprocessing.gnn_graph_full.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
-                _, _ = gnn_graph.set_brep_connection(edge_features, face_feature_gnn_list)
+                gnn_graph.set_brep_connection(edge_features)
 
                 # program embedding
                 gt_next_token = program[0][-1]
                 current_program = program[0][:-1]
+
                 x_dict = graph_encoder(gnn_graph.x_dict, gnn_graph.edge_index_dict)
                 output = graph_decoder(x_dict, current_program)
 
-                if gt_next_token == 0:
-                    print("output", output)
-
                 # Forward pass through cross attention model
-                loss = criterion(output, gt_next_token)
+                loss = loss_function(output, gt_next_token)
                 total_val_loss += loss.item()
 
                 # Calculate accuracy
@@ -171,15 +167,10 @@ def train():
 
 def eval():
     load_models()
-    
+    eval_loader = load_eval_dataset()
+
     graph_encoder.eval()
     graph_decoder.eval()
-
-    criterion = nn.CrossEntropyLoss()
-
-    # Create a DataLoader for the evaluation dataset
-    dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/extrude_only_eval')
-    eval_loader = DataLoader(dataset, batch_size=1, shuffle=True)
 
     total_eval_loss = 0.0
     all_preds = []
@@ -187,18 +178,14 @@ def eval():
     
     with torch.no_grad():
         for batch in tqdm(eval_loader, desc="Evaluating"):
-            node_features, operations_matrix, intersection_matrix, operations_order_matrix, _, program, face_boundary_points, face_feature_gnn_list, face_features, edge_features, vertex_features, edge_index_face_edge_list, edge_index_edge_vertex_list, edge_index_face_face_list, index_id = batch
-
-            # to device 
+            node_features, operations_matrix, intersection_matrix, operations_order_matrix, _, program, edge_features, brep_coplanar, new_features= batch
+        
             node_features = node_features.to(torch.float32).to(device).squeeze(0)
-            operations_matrix = operations_matrix.to(torch.float32).to(device)
-            intersection_matrix = intersection_matrix.to(torch.float32).to(device)
-            operations_order_matrix = operations_order_matrix.to(torch.float32).to(device)
-            edge_features = edge_features.to(torch.float32).to(device).squeeze(0)
+            edge_features = torch.tensor(edge_features, dtype=torch.float32)
 
-            # Create graph
+            # Now build graph
             gnn_graph = Preprocessing.gnn_graph_full.SketchHeteroData(node_features, operations_matrix, intersection_matrix, operations_order_matrix)
-            gnn_graph.set_brep_connection(edge_features, face_feature_gnn_list)
+            gnn_graph.set_brep_connection(edge_features)
 
             # program embedding
             gt_next_token = program[0][-1]
@@ -208,10 +195,12 @@ def eval():
             output = graph_decoder(x_dict, current_program)
 
             # Forward pass through cross attention model
-            loss = criterion(output, gt_next_token)
+            loss = loss_function(output, gt_next_token)
             total_eval_loss += loss.item()
 
-            Models.sketch_model_helper.vis_stroke_cloud(node_features)
+            if gt_next_token == 0:
+                Models.sketch_model_helper.vis_compare(node_features, edge_features)
+                # print("all present", Models.sketch_model_helper.all_stroke_represented(x_dict['stroke']))
 
             # Predictions and labels for confusion matrix
             _, predicted_class = torch.max(output, 0)  # Use dim=0 if output is a single-dimensional tensor

@@ -142,10 +142,30 @@ def face_aggregate_withMask(stroke_matrix, mask, min_threshold = 0.2):
 
 
 def satisfy(chosen_indices, stroke_matrix):
+    
     def all_points_repeated_twice(strokes):
-        points = strokes.reshape(-1, 3)
-        unique_points, counts = torch.unique(points, return_counts=True, dim=0)
-        return torch.all(counts == 2)
+        # Step 1: Extract all 3D points
+        points = []
+        for row in strokes:
+            point1 = tuple(row[:3].tolist())  # Extract the first 3D point
+            point2 = tuple(row[3:6].tolist())  # Extract the second 3D point
+            points.append(point1)
+            points.append(point2)
+
+        # Step 2: Count occurrences of each point
+        point_count = {}
+        for point in points:
+            if point in point_count:
+                point_count[point] += 1
+            else:
+                point_count[point] = 1
+
+        # Step 3: Check if each point appears exactly twice
+        for count in point_count.values():
+            if count != 2:
+                return False
+
+        return True
 
     possible_groups = list(itertools.chain(
         itertools.combinations(chosen_indices.tolist(), 3),
@@ -231,7 +251,7 @@ def get_extrude_amount(stroke_features, chosen_matrix, sketch_strokes, brep_feat
     # Calculate the distance for each chosen stroke and determine the direction
     for stroke in chosen_stroke_features:
         point1 = stroke[:3]
-        point2 = stroke[3:]
+        point2 = stroke[3:6]
         
         # Determine the direction if not already determined
         if direction is None and (torch.all(point1 == sketch_point) or torch.all(point2 == sketch_point)):
@@ -293,7 +313,7 @@ def subtract_or_extrude(sketch_stroke_features, brep_features, extrude_direction
         directions = []
         for brep_line in brep_features:
             point1 = brep_line[:3]
-            point2 = brep_line[3:]
+            point2 = brep_line[3:6]
             if np.allclose(point1, brep_sketch_point) or np.allclose(point2, brep_sketch_point):
                 direction = point2 - point1 if np.allclose(point1, brep_sketch_point) else point1 - point2
                 direction_normalized = direction / np.linalg.norm(direction)
