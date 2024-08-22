@@ -135,6 +135,8 @@ def face_aggregate_withMask(stroke_matrix, mask, min_threshold = 0.2):
             continue
         
         selected_indices[torch.tensor(group)] = 1
+        print("stroke_matrix", stroke_matrix.shape)
+        print("selected_indices", selected_indices.shape)
         return selected_indices
 
 
@@ -338,3 +340,96 @@ def subtract_or_extrude(sketch_stroke_features, brep_features, extrude_direction
     adjusted_extrude_amount = adjust_extrude_amount(directions, extrude_direction, extrude_amount)
     
     return adjusted_extrude_amount
+
+
+def loop_chosing(node_features, mask):
+    face_to_stroke_list = face_to_stroke(node_features)
+
+    highest_avg_prob = -1
+    highest_prob_face_indices = []
+
+    # Go through each face in face_to_stroke_list
+    for face in face_to_stroke_list:
+        # Calculate the average probability for the current face
+        stroke_probs = mask[face]
+        avg_prob = torch.mean(stroke_probs)
+
+        # Check if this is the highest average probability found so far
+        if avg_prob > highest_avg_prob:
+            highest_avg_prob = avg_prob
+            highest_prob_face_indices = face
+    
+    # Build a matrix with the same shape as mask, initialize with zeros
+    result_matrix = torch.zeros_like(mask)
+    
+    # Set the indices corresponding to the highest average probability face to 1
+    result_matrix[highest_prob_face_indices] = 1
+    return result_matrix
+
+
+
+def face_to_stroke(stroke_features):
+    valid_groups = face_aggregate(stroke_features)
+    stroke_indices_per_face = []
+
+    for face in valid_groups:
+        face_indices = []
+        for stroke in face:
+            # Find the index of the stroke in stroke_features
+            for i, stroke_feature in enumerate(stroke_features):
+                stroke_feature = stroke_feature[:-1]
+                if np.array_equal(stroke, stroke_feature):
+                    face_indices.append(i)
+                    break
+        stroke_indices_per_face.append(face_indices)
+
+    return stroke_indices_per_face
+
+
+def face_aggregate(stroke_features):
+    """
+    This function permutes all the strokes and groups them into groups of 3 or 4.
+
+    Parameters:
+    stroke_matrix (numpy.ndarray): A matrix of shape (num_strokes, 6) where each row represents a stroke
+                                   with start and end points in 3D space.
+
+    Returns:
+    list: A list of groups of strokes, where each group contains either 3 or 4 strokes.
+    """
+    
+    # Ensure input is a numpy array
+    stroke_features = stroke_features[:, :-1]
+    stroke_matrix = np.array(stroke_features)
+    
+    # Reshape the stroke matrix to remove the leading dimension of 1
+    stroke_matrix = stroke_matrix.reshape(-1, 6)
+    
+    # Get the number of strokes
+    num_strokes = stroke_matrix.shape[0]
+    
+    # Generate all combinations of groups of 3 and 4 strokes
+    groups_of_3 = list(combinations(stroke_matrix, 3))
+    groups_of_4 = list(combinations(stroke_matrix, 4))
+    
+    # Combine the groups into a single list
+    all_groups = groups_of_3 + groups_of_4
+    
+    def are_strokes_coplanar(group):
+        for dim in range(3):  # Check each of x, y, z
+            start_points = group[:, dim]
+            end_points = group[:, dim + 3]
+            if np.all(start_points == start_points[0]) and np.all(end_points == end_points[0]):
+                return True
+        return False
+    
+    def are_strokes_connected(group):
+        points = np.concatenate([group[:, :3], group[:, 3:]], axis=0)
+        unique_points, counts = np.unique(points, axis=0, return_counts=True)
+        return np.all(counts == 2)
+
+    # Filter out groups that are not coplanar
+    coplanar_groups = [group for group in all_groups if are_strokes_coplanar(np.array(group))]
+    valid_groups = [group for group in coplanar_groups if are_strokes_connected(np.array(group))]
+
+    return valid_groups

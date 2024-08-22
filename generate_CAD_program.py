@@ -23,7 +23,7 @@ import shutil
 import random
 
 # --------------------- Dataset --------------------- #
-dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/extrude_only_simple')
+dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/extrude_only_eval')
 good_data_indices = [i for i, data in enumerate(dataset) if data[5][-1] == 0]
 filtered_dataset = Subset(dataset, good_data_indices)
 data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
@@ -63,6 +63,8 @@ def sketch_predict(gnn_graph):
     output = sketch_graph_decoder(x_dict)
 
     selected_indices_raw = Models.sketch_arguments.face_aggregate.face_aggregate_withMask(gnn_graph.x_dict['stroke'], output)
+    # selected_indices_raw = Models.sketch_arguments.face_aggregate.loop_chosing(gnn_graph.x_dict['stroke'], output)
+
     selected_indices = selected_indices_raw.bool().squeeze()
     selected_node_features = node_features[selected_indices]
     normal = Models.sketch_arguments.face_aggregate.sketch_to_normal(selected_node_features.tolist())
@@ -185,10 +187,13 @@ for batch in tqdm(data_loader):
         gnn_graph.set_brep_connection(edge_features)
 
         # Predict next Operation
-        current_program = torch.cat((current_program, torch.tensor([next_op], dtype=torch.int64)))
-        next_op = Op_predict(gnn_graph, current_program)
+        if next_op == 1:
+            next_op = 2
+        else:
+            next_op = 1
+        # current_program = torch.cat((current_program, torch.tensor([next_op], dtype=torch.int64)))
+        # next_op = Op_predict(gnn_graph, current_program)
         
-        Models.sketch_model_helper.vis_stroke_cloud(node_features)
         Models.sketch_model_helper.vis_stroke_cloud(edge_features)
 
         print("Next Op", next_op)
