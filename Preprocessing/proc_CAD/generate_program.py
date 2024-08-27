@@ -112,6 +112,12 @@ class Brep:
             
         if sketch_face_opposite_normal == [0,0,0]:
             sketch_face_opposite_normal = [-x for x in sketch_face.normal]
+            safe_amount = self.safe_extrude_check()
+            if amount > 0:
+                amount = min(safe_amount, amount)
+            if amount <0:
+                amount = min(abs(amount), safe_amount)
+                amount = 0 - amount
         else:
             sketch_face.normal = [-x for x in sketch_face_opposite_normal]
 
@@ -332,3 +338,33 @@ class Brep:
                     other_face.face_fixed()
             
             checked_faces.add(face)
+
+
+    def safe_extrude_check(self):
+        sketch_face = self.Faces[-1]
+        sketch_plane = sketch_face.plane  # tuple, e.g., (x, 0) or (y, 0) or (z, 0)
+        base_value = sketch_plane[1]  # The value on the axis to compare against
+
+        closest_value = float('inf')
+        inf_big = float('inf')
+
+        for face in self.Faces:
+            if face is sketch_face:
+                continue
+            
+            other_plane = face.plane
+
+            # Check if the face is on the same axis (x, y, or z)
+            if other_plane[0] == sketch_plane[0]:
+                other_value = other_plane[1]
+                distance = abs(other_value - base_value)
+
+                # We want the minimum distance
+                if distance > 0 and distance < closest_value:
+                    closest_value = distance
+
+        # Return the minimum distance or inf_big if no valid face was found
+        if closest_value == float('inf'):
+            return inf_big
+        else:
+            return closest_value
