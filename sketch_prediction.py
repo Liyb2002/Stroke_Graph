@@ -74,7 +74,7 @@ def load_dataset():
 
 def load_eval_dataset():
     # Load the dataset
-    dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/extrude_only_simple')
+    dataset = Preprocessing.dataloader.Program_Graph_Dataset('dataset/CAD2Sketch')
     good_data_indices = [i for i, data in enumerate(dataset) if data[5][-1] == 1]
     filtered_dataset = Subset(dataset, good_data_indices)
     print(f"Total number of sketch data: {len(filtered_dataset)}")
@@ -192,7 +192,8 @@ def eval():
             target_op_index = len(program[0]) - 1
             op_to_index_matrix = operations_order_matrix
             kth_operation = Models.sketch_arguments.face_aggregate.get_kth_operation(op_to_index_matrix, target_op_index).to(device).to(torch.float32)
-            
+            Models.sketch_model_helper.vis_stroke_cloud(node_features)
+
             if len(program[0]) > 3:
                 output_binary = (output > 0.5).float()
 

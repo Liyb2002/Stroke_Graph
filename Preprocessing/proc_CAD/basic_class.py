@@ -8,6 +8,8 @@ class Face:
 
         self.future_sketch = True
         self.is_cirlce = False
+
+        self.sketch_plane()
     
     def face_fixed(self):
         self.future_sketch = False
@@ -17,6 +19,26 @@ class Face:
         self.radius = radius
         self.center = center
 
+    def sketch_plane(self):
+        # Ensure the sketch is on a plane
+        verts = [vert.position for vert in self.vertices]
+        
+        x_values = [v[0] for v in verts]
+        y_values = [v[1] for v in verts]
+        z_values = [v[2] for v in verts]
+        
+        if len(set(x_values)) == 1:
+            self.plane = ('x', round(x_values[0], 4))
+            return
+        elif len(set(y_values)) == 1:
+            self.plane = ('y', round(y_values[0], 4))
+            return
+        elif len(set(z_values)) == 1:
+            self.plane = ('z', round(z_values[0], 4))
+            return
+        
+        self.future_sketch = False
+        self.plane = None
 
 
 class Edge:

@@ -51,6 +51,7 @@ class Brep:
 
         face_id = f"face_{self.idx}_{0}"
         face = Face(face_id, vertex_list, normal)
+        face.face_fixed()
         self.Faces.append(face)
         
         self.idx += 1
@@ -58,8 +59,9 @@ class Brep:
 
 
     def regular_sketch_op(self):
-
+        self.face_validation_check()
         faces_with_future_sketch = [face for face in self.Faces if face.future_sketch ]
+            
         if not faces_with_future_sketch:
             return False
         target_face = random.choice(faces_with_future_sketch)
@@ -313,3 +315,20 @@ class Brep:
         }
         data.append(operation)
         return data
+
+
+    def face_validation_check(self):
+        checked_faces = set()
+
+        for face in self.Faces:
+            current_plane = face.plane
+            
+            for other_face in self.Faces:
+                if other_face is face:
+                    continue
+                
+                if other_face.plane == current_plane and other_face not in checked_faces:
+                    face.face_fixed()
+                    other_face.face_fixed()
+            
+            checked_faces.add(face)
