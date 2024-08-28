@@ -1,6 +1,8 @@
 import json
 from proc_CAD.basic_class import Face, Edge, Vertex
 
+import proc_CAD.line_utils
+
 import os
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -115,6 +117,12 @@ class create_stroke_cloud():
 
 
         # Now, we need to generate the construction lines
+        if op == 'sketch':
+            midpoint_lines = proc_CAD.line_utils.midpoint_lines(new_edges)
+            for line in midpoint_lines:
+                self.edges[line.id] = line
+                
+
 
 
         #find the edges that has the current operation 
