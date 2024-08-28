@@ -118,8 +118,11 @@ class create_stroke_cloud():
 
         # Now, we need to generate the construction lines
         if op == 'sketch':
-            midpoint_lines = proc_CAD.line_utils.midpoint_lines(new_edges)
-            for line in midpoint_lines:
+            construction_lines = proc_CAD.line_utils.midpoint_lines(new_edges)
+            construction_lines += proc_CAD.line_utils.diagonal_lines(new_edges)
+
+            for line in construction_lines:
+                line.type = 'construction_line'
                 self.edges[line.id] = line
                 
 
