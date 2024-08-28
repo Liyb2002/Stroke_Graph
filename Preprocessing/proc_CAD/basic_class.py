@@ -1,4 +1,6 @@
 
+# Verte
+
 class Face:
     def __init__(self, id, vertices, normal):
         # print(f"An Face is created with ID: {id}")
@@ -48,6 +50,8 @@ class Edge:
         self.vertices = vertices
         self.round = False
 
+        self.edge_types = [0]
+
         self.Op = []
         self.Op_orders = []
         self.order_count = 0
@@ -65,6 +69,9 @@ class Edge:
 
     def connected_edges(self, edge_id):
         self.connected_edges.append(edge_id)
+    
+    def set_edge_tyoe(self, type):
+        self.edge_types.append(type)
 
 
 class Vertex:

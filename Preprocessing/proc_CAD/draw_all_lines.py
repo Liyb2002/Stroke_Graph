@@ -92,16 +92,13 @@ class create_stroke_cloud():
         if op == 'terminate':
             return
 
-        if len(Op['faces']) > 0 and 'radius' in Op['faces'][0]:
-            print("parse circle")
-            return
-
         for vertex_data in Op['vertices']:
             vertex = Vertex(id=vertex_data['id'], position=vertex_data['coordinates'])
             self.vertices[vertex.id] = vertex
 
 
         cur_op_vertex_ids = []
+        new_edges = []
         for edge_data in Op['edges']:
             vertices = [self.vertices[v_id] for v_id in edge_data['vertices']]
 
@@ -111,9 +108,15 @@ class create_stroke_cloud():
             edge = Edge(id=edge_data['id'], vertices=vertices)
             edge.set_Op(op, index)
             edge.set_order_count(self.order_count)
+            new_edges.append(edge)
+
             self.order_count += 1
             self.edges[edge.id] = edge
-        
+
+
+        # Now, we need to generate the construction lines
+
+
         #find the edges that has the current operation 
         #but not created by the current operation
         self.find_unwritten_edges(cur_op_vertex_ids, op, index)
@@ -122,24 +125,7 @@ class create_stroke_cloud():
             vertices = [self.vertices[v_id] for v_id in face_data['vertices']]
             normal = face_data['normal']
             face = Face(id=face_data['id'], vertices=vertices, normal=normal)
-            self.faces[face.id] = face  
-
-        if op == 'fillet':
-            self.parse_fillet(Op, index)
-
-
-    def parse_fillet(self, Op, index):
-        verts_ids = Op['operation'][4]['verts_id']
-
-        for _, edge in self.edges.items():
-            # Get the IDs of the vertices in the current edge
-            edge_vertex_ids = [vertex.id for vertex in edge.vertices]
-            # Check if the two sets are equal
-            if set(edge_vertex_ids) == set(verts_ids):
-                edge.set_Op('fillet', index)
-
-        return
-
+            self.faces[face.id] = face          
 
     def adj_edges(self):
         for edge_id, edge in self.edges.items():
@@ -168,8 +154,10 @@ class create_stroke_cloud():
             self.id_to_count[edge_id] = edge.order_count
 
 
-def run(directory, vis = True):
+def run(directory):
     file_path = os.path.join(directory, 'Program.json')
 
     stroke_cloud_class = create_stroke_cloud(file_path)
     stroke_cloud_class.read_json_file()
+
+    stroke_cloud_class.vis_stroke_cloud(directory, show = True, target_Op = 'sketch')

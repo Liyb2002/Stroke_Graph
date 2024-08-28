@@ -30,7 +30,8 @@ class dataset_generator():
         self.generate_dataset('dataset/extrude_only_test', number_data = 0, start = 0)
         self.generate_dataset('dataset/extrude_only_eval', number_data = 0, start = 0)
        
-        self.generate_dataset('dataset/CAD2Sketch', number_data = 50, start = 0)
+        self.generate_dataset('dataset/CAD2Sketch', number_data = 0, start = 0)
+        self.generate_dataset('dataset/drawing', number_data = 1, start = 0)
 
 
     def generate_dataset(self, dir, number_data, start):
