@@ -343,6 +343,12 @@ class Brep:
     def safe_extrude_check(self):
         sketch_face = self.Faces[-1]
         sketch_plane = sketch_face.plane  # tuple, e.g., (x, 0) or (y, 0) or (z, 0)
+
+        extrude_directions = [-x for x in sketch_face.normal]
+        extrude_direction = -1
+        if 1 in extrude_directions:
+            extrude_direction = 1
+            
         base_value = sketch_plane[1]  # The value on the axis to compare against
 
         closest_value = float('inf')
@@ -353,11 +359,18 @@ class Brep:
                 continue
             
             other_plane = face.plane
-
+            distance = 0
             # Check if the face is on the same axis (x, y, or z)
             if other_plane[0] == sketch_plane[0]:
                 other_value = other_plane[1]
-                distance = abs(other_value - base_value)
+
+                # Postive extrude
+                if extrude_direction > 0 and other_value > base_value:
+                    distance = abs(other_value - base_value)
+
+                # Negative extrude
+                if extrude_direction < 0 and other_value < base_value:
+                    distance = abs(other_value - base_value)
 
                 # We want the minimum distance
                 if distance > 0 and distance < closest_value:
