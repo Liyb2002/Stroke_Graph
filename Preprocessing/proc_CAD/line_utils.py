@@ -212,3 +212,71 @@ def projection_lines(edges):
         current_edge_idx += 1  # Increment the edge index for the next edge
 
     return midpoint_edges
+
+
+
+# -------------------- bounding_box_lines Lines -------------------- #
+
+def bounding_box_lines(edges):
+    """
+    Creates a bounding box around the given edges. The bounding box is defined by 12 lines 
+    connecting the minimum and maximum x, y, and z coordinates. If a line already exists 
+    in the edges, it will not be recreated.
+    """
+
+    if len(edges) != 6:
+        return []
+
+    # Initialize min and max values
+    min_x = min_y = min_z = float('inf')
+    max_x = max_y = max_z = float('-inf')
+
+    # Step 1: Find the min and max x, y, z values
+    for edge in edges:
+        for vertex in edge.vertices:
+            pos = vertex.position
+            min_x, max_x = min(min_x, pos[0]), max(max_x, pos[0])
+            min_y, max_y = min(min_y, pos[1]), max(max_y, pos[1])
+            min_z, max_z = min(min_z, pos[2]), max(max_z, pos[2])
+
+    # Define the 8 vertices of the bounding box
+    bbox_vertices = [
+        (min_x, min_y, min_z), (min_x, min_y, max_z),
+        (min_x, max_y, min_z), (min_x, max_y, max_z),
+        (max_x, min_y, min_z), (max_x, min_y, max_z),
+        (max_x, max_y, min_z), (max_x, max_y, max_z)
+    ]
+
+    # Generate all 12 edges of the bounding box
+    bbox_edges_indices = [
+        (0, 1), (1, 3), (3, 2), (2, 0),  # Bottom face
+        (4, 5), (5, 7), (7, 6), (6, 4),  # Top face
+        (0, 4), (1, 5), (2, 6), (3, 7)   # Vertical edges
+    ]
+
+    # Convert the edges to a set of tuples for quick comparison
+    existing_edges = set()
+    for edge in edges:
+        vertex_positions = tuple(sorted((tuple(edge.vertices[0].position), tuple(edge.vertices[1].position))))
+        existing_edges.add(vertex_positions)
+
+    # Step 2: Create the edges of the bounding box
+    bounding_box_edges = []
+    current_edge_idx = 0  # Index for new edges
+    for v1_idx, v2_idx in bbox_edges_indices:
+        v1, v2 = bbox_vertices[v1_idx], bbox_vertices[v2_idx]
+        vertex_positions = tuple(sorted((v1, v2)))
+
+        # Check if the edge already exists
+        if vertex_positions not in existing_edges:
+            # Create two new vertices
+            vertex1 = Vertex(id=f'vert_bbox_{current_edge_idx}_0', position=v1)
+            vertex2 = Vertex(id=f'vert_bbox_{current_edge_idx}_1', position=v2)
+
+            # Create a new edge connecting these vertices
+            edge_id = f'edge_bbox_{current_edge_idx}'
+            new_edge = Edge(id=edge_id, vertices=(vertex1, vertex2))
+            bounding_box_edges.append(new_edge)
+            current_edge_idx += 1
+
+    return bounding_box_edges

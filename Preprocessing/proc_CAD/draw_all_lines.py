@@ -123,7 +123,8 @@ class create_stroke_cloud():
 
         if op == 'extrude':
             construction_lines = proc_CAD.line_utils.projection_lines(new_edges)
- 
+            construction_lines += proc_CAD.line_utils.bounding_box_lines(new_edges)
+
 
         for line in construction_lines:
             line.type = 'construction_line'
