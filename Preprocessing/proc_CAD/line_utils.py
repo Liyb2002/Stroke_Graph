@@ -3,10 +3,72 @@ from itertools import combinations
 from proc_CAD.basic_class import Face, Edge, Vertex
 
 def midpoint_lines(edges):
+
+    if len(edges) == 3:
+        return triangle_midpoint_lines(edges)
+    
+    if len(edges) == 4:
+        return rectangle_midpoint_lines(edges)
+
+    return []
+
+
+def triangle_midpoint_lines(edges):
+    """
+    Computes the midpoint of the third edge and creates a new edge that connects
+    this midpoint to the vertex formed by the two edges of equal length in the triangle.
+    """
+    # Step 1: Extract idx1 from the ID of the first edge
+    first_edge_id = edges[0].id
+    idx1 = first_edge_id.split('_')[1]  # Extract the index after 'edge_'
+    mp = "mp"  # Label for the midpoint
+
+    # Step 2: Identify the two edges with the same length and the third edge
+    edge_lengths = [(edge, ((edge.vertices[0].position[0] - edge.vertices[1].position[0])**2 +
+                            (edge.vertices[0].position[1] - edge.vertices[1].position[1])**2 +
+                            (edge.vertices[0].position[2] - edge.vertices[1].position[2])**2) ** 0.5) 
+                    for edge in edges]
+
+    # Sort edges based on their lengths
+    edge_lengths.sort(key=lambda x: x[1])
+
+    # Two edges with equal length
+    edge1, edge2 = edge_lengths[0][0], edge_lengths[1][0]
+
+    # Third edge
+    third_edge = edge_lengths[2][0]
+
+    # Step 3: Find the midpoint of the third edge
+    point1 = third_edge.vertices[0].position
+    point2 = third_edge.vertices[1].position
+    midpoint_coords = tuple((point1[i] + point2[i]) / 2 for i in range(3))
+
+    # Create a new vertex for the midpoint
+    vertex_id = f'vert_{idx1}_{mp}_0'
+    midpoint_vertex = Vertex(id=vertex_id, position=midpoint_coords)
+
+    # Step 4: Determine the shared vertex of the two equal-length edges
+    common_vertex = None
+    for v1 in edge1.vertices:
+        if v1 in edge2.vertices:
+            common_vertex = v1
+            break
+
+    # Step 5: Create a new edge connecting the midpoint to the common vertex
+    edge_id = f"edge_{idx1}_{mp}_0"
+    new_edge = Edge(id=edge_id, vertices=(midpoint_vertex, common_vertex))
+
+    # Return the new edge
+    return [new_edge]
+
+
+
+def rectangle_midpoint_lines(edges):
     """
     Computes the midpoints of the edges and creates new edge objects that connect these midpoints
     in a manner parallel to the rectangle's edges.
     """
+
     # Step 1: Extract idx1 from the ID of the first edge
     first_edge_id = edges[0].id
     idx1 = first_edge_id.split('_')[1]  # Extract the index after 'edge_'
@@ -46,17 +108,15 @@ def midpoint_lines(edges):
 
     return midpoint_edges
 
-
-
 def diagonal_lines(edges):
+
     """
     Creates diagonal lines by connecting the diagonal vertices of a rectangle formed by the given edges.
-
-    :param edges: A list of edge objects. Each edge object should have a 'vertices' attribute,
-                  which is a list or tuple containing two vertex objects. Each vertex object
-                  should have an 'id' and a 'position' attribute representing its 3D coordinates (x, y, z).
-    :return: A list of new edge objects representing the diagonals.
     """
+
+    if len(edges) == 3:
+        return []
+
     # Step 1: Extract idx1 from the ID of the first edge
     first_edge_id = edges[0].id
     idx1 = first_edge_id.split('_')[1]  # Extract the index after 'edge_'
