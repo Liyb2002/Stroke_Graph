@@ -119,13 +119,15 @@ class create_stroke_cloud():
         # Now, we need to generate the construction lines
         if op == 'sketch':
             construction_lines = proc_CAD.line_utils.midpoint_lines(new_edges)
-            construction_lines += proc_CAD.line_utils.diagonal_lines(new_edges)
+            construction_lines += proc_CAD.line_utils.diagonal_lines(new_edges)                
 
-            for line in construction_lines:
-                line.type = 'construction_line'
-                self.edges[line.id] = line
-                
+        if op == 'extrude':
+            construction_lines = proc_CAD.line_utils.projection_lines(new_edges)
+ 
 
+        for line in construction_lines:
+            line.type = 'construction_line'
+            self.edges[line.id] = line
 
 
         #find the edges that has the current operation 
@@ -171,4 +173,4 @@ def run(directory):
     stroke_cloud_class = create_stroke_cloud(file_path)
     stroke_cloud_class.read_json_file()
 
-    stroke_cloud_class.vis_stroke_cloud(directory, show = True, target_Op = 'sketch')
+    stroke_cloud_class.vis_stroke_cloud(directory, show = True, target_Op = 'extrude')
