@@ -353,7 +353,7 @@ def whole_bounding_box_lines(all_edges):
     return bounding_box_edges
 
 
-# -------------------- whole_bounding_box Lines -------------------- #
+# -------------------- perturbing_lines Lines -------------------- #
 
 def perturbing_lines(all_edges):
     """
@@ -387,5 +387,72 @@ def perturbing_lines(all_edges):
         # Update the original edge vertices to new extended points
         other_edge.vertices[0].position = pointD  # Move A to D
         other_edge.vertices[1].position = pointC  # Move B to C
+
+    return all_edges
+
+
+# -------------------- remove duplicate Lines -------------------- #
+
+def remove_duplicate_lines(all_edges):
+    """
+    Removes duplicate edges from the set of edges `all_edges`. An edge A->B is considered
+    contained by another edge C->D if both points A and B lie on the line CD and have the
+    same direction.
+    """
+    def round_point(point, decimals=4):
+        """Round the coordinates of a point to a specified number of decimal places."""
+        return tuple(round(coord, decimals) for coord in point)
+
+    def direction_vector(p1, p2):
+        """Calculate the normalized direction vector from point p1 to point p2, rounded to 4 decimals."""
+        direction = tuple(p2[i] - p1[i] for i in range(3))
+        magnitude = math.sqrt(sum(d**2 for d in direction))
+        if magnitude == 0:
+            return (0, 0, 0)  # Degenerate line
+        return tuple(round(d / magnitude, 4) for d in direction)
+
+    def is_point_on_line(point, line_start, line_end):
+        """Check if a point lies on the line segment defined by line_start and line_end."""
+        if point == line_start or point == line_end:
+            return True  # The point coincides with one of the line's endpoints
+
+        # Direction vectors
+        line_direction = direction_vector(line_start, line_end)
+        to_point_direction = direction_vector(line_start, point)
+
+        # Check if direction vectors are collinear (same or opposite)
+        if all(abs(line_direction[i] - to_point_direction[i]) < 1e-4 for i in range(3)):
+            # Check if the point is between line_start and line_end
+            for i in range(3):
+                if not (min(line_start[i], line_end[i]) <= point[i] <= max(line_start[i], line_end[i])):
+                    return False
+            return True
+        return False
+
+    edges_to_remove = set()
+
+    for edge_id1, edge1 in all_edges.items():
+        pointA = round_point(edge1.vertices[0].position)
+        pointB = round_point(edge1.vertices[1].position)
+        dir1 = direction_vector(pointA, pointB)
+
+        for edge_id2, edge2 in all_edges.items():
+            if edge_id1 == edge_id2 or edge_id2 in edges_to_remove:
+                continue  # Skip comparing the same edge or already marked edges
+
+            pointC = round_point(edge2.vertices[0].position)
+            pointD = round_point(edge2.vertices[1].position)
+            dir2 = direction_vector(pointC, pointD)
+
+            # Check if directions are the same or opposite
+            if all(abs(dir1[i] - dir2[i]) < 1e-4 for i in range(3)):
+                # Check if both A and B are on the line CD
+                if is_point_on_line(pointA, pointC, pointD) and is_point_on_line(pointB, pointC, pointD):
+                    edges_to_remove.add(edge_id1)
+                    break
+
+    # Remove the contained edges
+    for edge_id in edges_to_remove:
+        del all_edges[edge_id]
 
     return all_edges

@@ -96,6 +96,9 @@ class create_stroke_cloud():
             for line in construction_lines:
                 line.type = 'construction_line'
                 self.edges[line.id] = line
+
+            self.edges = proc_CAD.line_utils.remove_duplicate_lines(self.edges)
+            self.edges = proc_CAD.line_utils.perturbing_lines(self.edges)
             return
 
         for vertex_data in Op['vertices']:
@@ -143,6 +146,7 @@ class create_stroke_cloud():
             normal = face_data['normal']
             face = Face(id=face_data['id'], vertices=vertices, normal=normal)
             self.faces[face.id] = face          
+
 
     def adj_edges(self):
         for edge_id, edge in self.edges.items():
