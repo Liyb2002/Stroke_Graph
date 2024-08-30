@@ -2,6 +2,9 @@
 from itertools import combinations
 from proc_CAD.basic_class import Face, Edge, Vertex
 
+import random
+import math
+
 
 # -------------------- Midpoint Lines -------------------- #
 
@@ -282,6 +285,11 @@ def bounding_box_lines(edges):
     return bounding_box_edges
 
 
+
+
+# !!!------------!!! All Edges Operations !!!------------!!! #
+
+
 # -------------------- whole_bounding_box Lines -------------------- #
 
 def whole_bounding_box_lines(all_edges):
@@ -344,3 +352,40 @@ def whole_bounding_box_lines(all_edges):
 
     return bounding_box_edges
 
+
+# -------------------- whole_bounding_box Lines -------------------- #
+
+def perturbing_lines(all_edges):
+    """
+    Extends each line in the set of edges by moving point A to a new point C
+    and point B to a new point D, effectively extending the original line in 
+    both directions.
+    """
+    for other_edge_id, other_edge in all_edges.items():
+        # Extract the 3D positions of the two vertices (A and B) of the edge
+        pointA = other_edge.vertices[0].position
+        pointB = other_edge.vertices[1].position
+
+        # Step 1: Calculate the direction from A to B
+        direction = tuple(pointB[i] - pointA[i] for i in range(3))
+
+        # Calculate the magnitude (length) of the direction vector
+        magnitude = math.sqrt(sum(direction[i] ** 2 for i in range(3)))
+
+        # Normalize the direction vector
+        if magnitude == 0:
+            continue  # Skip if the magnitude is zero (degenerate line)
+        normalized_direction = tuple(direction[i] / magnitude for i in range(3))
+
+        # Step 2: Extend the line by a random amount in both directions
+        extend_length = random.uniform(0.02, 0.04)
+
+        # Calculate new positions for C and D
+        pointC = tuple(pointB[i] + normalized_direction[i] * extend_length for i in range(3))
+        pointD = tuple(pointA[i] - normalized_direction[i] * extend_length for i in range(3))
+
+        # Update the original edge vertices to new extended points
+        other_edge.vertices[0].position = pointD  # Move A to D
+        other_edge.vertices[1].position = pointC  # Move B to C
+
+    return all_edges
