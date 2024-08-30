@@ -92,6 +92,10 @@ class create_stroke_cloud():
         op = Op['operation'][0]
 
         if op == 'terminate':
+            construction_lines = proc_CAD.line_utils.whole_bounding_box_lines(self.edges)
+            for line in construction_lines:
+                line.type = 'construction_line'
+                self.edges[line.id] = line
             return
 
         for vertex_data in Op['vertices']:
@@ -124,7 +128,6 @@ class create_stroke_cloud():
         if op == 'extrude':
             construction_lines = proc_CAD.line_utils.projection_lines(new_edges)
             construction_lines += proc_CAD.line_utils.bounding_box_lines(new_edges)
-
 
         for line in construction_lines:
             line.type = 'construction_line'
