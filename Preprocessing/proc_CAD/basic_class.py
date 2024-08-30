@@ -70,6 +70,9 @@ class Edge:
     def connected_edges(self, edge_id):
         self.connected_edges.append(edge_id)
     
+    def set_edge_type(self, new_edge_type):
+        self.edge_type = new_edge_type
+    
 
 class Vertex:
     def __init__(self, id, position):
