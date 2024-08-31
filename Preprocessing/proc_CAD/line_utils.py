@@ -378,7 +378,7 @@ def perturbing_lines(all_edges):
         normalized_direction = tuple(direction[i] / magnitude for i in range(3))
 
         # Step 2: Extend the line by a random amount in both directions
-        extend_length = random.uniform(0.03, 0.08)
+        extend_length = random.uniform(0.03, 0.05)
 
         # Calculate new positions for C and D
         pointC = tuple(pointB[i] + normalized_direction[i] * extend_length for i in range(3))

@@ -71,14 +71,21 @@ class create_stroke_cloud():
         ax.grid(False)
         ax.set_axis_off()
 
+        # Initialize min and max limits
+        x_min, x_max = float('inf'), float('-inf')
+        y_min, y_max = float('inf'), float('-inf')
+        z_min, z_max = float('inf'), float('-inf')
+
         for _, edge in self.edges.items():
-            # Determine line color based on edge type
+            # Determine line color, alpha, and thickness based on edge type
             if edge.edge_type == 'feature_line':
                 line_color = 'black'
-                line_alpha = 0.7
+                line_alpha = np.random.uniform(0.55, 0.85)
+                line_thickness = np.random.uniform(0.7, 0.9)
             elif edge.edge_type == 'construction_line':
                 line_color = 'black'
-                line_alpha = 0.2
+                line_alpha = np.random.uniform(0.15, 0.3)
+                line_thickness = np.random.uniform(0.4, 0.6)
 
             # Get edge points and perturb them to create a hand-drawn effect
             points = [vertex.position for vertex in edge.vertices]
@@ -88,8 +95,13 @@ class create_stroke_cloud():
                 y_values = np.array([points[0][1], points[1][1]])
                 z_values = np.array([points[0][2], points[1][2]])
 
+                # Update min and max limits for each axis
+                x_min, x_max = min(x_min, x_values.min()), max(x_max, x_values.max())
+                y_min, y_max = min(y_min, y_values.min()), max(y_max, y_values.max())
+                z_min, z_max = min(z_min, z_values.min()), max(z_max, z_values.max())
+
                 # Add small random perturbations to make the line appear hand-drawn
-                perturb_factor = 0.0025  # Adjust this value for more or less perturbation
+                perturb_factor = 0.002  # Adjusted perturbation factor
                 perturbations = np.random.normal(0, perturb_factor, (10, 3))  # 10 intermediate points
 
                 # Create interpolated points for smoother curves
@@ -109,8 +121,21 @@ class create_stroke_cloud():
                 smooth_y = cs_y(smooth_t)
                 smooth_z = cs_z(smooth_t)
 
-                # Plot edges with a thinner line width and a hand-drawn effect
-                ax.plot(smooth_x, smooth_y, smooth_z, color=line_color, alpha=line_alpha, linewidth=0.5)
+                # Plot edges with randomized line thickness and alpha
+                ax.plot(smooth_x, smooth_y, smooth_z, color=line_color, alpha=line_alpha, linewidth=line_thickness)
+
+        # Compute the center of the shape
+        x_center = (x_min + x_max) / 2
+        y_center = (y_min + y_max) / 2
+        z_center = (z_min + z_max) / 2
+
+        # Compute the maximum difference across x, y, z directions
+        max_diff = max(x_max - x_min, y_max - y_min, z_max - z_min)
+
+        # Set the same limits for x, y, and z axes centered around the computed center
+        ax.set_xlim([x_center - max_diff / 2, x_center + max_diff / 2])
+        ax.set_ylim([y_center - max_diff / 2, y_center + max_diff / 2])
+        ax.set_zlim([z_center - max_diff / 2, z_center + max_diff / 2])
 
         if show:
             plt.show()
