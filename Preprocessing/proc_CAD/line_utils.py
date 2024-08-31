@@ -1,6 +1,6 @@
 
 from itertools import combinations
-from proc_CAD.basic_class import Face, Edge, Vertex
+from Preprocessing.proc_CAD.basic_class import Face, Edge, Vertex
 
 import random
 import math
@@ -229,7 +229,7 @@ def bounding_box_lines(edges):
     """
 
     if len(edges) != 6:
-        return [], []
+        return []
 
     # Initialize min and max values
     min_x = min_y = min_z = float('inf')
@@ -265,7 +265,6 @@ def bounding_box_lines(edges):
         existing_edges.add(vertex_positions)
 
     # Step 2: Create the edges of the bounding box
-    all_bounding_box_edges = []  # To store all the bounding box edges
     new_bounding_box_edges = []  # To store only the new edges
     current_edge_idx = 0  # Index for new edges
 
@@ -281,98 +280,113 @@ def bounding_box_lines(edges):
         edge_id = f'edge_bbox_{current_edge_idx}'
         new_edge = Edge(id=edge_id, vertices=(vertex1, vertex2))
 
-        # Add the edge to the complete list
-        all_bounding_box_edges.append(new_edge)
-
         # Add only the new edges that do not already exist
         if vertex_positions not in existing_edges:
             new_bounding_box_edges.append(new_edge)
         
         current_edge_idx += 1
 
-    return all_bounding_box_edges, new_bounding_box_edges
+    return new_bounding_box_edges
 
 
 
 # -------------------- Grid Lines -------------------- #
-
 def grid_lines(prev_edges, edges):
     """
-    Creates grid lines based on the second half of the edges from the input list 'edges'.
-    Only considers lines where two values are the same and one value is different.
-    Finds the smallest value greater than B and the largest value smaller than A along the axis of difference.
-    Creates new lines (C -> A and B -> D) to form a grid.
+    Creates grid lines by extending the edges of the bounding box defined by the input edges.
+    1) Finds the min and max values in the x, y, and z axes for the input edges to define a bounding box.
+    2) Extends each edge of the bounding box to the nearest intersection with any edge in prev_edges.
     Returns a list of Edge objects.
     """
+    # Step 1: Find the min and max values in the x, y, and z axes for the input edges
+    x_min = y_min = z_min = float('inf')
+    x_max = y_max = z_max = float('-inf')
+
+    for edge in edges:
+        for vertex in edge.vertices:
+            pos = vertex.position
+            x_min, x_max = min(x_min, pos[0]), max(x_max, pos[0])
+            y_min, y_max = min(y_min, pos[1]), max(y_max, pos[1])
+            z_min, z_max = min(z_min, pos[2]), max(z_max, pos[2])
+
+    # Step 2: Define the 8 vertices of the bounding box
+    bbox_vertices = [
+        (x_min, y_min, z_min), (x_min, y_min, z_max),
+        (x_min, y_max, z_min), (x_min, y_max, z_max),
+        (x_max, y_min, z_min), (x_max, y_min, z_max),
+        (x_max, y_max, z_min), (x_max, y_max, z_max)
+    ]
+
+    # Define the 12 edges of the bounding box
+    bbox_edges_indices = [
+        (0, 1), (1, 3), (3, 2), (2, 0),  # Bottom face
+        (4, 5), (5, 7), (7, 6), (6, 4),  # Top face
+        (0, 4), (1, 5), (2, 6), (3, 7)   # Vertical edges
+    ]
+
     grid_edges = []  # To store the new grid lines
-    half_length = len(edges) // 2  # Only consider the second half of the edges
+    edge_count = 0  # Unique ID counter for new edges
 
-    for edge_idx in range(half_length, len(edges)):
-        edge = edges[edge_idx]
-        pointA = edge.vertices[0].position
-        pointB = edge.vertices[1].position
+    # Step 3: Extend each edge of the bounding box to the nearest intersection with any edge in prev_edges
+    for v1_idx, v2_idx in bbox_edges_indices:
+        vertex1 = bbox_vertices[v1_idx]
+        vertex2 = bbox_vertices[v2_idx]
 
-        # Step 1: Identify the axis where the values differ
+        # Determine which axis is changing
         different_axis = None
-        same_values = []
-        different_values = []
         for i in range(3):
-            if pointA[i] == pointB[i]:
-                same_values.append(pointA[i])  # Collect the values that are the same
-            else:
-                different_axis = i  # Record the axis of difference
-                different_values = [pointA[i], pointB[i]]
+            if vertex1[i] != vertex2[i]:
+                different_axis = i
+                break
 
-        # Proceed only if there is exactly one differing axis
-        if different_axis is None or len(different_values) != 2:
-            continue
+        if different_axis is None:
+            continue  # Should not happen, as all edges should have one varying axis
 
-        # Ensure pointB > pointA along the differing axis
-        A = min(different_values)
-        B = max(different_values)
+        # Initial values to extend the edge
+        extend_neg = None  # For extending in the negative direction
+        extend_pos = None  # For extending in the positive direction
 
-        # Step 2: Find the smallest D > B and the largest C < A along the different axis
-        C, D = None, None
+        # Check for intersections with prev_edges
         for other_edge_id, other_edge in prev_edges.items():
-            pointC1 = other_edge.vertices[0].position[different_axis]
-            pointC2 = other_edge.vertices[1].position[different_axis]
+            for vertex in other_edge.vertices:
+                pos = vertex.position[different_axis]
 
-            if pointC1 < A and (C is None or pointC1 > C):
-                C = pointC1
-            if pointC2 < A and (C is None or pointC2 > C):
-                C = pointC2
+                # Extend in the negative direction for min values
+                if pos < min(vertex1[different_axis], vertex2[different_axis]):
+                    if extend_neg is None or pos > extend_neg:
+                        extend_neg = pos
 
-            if pointC1 > B and (D is None or pointC1 < D):
-                D = pointC1
-            if pointC2 > B and (D is None or pointC2 < D):
-                D = pointC2
+                # Extend in the positive direction for max values
+                if pos > max(vertex1[different_axis], vertex2[different_axis]):
+                    if extend_pos is None or pos < extend_pos:
+                        extend_pos = pos
 
-        # Continue only if valid C and D values are found
-        if C is not None and D is not None:
-            # Step 3: Create new grid lines C -> A and B -> D
-            pointC = list(pointA)
-            pointC[different_axis] = C
-            pointD = list(pointB)
-            pointD[different_axis] = D
+        # Extend edges in the negative direction if applicable
+        if extend_neg is not None:
+            new_vertex1_pos = list(vertex1)
+            new_vertex2_pos = list(vertex2)
+            new_vertex1_pos[different_axis] = extend_neg
+            new_vertex2_pos[different_axis] = extend_neg
+            new_vertex1 = Vertex(id=f'grid_vert_{edge_count}_neg1', position=tuple(new_vertex1_pos))
+            new_vertex2 = Vertex(id=f'grid_vert_{edge_count}_neg2', position=tuple(new_vertex2_pos))
+            new_edge_neg = Edge(id=f'grid_line_{edge_count}_neg', vertices=(new_vertex1, new_vertex2))
+            grid_edges.append(new_edge_neg)
+            edge_count += 1
 
-            # Create vertices for the new grid lines
-            vertexC = Vertex(id=f'grid_vert_{edge_idx}_C', position=tuple(pointC))
-            vertexA = Vertex(id=f'grid_vert_{edge_idx}_A', position=pointA)
-            vertexB = Vertex(id=f'grid_vert_{edge_idx}_B', position=pointB)
-            vertexD = Vertex(id=f'grid_vert_{edge_idx}_D', position=tuple(pointD))
+        # Extend edges in the positive direction if applicable
+        if extend_pos is not None:
+            new_vertex3_pos = list(vertex1)
+            new_vertex4_pos = list(vertex2)
+            new_vertex3_pos[different_axis] = extend_pos
+            new_vertex4_pos[different_axis] = extend_pos
+            new_vertex3 = Vertex(id=f'grid_vert_{edge_count}_pos1', position=tuple(new_vertex3_pos))
+            new_vertex4 = Vertex(id=f'grid_vert_{edge_count}_pos2', position=tuple(new_vertex4_pos))
+            new_edge_pos = Edge(id=f'grid_line_{edge_count}_pos', vertices=(new_vertex3, new_vertex4))
+            grid_edges.append(new_edge_pos)
+            edge_count += 1
 
-            # Create the grid lines
-            grid_edge1_id = f'grid_line_{edge_idx}_CA'
-            grid_edge2_id = f'grid_line_{edge_idx}_BD'
-            grid_edge1 = Edge(id=grid_edge1_id, vertices=(vertexC, vertexA))
-            grid_edge2 = Edge(id=grid_edge2_id, vertices=(vertexB, vertexD))
-
-            # Add new grid lines to the list
-            grid_edges.append(grid_edge1)
-            grid_edges.append(grid_edge2)
-
+    print('num', len(grid_edges))
     return grid_edges
-
 
 
 # !!!------------!!! All Edges Operations !!!------------!!! #

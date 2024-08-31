@@ -74,6 +74,7 @@ class SketchHeteroData(HeteroData):
 def build_graph(stroke_dict):
     num_strokes = len(stroke_dict)
     num_operations = len(operations_dict)
+
     num_operation_counts = 0
 
     # find the total number of operations
@@ -84,7 +85,6 @@ def build_graph(stroke_dict):
 
     # a map that maps stroke_id (e.g 'edge_0_0' to 0)
     stroke_id_to_index = {}
-
 
 
     node_features = np.zeros((num_strokes, 6))

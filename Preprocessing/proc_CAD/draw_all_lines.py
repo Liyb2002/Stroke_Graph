@@ -1,7 +1,6 @@
 import json
-from proc_CAD.basic_class import Face, Edge, Vertex
-
-import proc_CAD.line_utils
+from Preprocessing.proc_CAD.basic_class import Face, Edge, Vertex
+import Preprocessing.proc_CAD.line_utils
 
 import os
 import matplotlib.pyplot as plt
@@ -150,13 +149,16 @@ class create_stroke_cloud():
         op = Op['operation'][0]
 
         if op == 'terminate':
-            construction_lines = proc_CAD.line_utils.whole_bounding_box_lines(self.edges)
+            construction_lines = Preprocessing.proc_CAD.line_utils.whole_bounding_box_lines(self.edges)
             for line in construction_lines:
                 line.set_edge_type('construction_line')
+                line.set_order_count(self.order_count)
+                line.set_Op(op, index)
+                self.order_count += 1
                 self.edges[line.id] = line
 
             # self.edges = proc_CAD.line_utils.remove_duplicate_lines(self.edges)
-            self.edges = proc_CAD.line_utils.perturbing_lines(self.edges)
+            self.edges = Preprocessing.proc_CAD.line_utils.perturbing_lines(self.edges)
             return
 
         for vertex_data in Op['vertices']:
@@ -180,22 +182,24 @@ class create_stroke_cloud():
             self.order_count += 1
             self.edges[edge.id] = edge
 
-
+        construction_lines = []
         # Now, we need to generate the construction lines
         if op == 'sketch':
-            construction_lines = proc_CAD.line_utils.midpoint_lines(new_edges)
-            construction_lines += proc_CAD.line_utils.diagonal_lines(new_edges)                
+            construction_lines = Preprocessing.proc_CAD.line_utils.midpoint_lines(new_edges)
+            construction_lines += Preprocessing.proc_CAD.line_utils.diagonal_lines(new_edges)                
 
         if op == 'extrude':
-            construction_lines = proc_CAD.line_utils.projection_lines(new_edges)
-            all_bounding_box_edges, new_bounding_box_edges = proc_CAD.line_utils.bounding_box_lines(new_edges)
-            construction_lines += new_bounding_box_edges
-            # construction_lines += proc_CAD.line_utils.grid_lines(self.edges, all_bounding_box_edges)
+            construction_lines = Preprocessing.proc_CAD.line_utils.projection_lines(new_edges)
+            construction_lines += Preprocessing.proc_CAD.line_utils.bounding_box_lines(new_edges)
+            # construction_lines = Preprocessing.proc_CAD.line_utils.grid_lines(self.edges, new_edges)
 
         for line in construction_lines:
             line.set_edge_type('construction_line')
+            line.set_order_count(self.order_count)
+            line.set_Op(op, index)
+            self.order_count += 1
             self.edges[line.id] = line
-
+        
 
         #find the edges that has the current operation 
         #but not created by the current operation
@@ -209,12 +213,48 @@ class create_stroke_cloud():
 
 
     def adj_edges(self):
+
+        def vert_on_line(vertex, edge):
+            # Get the two vertices of the edge
+            v1, v2 = edge.vertices
+
+            # Get positions of the vertices
+            p1 = v1.position
+            p2 = v2.position
+            p3 = vertex.position
+
+            # Check if the vertex is one of the line endpoints
+            if p3 == p1 or p3 == p2:
+                return True
+
+            # Compute vectors
+            vec1 = (p2[0] - p1[0], p2[1] - p1[1])
+            vec2 = (p3[0] - p1[0], p3[1] - p1[1])
+
+            # Check if vectors are collinear by cross product
+            cross_product = vec1[0] * vec2[1] - vec1[1] * vec2[0]
+
+            # If cross product is zero, the vectors are collinear (the vertex is on the line)
+            if cross_product != 0:
+                return False
+
+            # Check if p3 is between p1 and p2 using the dot product
+            dot_product = (p3[0] - p1[0]) * (p2[0] - p1[0]) + (p3[1] - p1[1]) * (p2[1] - p1[1])
+            if dot_product < 0:
+                return False
+
+            squared_length = (p2[0] - p1[0]) ** 2 + (p2[1] - p1[1]) ** 2
+            if dot_product > squared_length:
+                return False
+
+            return True
+
         for edge_id, edge in self.edges.items():
             connected_edge_ids = set()  
 
             for vertex in edge.vertices:
                 for other_edge_id, other_edge in self.edges.items():
-                    if other_edge_id != edge_id and vertex in other_edge.vertices:
+                    if other_edge_id != edge_id and vert_on_line(vertex, other_edge):
                         connected_edge_ids.add(other_edge_id)
             
             edge.connected_edges = list(connected_edge_ids)
@@ -241,4 +281,6 @@ def run(directory):
     stroke_cloud_class = create_stroke_cloud(file_path)
     stroke_cloud_class.read_json_file()
 
-    stroke_cloud_class.vis_stroke_cloud(directory, show = True)
+    # stroke_cloud_class.vis_stroke_cloud(directory, show = True)
+
+    return stroke_cloud_class.edges, stroke_cloud_class.faces
