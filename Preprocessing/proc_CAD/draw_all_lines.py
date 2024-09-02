@@ -29,6 +29,9 @@ class create_stroke_cloud():
         
         self.adj_edges()
         self.map_id_to_count()
+        
+        for edge_id, edge in self.edges.items():
+            edge.set_alpha_value()
 
         return
 
@@ -79,11 +82,11 @@ class create_stroke_cloud():
             # Determine line color, alpha, and thickness based on edge type
             if edge.edge_type == 'feature_line':
                 line_color = 'black'
-                line_alpha = np.random.uniform(0.55, 0.85)
+                line_alpha = edge.alpha_value
                 line_thickness = np.random.uniform(0.7, 0.9)
             elif edge.edge_type == 'construction_line':
                 line_color = 'black'
-                line_alpha = np.random.uniform(0.15, 0.3)
+                line_alpha = edge.alpha_value
                 line_thickness = np.random.uniform(0.4, 0.6)
 
             # Get edge points and perturb them to create a hand-drawn effect
@@ -144,7 +147,6 @@ class create_stroke_cloud():
         plt.close(fig)
 
     
-
     def parse_op(self, Op, index):
         op = Op['operation'][0]
 
@@ -275,12 +277,13 @@ class create_stroke_cloud():
             self.id_to_count[edge_id] = edge.order_count
 
 
+
 def run(directory):
     file_path = os.path.join(directory, 'Program.json')
 
     stroke_cloud_class = create_stroke_cloud(file_path)
     stroke_cloud_class.read_json_file()
 
-    # stroke_cloud_class.vis_stroke_cloud(directory, show = True)
+    stroke_cloud_class.vis_stroke_cloud(directory, show = True)
 
     return stroke_cloud_class.edges, stroke_cloud_class.faces
