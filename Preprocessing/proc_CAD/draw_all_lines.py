@@ -164,7 +164,7 @@ class create_stroke_cloud():
                 self.edges[line.id] = line
 
             # self.edges = proc_CAD.line_utils.remove_duplicate_lines(self.edges)
-            self.edges = Preprocessing.proc_CAD.line_utils.perturbing_lines(self.edges)
+            # self.edges = Preprocessing.proc_CAD.line_utils.perturbing_lines(self.edges)
             return
 
         for vertex_data in Op['vertices']:
@@ -185,21 +185,11 @@ class create_stroke_cloud():
             edge.set_order_count(self.order_count)
             new_edges.append(edge)
             self.order_count += 1
-            self.edges[edge.id] = edge
+            # self.edges[edge.id] = edge
 
 
-        # We need to determine if extrusion is going outside or inside
-        extrude_outward = Preprocessing.proc_CAD.line_utils.is_extruding_outward(self.prev_bounding_box, new_edges)
-        if op == 'sketch':
-            self.prev_sketch = []
-            self.prev_sketch = new_edges
-        
-        if op == 'extrude':            
-            if extrude_outward and self.prev_bounding_box:
-                for edge in self.prev_sketch:
-                    edge.set_edge_type('construction_line')
-
-            self.prev_bounding_box = new_edges
+        # Now add the new edges to self.edges
+        self.add_new_edges(new_edges)
 
         construction_lines = []
         # Now, we need to generate the construction lines
@@ -292,6 +282,111 @@ class create_stroke_cloud():
     def map_id_to_count(self):
         for edge_id, edge in self.edges.items():
             self.id_to_count[edge_id] = edge.order_count
+
+
+    def add_new_edges(self, new_edges):
+        """
+        Adds new edges to the existing set of edges (self.edges).
+        For each new edge:
+        1) Checks if it is contained within any edge in self.edges.
+        2) If not contained, adds it to self.edges.
+        3) If contained, splits the existing edge and replaces it with the smallest possible edges.
+        """
+        # Helper function to determine if one edge is contained within another
+        def is_contained(edge1, edge2):
+            """Check if edge2 (q1->q2) is contained within edge1 (p1->p2)."""
+            p1, p2 = edge1.vertices[0].position, edge1.vertices[1].position
+            q1, q2 = edge2.vertices[0].position, edge2.vertices[1].position
+
+            # Step 1: Calculate the direction vector of edge1
+            direction = (p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2])
+            direction_magnitude = (direction[0]**2 + direction[1]**2 + direction[2]**2) ** 0.5
+            if direction_magnitude == 0:
+                return False  # Degenerate edge
+
+            # Normalize the direction vector
+            unit_dir = (direction[0] / direction_magnitude, direction[1] / direction_magnitude, direction[2] / direction_magnitude)
+
+            # Step 2: Check if q1 and q2 are on the line defined by edge1
+            def is_point_on_line(p, p1, unit_dir):
+                """Check if point p is on the line defined by point p1 and direction vector unit_dir."""
+                # Parametric equation: p = p1 + t * unit_dir
+                t_values = []
+                for i in range(3):
+                    if unit_dir[i] != 0:  # Avoid division by zero
+                        t = (p[i] - p1[i]) / unit_dir[i]
+                        t_values.append(t)
+
+                # All t values should be approximately equal if p is on the line
+                return all(abs(t - t_values[0]) < 1e-6 for t in t_values)
+
+            if not (is_point_on_line(q1, p1, unit_dir) and is_point_on_line(q2, p1, unit_dir)):
+                return False  # q1 or q2 is not on the line defined by edge1
+
+            # Step 3: Check if q1 and q2 are between p1 and p2
+            def is_between(p, p1, p2):
+                """Check if point p is between points p1 and p2."""
+                return all(min(p1[i], p2[i]) <= p[i] <= max(p1[i], p2[i]) for i in range(3))
+
+            # q1 and q2 should be between p1 and p2 on the line
+            return is_between(q1, p1, p2) and is_between(q2, p1, p2)
+
+        # Helper function to create or reuse vertices
+        def get_or_create_vertex(position, vertices_dict):
+            """Returns an existing vertex if it matches the position or creates a new one."""
+            for vertex in vertices_dict.values():
+                if vertex.position == position:
+                    return vertex
+            # Create a new vertex if no matching vertex is found
+            vertex_id = f"vert_{len(vertices_dict)}"
+            new_vertex = Vertex(id=vertex_id, position=position)
+            vertices_dict[vertex_id] = new_vertex
+            return new_vertex
+
+        # Step 1: Iterate through each new edge
+        for new_edge in new_edges:
+            is_edge_contained = False
+            edges_to_remove = []
+            edges_to_add = []
+
+            # Check if the new edge is contained within any existing edge
+            for prev_edge_id, prev_edge in self.edges.items():
+                if is_contained(prev_edge, new_edge):
+                    # The new edge is contained within the previous edge
+                    is_edge_contained = True
+
+                    # Get positions of vertices
+                    A, B = prev_edge.vertices[0].position, prev_edge.vertices[1].position
+                    C, D = new_edge.vertices[0].position, new_edge.vertices[1].position
+
+                    # Create or reuse vertices
+                    vertex_A = get_or_create_vertex(A, self.vertices)
+                    vertex_B = get_or_create_vertex(B, self.vertices)
+                    vertex_C = get_or_create_vertex(C, self.vertices)
+                    vertex_D = get_or_create_vertex(D, self.vertices)
+
+                    # Split previous edge into three new edges: A -> C, C -> D, D -> B
+                    edge_id_1 = f"edge_{len(self.edges)}_1"
+                    edge_id_2 = f"edge_{len(self.edges)}_2"
+                    edge_id_3 = f"edge_{len(self.edges)}_3"
+
+                    edge_1 = Edge(id=edge_id_1, vertices=(vertex_A, vertex_C))
+                    edge_2 = Edge(id=edge_id_2, vertices=(vertex_C, vertex_D))
+                    edge_3 = Edge(id=edge_id_3, vertices=(vertex_D, vertex_B))
+
+                    # Add these new edges to the list
+                    edges_to_add.extend([edge_1, edge_2, edge_3])
+                    edges_to_remove.append(prev_edge_id)
+
+            # Step 2: Add the new edge if not contained within any existing edge
+            if not is_edge_contained:
+                self.edges[new_edge.id] = new_edge
+            else:
+                # Remove the contained edge and add the new split edges
+                for edge_id in edges_to_remove:
+                    del self.edges[edge_id]
+                for edge in edges_to_add:
+                    self.edges[edge.id] = edge
 
 
 
