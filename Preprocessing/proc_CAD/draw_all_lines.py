@@ -11,7 +11,7 @@ from scipy.interpolate import CubicSpline
 
 
 class create_stroke_cloud():
-    def __init__(self, file_path, output = True):
+    def __init__(self, file_path, brep_edges, output = True):
         self.file_path = file_path
 
         self.order_count = 0
@@ -20,8 +20,7 @@ class create_stroke_cloud():
         self.vertices = {}
         self.id_to_count = {}
 
-        self.prev_sketch = []
-        self.prev_bounding_box = []
+        self.brep_edges = brep_edges
         
         
     def read_json_file(self):
@@ -34,9 +33,6 @@ class create_stroke_cloud():
         self.adj_edges()
         self.map_id_to_count()
         
-        for edge_id, edge in self.edges.items():
-            edge.set_alpha_value()
-
         return
 
 
@@ -162,6 +158,11 @@ class create_stroke_cloud():
                 line.set_Op(op, index)
                 self.order_count += 1
                 self.edges[line.id] = line
+            
+            self.determine_edge_type()
+        
+            for edge_id, edge in self.edges.items():
+                edge.set_alpha_value()
 
             # self.edges = proc_CAD.line_utils.remove_duplicate_lines(self.edges)
             # self.edges = Preprocessing.proc_CAD.line_utils.perturbing_lines(self.edges)
@@ -389,11 +390,78 @@ class create_stroke_cloud():
                     self.edges[edge.id] = edge
 
 
+    def determine_edge_type(self):
+        """
+        Determines the type of each edge in self.edges.
+        For each edge with type 'maybe_feature_line':
+        1) Checks if it is contained within any brep_edge in self.brep_edges.
+        2) If contained, sets its type to 'feature_line'.
+        3) If not contained, sets its type to 'construction_line'.
+        """
+        # Helper function to round a 3D point to 4 decimals
+        def round_point(point):
+            return tuple(round(coord, 4) for coord in point)
+
+        # Helper function to check if an edge is contained within a brep edge
+        def is_contained_in_brep(edge, brep_edge):
+            """Check if edge (with two vertices) is contained within brep_edge (a list of 6 values)."""
+            p1, p2 = edge.vertices[0].position, edge.vertices[1].position
+            q1, q2 = tuple(brep_edge[:3]), tuple(brep_edge[3:])
+
+            # Round the points for comparison
+            p1, p2 = round_point(p1), round_point(p2)
+            q1, q2 = round_point(q1), round_point(q2)
+
+            # Check if both vertices of edge are on the brep edge
+            def is_between(p, a, b):
+                """Check if point p is between points a and b."""
+                return all(min(a[i], b[i]) <= p[i] <= max(a[i], b[i]) for i in range(3))
+
+            # Check if edge is contained by brep_edge or has the same vertices
+            if (p1 == q1 and p2 == q2) or (p1 == q2 and p2 == q1):
+                return True  # Same vertices
+            elif is_between(p1, q1, q2) and is_between(p2, q1, q2):
+                return True  # Both points are on the brep edge
+            else:
+                return False
+
+        # Step 1: Iterate through each edge in self.edges
+        for edge in self.edges.values():
+            # Only process edges with type 'maybe_feature_line'
+            if edge.edge_type == 'maybe_feature_line':
+                contained_in_brep = False
+
+                # Step 2: Check if this edge is contained in any brep_edge
+                for brep_edge in self.brep_edges:
+                    if is_contained_in_brep(edge, brep_edge):
+                        contained_in_brep = True
+                        break
+
+                # Step 3: Set edge type based on containment
+                if contained_in_brep:
+                    edge.set_edge_type('feature_line')
+                else:
+                    edge.set_edge_type('construction_line')
+
+
 
 def run(directory):
     file_path = os.path.join(directory, 'Program.json')
+    
+    # Get the final brep file
+    brep_directory = os.path.join(directory, 'canvas')
+    brep_files = [file_name for file_name in os.listdir(brep_directory)
+            if file_name.startswith('brep_') and file_name.endswith('.step')]
+    brep_files.sort(key=lambda x: int(x.split('_')[1].split('.')[0]))
+    brep_file_name = brep_files[-1]
 
-    stroke_cloud_class = create_stroke_cloud(file_path)
+    # Read the brep edges
+    brep_file_path = os.path.join(brep_directory, brep_file_name)
+    brep_edges, _ = Preprocessing.SBGCN.brep_read.create_graph_from_step_file(brep_file_path)
+
+
+
+    stroke_cloud_class = create_stroke_cloud(file_path, brep_edges)
     stroke_cloud_class.read_json_file()
 
     stroke_cloud_class.vis_stroke_cloud(directory, show = True)

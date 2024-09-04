@@ -559,6 +559,4 @@ def remove_duplicate_lines(all_edges):
 
     return all_edges
 
-
-# -------------------- Go through self.edges, see if the new edge is comprised -------------------- #
     

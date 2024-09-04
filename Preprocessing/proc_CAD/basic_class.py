@@ -51,7 +51,7 @@ class Edge:
         self.vertices = vertices
         self.round = False
 
-        self.edge_type = 'feature_line'
+        self.edge_type = 'maybe_feature_line'
 
         self.Op = []
         self.Op_orders = []
