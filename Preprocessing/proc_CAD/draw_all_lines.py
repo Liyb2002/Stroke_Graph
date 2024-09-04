@@ -146,6 +146,46 @@ class create_stroke_cloud():
         plt.savefig(filepath)
         plt.close(fig)
 
+
+    def vis_brep(self):
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+
+        # Initialize min and max limits for each axis
+        x_min, x_max = np.inf, -np.inf
+        y_min, y_max = np.inf, -np.inf
+        z_min, z_max = np.inf, -np.inf
+
+        # Plot all edges
+        for edge in self.brep_edges:
+            x_values = np.array([edge[0], edge[3]])
+            y_values = np.array([edge[1], edge[4]])
+            z_values = np.array([edge[2], edge[5]])
+
+            # Plot the line in black
+            ax.plot(x_values, y_values, z_values, color='black')
+
+            # Update min and max limits for each axis
+            x_min, x_max = min(x_min, x_values.min()), max(x_max, x_values.max())
+            y_min, y_max = min(y_min, y_values.min()), max(y_max, y_values.max())
+            z_min, z_max = min(z_min, z_values.min()), max(z_max, z_values.max())
+
+        # Compute the center of the shape
+        x_center = (x_min + x_max) / 2
+        y_center = (y_min + y_max) / 2
+        z_center = (z_min + z_max) / 2
+
+        # Compute the maximum difference across x, y, z directions
+        max_diff = max(x_max - x_min, y_max - y_min, z_max - z_min)
+
+        # Set the same limits for x, y, and z axes centered around the computed center
+        ax.set_xlim([x_center - max_diff / 2, x_center + max_diff / 2])
+        ax.set_ylim([y_center - max_diff / 2, y_center + max_diff / 2])
+        ax.set_zlim([z_center - max_diff / 2, z_center + max_diff / 2])
+
+        # Display the plot
+        plt.show()
+
     
     def parse_op(self, Op, index):
         op = Op['operation'][0]
@@ -186,11 +226,11 @@ class create_stroke_cloud():
             edge.set_order_count(self.order_count)
             new_edges.append(edge)
             self.order_count += 1
-            # self.edges[edge.id] = edge
+            self.edges[edge.id] = edge
 
 
         # Now add the new edges to self.edges
-        self.add_new_edges(new_edges)
+        # self.add_new_edges(new_edges)
 
         construction_lines = []
         # Now, we need to generate the construction lines
@@ -284,7 +324,6 @@ class create_stroke_cloud():
         for edge_id, edge in self.edges.items():
             self.id_to_count[edge_id] = edge.order_count
 
-
     def add_new_edges(self, new_edges):
         """
         Adds new edges to the existing set of edges (self.edges).
@@ -293,6 +332,7 @@ class create_stroke_cloud():
         2) If not contained, adds it to self.edges.
         3) If contained, splits the existing edge and replaces it with the smallest possible edges.
         """
+
         # Helper function to determine if one edge is contained within another
         def is_contained(edge1, edge2):
             """Check if edge2 (q1->q2) is contained within edge1 (p1->p2)."""
@@ -308,28 +348,25 @@ class create_stroke_cloud():
             # Normalize the direction vector
             unit_dir = (direction[0] / direction_magnitude, direction[1] / direction_magnitude, direction[2] / direction_magnitude)
 
-            # Step 2: Check if q1 and q2 are on the line defined by edge1
+            # Check if q1 and q2 are on the line defined by edge1
             def is_point_on_line(p, p1, unit_dir):
                 """Check if point p is on the line defined by point p1 and direction vector unit_dir."""
-                # Parametric equation: p = p1 + t * unit_dir
                 t_values = []
                 for i in range(3):
                     if unit_dir[i] != 0:  # Avoid division by zero
                         t = (p[i] - p1[i]) / unit_dir[i]
                         t_values.append(t)
 
-                # All t values should be approximately equal if p is on the line
                 return all(abs(t - t_values[0]) < 1e-6 for t in t_values)
 
             if not (is_point_on_line(q1, p1, unit_dir) and is_point_on_line(q2, p1, unit_dir)):
                 return False  # q1 or q2 is not on the line defined by edge1
 
-            # Step 3: Check if q1 and q2 are between p1 and p2
+            # Check if q1 and q2 are between p1 and p2
             def is_between(p, p1, p2):
                 """Check if point p is between points p1 and p2."""
                 return all(min(p1[i], p2[i]) <= p[i] <= max(p1[i], p2[i]) for i in range(3))
 
-            # q1 and q2 should be between p1 and p2 on the line
             return is_between(q1, p1, p2) and is_between(q2, p1, p2)
 
         # Helper function to create or reuse vertices
@@ -338,7 +375,6 @@ class create_stroke_cloud():
             for vertex in vertices_dict.values():
                 if vertex.position == position:
                     return vertex
-            # Create a new vertex if no matching vertex is found
             vertex_id = f"vert_{len(vertices_dict)}"
             new_vertex = Vertex(id=vertex_id, position=position)
             vertices_dict[vertex_id] = new_vertex
@@ -351,7 +387,7 @@ class create_stroke_cloud():
             edges_to_add = []
 
             # Check if the new edge is contained within any existing edge
-            for prev_edge_id, prev_edge in self.edges.items():
+            for prev_edge_id, prev_edge in list(self.edges.items()):
                 if is_contained(prev_edge, new_edge):
                     # The new edge is contained within the previous edge
                     is_edge_contained = True
@@ -360,24 +396,23 @@ class create_stroke_cloud():
                     A, B = prev_edge.vertices[0].position, prev_edge.vertices[1].position
                     C, D = new_edge.vertices[0].position, new_edge.vertices[1].position
 
-                    # Create or reuse vertices
-                    vertex_A = get_or_create_vertex(A, self.vertices)
-                    vertex_B = get_or_create_vertex(B, self.vertices)
-                    vertex_C = get_or_create_vertex(C, self.vertices)
-                    vertex_D = get_or_create_vertex(D, self.vertices)
+                    # Step 1: Find unique points and their order along the line
+                    unique_points = {tuple(A): 'A', tuple(B): 'B', tuple(C): 'C', tuple(D): 'D'}
+                    unique_positions = sorted(unique_points.keys(), key=lambda p: (p[0], p[1], p[2]))
 
-                    # Split previous edge into three new edges: A -> C, C -> D, D -> B
-                    edge_id_1 = f"edge_{len(self.edges)}_1"
-                    edge_id_2 = f"edge_{len(self.edges)}_2"
-                    edge_id_3 = f"edge_{len(self.edges)}_3"
+                    # Step 2: Create or reuse vertices
+                    vertex_map = {p: get_or_create_vertex(p, self.vertices) for p in unique_positions}
 
-                    edge_1 = Edge(id=edge_id_1, vertices=(vertex_A, vertex_C))
-                    edge_2 = Edge(id=edge_id_2, vertices=(vertex_C, vertex_D))
-                    edge_3 = Edge(id=edge_id_3, vertices=(vertex_D, vertex_B))
+                    # Step 3: Create new edges for each consecutive pair of unique points
+                    for i in range(len(unique_positions) - 1):
+                        start = vertex_map[unique_positions[i]]
+                        end = vertex_map[unique_positions[i + 1]]
+                        edge_id = f"edge_{len(self.edges)}_{i}"
+                        new_edge = Edge(id=edge_id, vertices=(start, end))
+                        edges_to_add.append(new_edge)
 
-                    # Add these new edges to the list
-                    edges_to_add.extend([edge_1, edge_2, edge_3])
                     edges_to_remove.append(prev_edge_id)
+                    break  # No need to check other previous edges since it is already contained
 
             # Step 2: Add the new edge if not contained within any existing edge
             if not is_edge_contained:
@@ -417,6 +452,12 @@ class create_stroke_cloud():
                 """Check if point p is between points a and b."""
                 return all(min(a[i], b[i]) <= p[i] <= max(a[i], b[i]) for i in range(3))
 
+            # Ensure the condition that if p1 and p2 have the same value on any axis, then q1 and q2 must also
+            for i in range(3):  # Loop over x, y, z axes
+                if p1[i] == p2[i]:  # Check if p1 and p2 have the same value on this axis
+                    if q1[i] != q2[i]:  # If q1 and q2 do not have the same value on this axis
+                        return False  # The brep edge does not satisfy the condition
+
             # Check if edge is contained by brep_edge or has the same vertices
             if (p1 == q1 and p2 == q2) or (p1 == q2 and p2 == q1):
                 return True  # Same vertices
@@ -434,6 +475,20 @@ class create_stroke_cloud():
                 # Step 2: Check if this edge is contained in any brep_edge
                 for brep_edge in self.brep_edges:
                     if is_contained_in_brep(edge, brep_edge):
+                        edge_start = edge.vertices[0].position
+                        edge_end = edge.vertices[1].position
+                        
+                        # Extract coordinates from the brep_edge
+                        brep_start = brep_edge[:3]
+                        brep_end = brep_edge[3:]
+
+                        # Print out differences if they exist
+                        if not (np.allclose(edge_start, brep_start) and np.allclose(edge_end, brep_end)):
+                            print("--------")
+                            print("edge", edge_start, edge_end)
+                            print("brep_edge", brep_start, brep_end)
+
+
                         contained_in_brep = True
                         break
 
@@ -464,6 +519,7 @@ def run(directory):
     stroke_cloud_class = create_stroke_cloud(file_path, brep_edges)
     stroke_cloud_class.read_json_file()
 
+    stroke_cloud_class.vis_brep()
     stroke_cloud_class.vis_stroke_cloud(directory, show = True)
 
     return stroke_cloud_class.edges, stroke_cloud_class.faces
