@@ -19,6 +19,10 @@ class create_stroke_cloud():
         self.edges = {}
         self.vertices = {}
         self.id_to_count = {}
+
+        self.prev_sketch = []
+        self.prev_bounding_box = []
+        
         
     def read_json_file(self):
         with open(self.file_path, 'r') as file:
@@ -180,9 +184,22 @@ class create_stroke_cloud():
             edge.set_Op(op, index)
             edge.set_order_count(self.order_count)
             new_edges.append(edge)
-
             self.order_count += 1
             self.edges[edge.id] = edge
+
+
+        # We need to determine if extrusion is going outside or inside
+        extrude_outward = Preprocessing.proc_CAD.line_utils.is_extruding_outward(self.prev_bounding_box, new_edges)
+        if op == 'sketch':
+            self.prev_sketch = []
+            self.prev_sketch = new_edges
+        
+        if op == 'extrude':            
+            if extrude_outward and self.prev_bounding_box:
+                for edge in self.prev_sketch:
+                    edge.set_edge_type('construction_line')
+
+            self.prev_bounding_box = new_edges
 
         construction_lines = []
         # Now, we need to generate the construction lines

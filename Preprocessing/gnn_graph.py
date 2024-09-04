@@ -87,7 +87,7 @@ def build_graph(stroke_dict):
     stroke_id_to_index = {}
 
 
-    node_features = np.zeros((num_strokes, 6))
+    node_features = np.zeros((num_strokes, 7))
     operations_matrix = np.zeros((num_strokes, num_operations))
     intersection_matrix = np.zeros((num_strokes, num_strokes))
     operations_order_matrix = np.zeros((num_strokes, num_operation_counts+1))
@@ -96,11 +96,12 @@ def build_graph(stroke_dict):
     for i, (_, stroke) in enumerate(stroke_dict.items()):
 
         # build node_features
-        # node_features has shape num_strokes x 6, which is the starting and ending point
+        # node_features has shape num_strokes x 7, which is the starting and ending point. Last digit is alpha_value
         start_point = stroke.vertices[0].position
         end_point = stroke.vertices[1].position
         node_features[i, :3] = start_point
-        node_features[i, 3:] = end_point
+        node_features[i, 3:6] = end_point
+        node_features[i, 6] = stroke.alpha_value
 
         # build operations_matrix
         # operations_matrix has shape num_strokes x num_type_ops

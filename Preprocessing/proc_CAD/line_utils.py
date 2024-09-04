@@ -558,3 +558,52 @@ def remove_duplicate_lines(all_edges):
         del all_edges[edge_id]
 
     return all_edges
+
+
+# -------------------- determine if extruding outward -------------------- #
+
+def is_extruding_outward(prev_bounding_box, new_edges):
+    """
+    Checks if any of the new edges are outside the bounding box defined by prev_bounding_box.
+    Returns True if any point in new_edges is outside the bounding box, otherwise False.
+    If either prev_bounding_box or new_edges is empty, returns True.
+    A point on the surface of the bounding box is considered inside.
+    """
+    # Return True if either input is empty
+    if not prev_bounding_box or not new_edges:
+        return True
+
+    # Helper function to round coordinates to 4 decimals
+    def round_point(point):
+        return tuple(round(coord, 4) for coord in point)
+
+    # Step 1: Find min and max values for x, y, and z in prev_bounding_box
+    prev_min_x = prev_min_y = prev_min_z = float('inf')
+    prev_max_x = prev_max_y = prev_max_z = float('-inf')
+
+    for edge in prev_bounding_box:
+        for vertex in edge.vertices:
+            pos = round_point(vertex.position)
+            prev_min_x, prev_max_x = min(prev_min_x, pos[0]), max(prev_max_x, pos[0])
+            prev_min_y, prev_max_y = min(prev_min_y, pos[1]), max(prev_max_y, pos[1])
+            prev_min_z, prev_max_z = min(prev_min_z, pos[2]), max(prev_max_z, pos[2])
+
+    # Step 2: Find min and max values for x, y, and z in new_edges
+    new_min_x = new_min_y = new_min_z = float('inf')
+    new_max_x = new_max_y = new_max_z = float('-inf')
+
+    for edge in new_edges:
+        for vertex in edge.vertices:
+            pos = round_point(vertex.position)
+            new_min_x, new_max_x = min(new_min_x, pos[0]), max(new_max_x, pos[0])
+            new_min_y, new_max_y = min(new_min_y, pos[1]), max(new_max_y, pos[1])
+            new_min_z, new_max_z = min(new_min_z, pos[2]), max(new_max_z, pos[2])
+
+    # Step 3: Check if any of the new min/max values are outside the prev bounding box
+    if (new_min_x < prev_min_x or new_max_x > prev_max_x or
+        new_min_y < prev_min_y or new_max_y > prev_max_y or
+        new_min_z < prev_min_z or new_max_z > prev_max_z):
+        return True  # At least one of the new edges extends outside the bounding box
+
+    # If all new edges are inside or on the surface of the bounding box
+    return False

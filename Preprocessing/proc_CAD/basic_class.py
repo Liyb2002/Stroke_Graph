@@ -1,5 +1,6 @@
 
-# Verte
+import numpy as np
+
 
 class Face:
     def __init__(self, id, vertices, normal):
@@ -41,7 +42,7 @@ class Face:
         
         self.future_sketch = False
         self.plane = None
-
+    
 
 class Edge:
     def __init__(self, id, vertices):
@@ -73,6 +74,14 @@ class Edge:
     def set_edge_type(self, new_edge_type):
         self.edge_type = new_edge_type
     
+    def set_alpha_value(self):
+        if self.edge_type == 'feature_line':
+            self.alpha_value = np.random.uniform(0.55, 0.85)
+        if self.edge_type == 'construction_line':
+            self.alpha_value = np.random.uniform(0.15, 0.3)
+
+
+
 
 class Vertex:
     def __init__(self, id, position):
