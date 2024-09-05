@@ -11,7 +11,7 @@ import math
 def midpoint_lines(edges):
 
     if len(edges) == 3:
-        return triangle_midpoint_lines(edges)
+        return []
     
     if len(edges) == 4:
         return rectangle_midpoint_lines(edges)

@@ -105,7 +105,6 @@ class Brep:
         
         if amount == 0:
             amount = Preprocessing.proc_CAD.random_gen.generate_random_extrude()
-            amount = -10
         if self.idx < 2:
             amount = abs(amount)
         
@@ -363,6 +362,8 @@ class Brep:
             other_plane = face.plane
             distance = 0
             # Check if the face is on the same axis (x, y, or z)
+            print("other_plane[0]", other_plane[0])
+            print("sketch_plane[0]", sketch_plane[0])
             if other_plane[0] == sketch_plane[0]:
                 other_value = other_plane[1]
 

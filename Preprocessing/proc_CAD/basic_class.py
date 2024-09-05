@@ -41,7 +41,7 @@ class Face:
             return
         
         self.future_sketch = False
-        self.plane = None
+        self.plane = ('None', 0)
     
 
 class Edge:
@@ -76,7 +76,7 @@ class Edge:
     
     def set_alpha_value(self):
         if self.edge_type == 'feature_line':
-            self.alpha_value = np.random.uniform(0.55, 0.85)
+            self.alpha_value = np.random.uniform(0.6, 0.9)
         if self.edge_type == 'construction_line':
             self.alpha_value = np.random.uniform(0.2, 0.3)
 

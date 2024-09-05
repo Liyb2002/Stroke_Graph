@@ -324,6 +324,7 @@ class create_stroke_cloud():
         for edge_id, edge in self.edges.items():
             self.id_to_count[edge_id] = edge.order_count
 
+
     def add_new_edges(self, new_edges):
         """
         Adds new edges to the existing set of edges (self.edges).
@@ -339,6 +340,12 @@ class create_stroke_cloud():
             p1, p2 = edge1.vertices[0].position, edge1.vertices[1].position
             q1, q2 = edge2.vertices[0].position, edge2.vertices[1].position
 
+            # Round positions to 4 decimal places
+            p1 = tuple(round(coord, 4) for coord in p1)
+            p2 = tuple(round(coord, 4) for coord in p2)
+            q1 = tuple(round(coord, 4) for coord in q1)
+            q2 = tuple(round(coord, 4) for coord in q2)
+
             # Step 1: Calculate the direction vector of edge1
             direction = (p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2])
             direction_magnitude = (direction[0]**2 + direction[1]**2 + direction[2]**2) ** 0.5
@@ -348,6 +355,9 @@ class create_stroke_cloud():
             # Normalize the direction vector
             unit_dir = (direction[0] / direction_magnitude, direction[1] / direction_magnitude, direction[2] / direction_magnitude)
 
+            # Round the normalized direction vector
+            unit_dir = tuple(round(coord, 4) for coord in unit_dir)
+
             # Check if q1 and q2 are on the line defined by edge1
             def is_point_on_line(p, p1, unit_dir):
                 """Check if point p is on the line defined by point p1 and direction vector unit_dir."""
@@ -355,7 +365,7 @@ class create_stroke_cloud():
                 for i in range(3):
                     if unit_dir[i] != 0:  # Avoid division by zero
                         t = (p[i] - p1[i]) / unit_dir[i]
-                        t_values.append(t)
+                        t_values.append(round(t, 4))  # Round t to 4 decimals
 
                 return all(abs(t - t_values[0]) < 1e-6 for t in t_values)
 
@@ -365,13 +375,14 @@ class create_stroke_cloud():
             # Check if q1 and q2 are between p1 and p2
             def is_between(p, p1, p2):
                 """Check if point p is between points p1 and p2."""
-                return all(min(p1[i], p2[i]) <= p[i] <= max(p1[i], p2[i]) for i in range(3))
+                return all(min(round(p1[i], 4), round(p2[i], 4)) <= round(p[i], 4) <= max(round(p1[i], 4), round(p2[i], 4)) for i in range(3))
 
             return is_between(q1, p1, p2) and is_between(q2, p1, p2)
 
         # Helper function to create or reuse vertices
         def get_or_create_vertex(position, vertices_dict):
             """Returns an existing vertex if it matches the position or creates a new one."""
+            position = tuple(round(coord, 4) for coord in position)  # Round position to 4 decimals
             for vertex in vertices_dict.values():
                 if vertex.position == position:
                     return vertex
@@ -395,6 +406,12 @@ class create_stroke_cloud():
                     # Get positions of vertices
                     A, B = prev_edge.vertices[0].position, prev_edge.vertices[1].position
                     C, D = new_edge.vertices[0].position, new_edge.vertices[1].position
+
+                    # Round positions to 4 decimal places
+                    A = tuple(round(coord, 4) for coord in A)
+                    B = tuple(round(coord, 4) for coord in B)
+                    C = tuple(round(coord, 4) for coord in C)
+                    D = tuple(round(coord, 4) for coord in D)
 
                     # Step 1: Find unique points and their order along the line
                     unique_points = {tuple(A): 'A', tuple(B): 'B', tuple(C): 'C', tuple(D): 'D'}
@@ -512,7 +529,7 @@ def run(directory):
     stroke_cloud_class = create_stroke_cloud(file_path, brep_edges)
     stroke_cloud_class.read_json_file()
 
-    stroke_cloud_class.vis_brep()
+    # stroke_cloud_class.vis_brep()
     stroke_cloud_class.vis_stroke_cloud(directory, show = True)
 
     return stroke_cloud_class.edges, stroke_cloud_class.faces
