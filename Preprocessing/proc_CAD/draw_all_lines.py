@@ -226,11 +226,11 @@ class create_stroke_cloud():
             edge.set_order_count(self.order_count)
             new_edges.append(edge)
             self.order_count += 1
-            self.edges[edge.id] = edge
+            # self.edges[edge.id] = edge
 
 
         # Now add the new edges to self.edges
-        # self.add_new_edges(new_edges)
+        self.add_new_edges(new_edges)
 
         construction_lines = []
         # Now, we need to generate the construction lines
@@ -481,13 +481,6 @@ class create_stroke_cloud():
                         # Extract coordinates from the brep_edge
                         brep_start = brep_edge[:3]
                         brep_end = brep_edge[3:]
-
-                        # Print out differences if they exist
-                        if not (np.allclose(edge_start, brep_start) and np.allclose(edge_end, brep_end)):
-                            print("--------")
-                            print("edge", edge_start, edge_end)
-                            print("brep_edge", brep_start, brep_end)
-
 
                         contained_in_brep = True
                         break

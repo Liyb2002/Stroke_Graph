@@ -105,6 +105,7 @@ class Brep:
         
         if amount == 0:
             amount = Preprocessing.proc_CAD.random_gen.generate_random_extrude()
+            amount = -10
         if self.idx < 2:
             amount = abs(amount)
         
@@ -112,12 +113,11 @@ class Brep:
             
         if sketch_face_opposite_normal == [0,0,0]:
             sketch_face_opposite_normal = [-x for x in sketch_face.normal]
-            safe_amount = self.safe_extrude_check()
-            if amount > 0:
-                amount = min(safe_amount, amount)
+            safe_amount = -self.safe_extrude_check()
+
             if amount <0:
-                amount = min(abs(amount), safe_amount)
-                amount = 0 - amount
+                amount = max(amount, safe_amount)
+
         else:
             sketch_face.normal = [-x for x in sketch_face_opposite_normal]
 
@@ -344,11 +344,13 @@ class Brep:
         sketch_face = self.Faces[-1]
         sketch_plane = sketch_face.plane  # tuple, e.g., (x, 0) or (y, 0) or (z, 0)
 
-        extrude_directions = [-x for x in sketch_face.normal]
+        extrude_directions = [x for x in sketch_face.normal]
+
+
         extrude_direction = -1
         if 1 in extrude_directions:
             extrude_direction = 1
-            
+        
         base_value = sketch_plane[1]  # The value on the axis to compare against
 
         closest_value = float('inf')
